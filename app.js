@@ -55,7 +55,7 @@ app.get('/', function(req, res) {
 app.get('/scripts/config.js', function(req, res){
     res.send("angular.module('tunariApp')" +
           ".constant('Config', {" +
-              "tunariApi:"+ (process.env.TUNARI_API || "'https://tunariserver.herokuapp.com/'") +
+              "tunariApi: '"+ (process.env.TUNARI_API || "https://tunariserver.herokuapp.com/") + "'" +
           "});"
     );
 });
