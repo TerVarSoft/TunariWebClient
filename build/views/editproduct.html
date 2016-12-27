@@ -1,0 +1,151 @@
+<!--<div class="col-xs-12">
+    <div class="col-xs-8" align="left">
+        <h3><strong>Edicion {{product.name}}</strong></h3>
+    </div>   
+    <div class="col-xs-4" align="center">
+        <div class="form-group">
+            <div class="col-xs-12 col-sm-6">               
+                <label for="category">Categoria :</label>
+            </div>                    
+            <div class="col-xs-12 col-sm-6">    
+                {{product.category}}                
+            </div>
+        </div>
+    </div> 
+    <hr noshade=“noshade” width="90%"/>
+    <hr />
+    <br/>
+    <div class="col-xs-12">
+        <form name="productDetailsForm" ng-submit="productDetailsForm.$valid && saveProduct()" 
+                  class="form-horizontal"  role="form" novalidate>
+            <div class="reveal-animation" ng-include="productView"></div>
+            <br/>
+            <br/>
+            <div class="row">
+                <div class="col-xs-12 col-sm-4" align="center">                                       
+                    <button type="button" class="btn btn-warning" 
+                               ng-click="deleteProduct()">
+                       Eliminar <span class="glyphicon glyphicon-trash"></span>
+                    </button> 
+                    <br/>
+                    <br/>
+                </div>
+                <div class="col-xs-6 col-sm-4" align="center">
+                    <button accesskey="c" type="button" class="btn btn-danger" 
+                                ng-click="cancelEditing()">
+                        Cancelar <span class="glyphicon glyphicon-remove"></span>
+                    </button>
+                    <br/>
+                    <br/>
+                </div>
+                <div class="col-xs-6 col-sm-4" align="center">                                       
+                    <button ng-href="#/productSearch" type="submit" class="btn btn-success"  >
+                        Guardar <span class="glyphicon glyphicon-floppy-disk"></span>
+                    </button>                   
+                    <br/>
+                    <br/>
+                </div>
+            </div>
+        </form>
+    </div>  
+    <br/>
+    <br/>
+</div>-->
+
+<md-content flex class="background md-padding" layout="column">
+    <md-card>
+    <md-card-title>
+        <md-card-title-text>
+            <span class="md-headline">{{product.name}}</span>
+            <span class="md-subhead">{{product.category}} </span>
+        </md-card-title-text>
+        <!--<md-card-title-media>
+        <div class="md-media-lg card-media"></div>
+        </md-card-title-media>-->
+    </md-card-title>
+    <md-card-content flex layout="row">
+        <md-tabs md-dynamic-height md-border-bottom flex="60">
+            <md-tab label="Datos">
+                <md-content class="md-padding">
+                    <md-input-container class="md-block">
+                        <label>Nombre</label>    
+                        <input/>        
+                    </md-input-container>
+                    <md-input-container class="md-block">
+                        <label>Categoria</label>    
+                        <input/>        
+                    </md-input-container>
+                    <md-input-container class="md-block">
+                        <label>Precio</label>    
+                        <input/>        
+                    </md-input-container>
+                    <md-input-container class="md-block">
+                        <label>Ubicacion</label>    
+                        <input/>        
+                    </md-input-container>
+                </md-content>
+            </md-tab>  
+            <md-tab label="Precios">
+                <md-content class="md-padding" layout="column">
+                    <div layout="row">
+                        <md-input-container flex="30">
+                            <label>Precio</label>
+                            <input>
+                        </md-input-container>
+
+                        <md-input-container flex="50">
+                            <label>Tipo</label>
+                            <md-select name="type" ng-model="newPrice.type" >
+                                <md-option value="unidad">Unidad</md-option>
+                                <md-option value="paquete">Paquete</md-option>
+                            </md-select>
+                        </md-input-container>
+
+                        <div>
+                            <md-button class="md-raised md-primary">Agregar</md-button>
+                        </div>                            
+                    </div>
+                    <md-radio-group ng-model="data.group1">
+                        <md-radio-button value="Apple">2 Bs, Unidad</md-radio-button>
+                        <md-radio-button value="Banana">25 Bs, Paquete</md-radio-button>
+                        <md-radio-button value="Mango">30 Bs, Paquete Especial</md-radio-button>
+                    </md-radio-group>
+
+                </md-content>
+            </md-tab>      
+            <md-tab label="Ubicaciones">
+                <md-content class="md-padding">
+                    <div layout="row">
+                        <md-input-container flex="50">
+                            <label>Ubicacion</label>
+                            <input>
+                        </md-input-container>
+
+                        <md-input-container flex="30">
+                            <label>Tipo</label>
+                            <md-select name="type" ng-model="newLocation.type" >
+                                <md-option value="unidad">Deposito</md-option>
+                                <md-option value="paquete">Tienda</md-option>
+                            </md-select>
+                        </md-input-container>
+
+                        <div>
+                            <md-button class="md-raised md-primary">Agregar</md-button>
+                        </div>                            
+                    </div>
+                    <md-radio-group ng-model="data.group1">
+                        <md-radio-button value="Apple">Vitrina 2 peldaño 2, Tienda</md-radio-button>
+                        <md-radio-button value="Banana">Deposito A estante 2, Deposito</md-radio-button>                        
+                    </md-radio-group>
+                </md-content>
+            </md-tab> 
+        </md-tabs>
+        <img flex="40" check-image ng-src="{{getProductImageUrl(product, '-L')}}"
+                 class="md-card-image edit-product-img">     
+    </md-card-content>
+    <md-card-actions layout="row" layout-align="end center">
+        <md-button>Borrar</md-button>
+        <md-button>Guardar</md-button>
+    </md-card-actions>
+    </md-card>
+</md-content>

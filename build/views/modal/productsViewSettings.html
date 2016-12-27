@@ -1,0 +1,20 @@
+<md-dialog>
+    <md-dialog-content>
+        <md-list>
+            <md-subheader>Precio para mostrar</md-subheader>
+            <br/>
+            <md-list-item>
+                <md-radio-group ng-model="selectedPriceType">
+                    <md-radio-button ng-repeat="priceType in priceTypes" value="{{priceType}}" class="md-primary">
+                        {{priceType}}
+                    </md-radio-button>                    
+                </md-radio-group>
+            </md-list-item>
+        </md-list>        
+    </md-dialog-content>
+    <md-dialog-actions layout="row">
+        <md-button ng-click="saveSettings()">
+            Guardar
+        </md-button>
+    </md-dialog-actions>
+</md-dialog>

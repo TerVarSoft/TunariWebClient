@@ -11,6 +11,7 @@
     <!-- bower:css -->
     <link rel="stylesheet" href="bower_components/angular-notify/dist/angular-notify.css" />
     <link rel="stylesheet" href="bower_components/angular-material/angular-material.css" />
+    <link rel="stylesheet" href="bower_components/angular-material-icons/angular-material-icons.css" />
     <!-- endbower -->
     
     <link rel="stylesheet" href="custom_dependencies/angular-materialize/angular-materialize-0.97.8.css">
@@ -171,71 +172,74 @@
     <script src="bower_components/angular-messages/angular-messages.js"></script>
     <script src="bower_components/angular-material/angular-material.js"></script>
     <script src="bower_components/svg-morpheus/compile/minified/svg-morpheus.js"></script>
+    <script src="bower_components/angular-material-icons/angular-material-icons.min.js"></script>
     <!-- endbower -->
     <!--customDependencies-->
     <script src="custom_dependencies/angular-bootstrap/ui-bootstrap-custom-tpls-0.14.3.js"></script>
     <script src="custom_dependencies/angular-scrollable-table/angular-scrollable-table.js"></script>
-    <script src="custom_dependencies/angular-scrollable-table/angular-locale_es-419.js"></script>
-    <script src="//cdnjs.cloudflare.com/ajax/libs/angular-material-icons/0.7.0/angular-material-icons.min.js"></script>
+    <script src="custom_dependencies/angular-scrollable-table/angular-locale_es-419.js"></script>    
     <script src="custom_dependencies/angular-materialize/materialize-0.97.7.min.js"></script>
     <script src="custom_dependencies/angular-materialize/angular-materialize-0.2.1.min.js"></script>    
     <!--customDependencies-->
     <!-- /build -->
 
     
-        <!-- build:js scripts/app.min.js -->
-        <script src="scripts/app.js"></script>
-        <script src="scripts/config.js"></script>
-        <script src="scripts/controllers/products.js"></script>
-        <script src="scripts/controllers/addquantity.js"></script>
-        <script src="scripts/controllers/main.js"></script>
-        <script src="scripts/controllers/navBar.js"></script>
-        <script src="scripts/controllers/about.js"></script>
-        <script src="scripts/services/products.js"></script>
-        <script src="scripts/controllers/content.js"></script>
-        <script src="scripts/controllers/shopCtrl.js"></script>
-        <script src="scripts/services/serverdata.js"></script>
-        <script src="scripts/controllers/editProduct.js"></script>
-        <script src="scripts/controllers/newProduct.js"></script>
-        <script src="scripts/controllers/invitationDetails.js"></script>
-        <script src="scripts/controllers/addingProduct.js"></script>
-        <script src="scripts/controllers/samplebook.js"></script>
-        <script src="scripts/controllers/sellingItem.js"></script>
-        <script src="scripts/controllers/statistics.js"></script>
-        <script src="scripts/controllers/invitationsQuantityCharts.js"></script>
-        <script src="scripts/controllers/statisticsOptions.js"></script>
-        <script src="scripts/controllers/sellingsCharts.js"></script>
-        <script src="scripts/controllers/settings.js"></script>
-        <script src="scripts/controllers/modal/image.js"></script>
-        <script src="scripts/controllers/modal/summaryCart.js"></script>
-        <script src="scripts/controllers/modal/productQuickSearch.js"></script>
-        <script src="scripts/controllers/modal/productsViewSettings.js"></script>
-        <script src="scripts/controllers/bottomSheet/sellingOptions.js"></script>
-        <script src="scripts/services/sellings.js"></script>
-        <script src="scripts/services/clients.js"></script>     
-        <script src="scripts/controllers/questionModal.js"></script>   
-        <script src="scripts/services/messages.js"></script>
-        <script src="scripts/services/notifier.js"></script>
-        <script src="scripts/services/searchInfo.js"></script>
-        <script src="scripts/services/sellingItemInfo.js"></script>
-        <script src="scripts/services/settings.js"></script>
-        <script src="scripts/services/productInfo.js"></script>
-        <script src="scripts/services/speechRecognition.js"></script>
-        <script src="scripts/directives/sellingquantity.js"></script>
-        <script src="scripts/directives/tagsproduct.js"></script>
-        <script src="scripts/directives/shoppingcart.js"></script>
-        <script src="scripts/directives/typeahead.js"></script>
-        <script src="scripts/directives/prodQuantityChart.js"></script>
-        <script src="scripts/directives/sellingsDatepicker.js"></script>
-        <script src="scripts/directives/sellingsbarchart.js"></script>
-        <script src="scripts/directives/checkimage.js"></script>
-        <script src="scripts/controllers/clientSearch.js"></script>
-        <script src="scripts/controllers/clientSamples.js"></script>
-        <script src="scripts/controllers/newclient.js"></script>
-        <script src="scripts/controllers/editclient.js"></script>
-        <script src="scripts/directives/productlocation.js"></script>
-        <script src="scripts/directives/uppercase.js"></script>
-        <script src="scripts/filters/checkedproduct.js"></script>
-        <!-- /build -->
+    <!-- build:js scripts/app.min.js -->
+    <script src="scripts/app.js"></script>
+    <script src="scripts/config.js"></script>
+    <script src="scripts/controllers/products.js"></script>
+    <script src="scripts/controllers/addquantity.js"></script>
+    <script src="scripts/controllers/main.js"></script>
+    <script src="scripts/controllers/navBar.js"></script>
+    <script src="scripts/controllers/about.js"></script>
+    <script src="scripts/services/products.js"></script>
+    <script src="scripts/controllers/content.js"></script>
+    <script src="scripts/controllers/shopCtrl.js"></script>
+    <script src="scripts/services/serverdata.js"></script>
+    <script src="scripts/controllers/editProduct.js"></script>
+    <script src="scripts/controllers/newProduct.js"></script>
+    <script src="scripts/controllers/invitationDetails.js"></script>
+    <script src="scripts/controllers/addingProduct.js"></script>
+    <script src="scripts/controllers/samplebook.js"></script>
+    <script src="scripts/controllers/sellingItem.js"></script>
+    <script src="scripts/controllers/statistics.js"></script>
+    <script src="scripts/controllers/invitationsQuantityCharts.js"></script>
+    <script src="scripts/controllers/statisticsOptions.js"></script>
+    <script src="scripts/controllers/sellingsCharts.js"></script>
+    <script src="scripts/controllers/settings.js"></script>
+    <script src="scripts/controllers/modal/image.js"></script>
+    <script src="scripts/controllers/modal/summaryCart.js"></script>
+    <script src="scripts/controllers/modal/productQuickSearch.js"></script>
+    <script src="scripts/controllers/modal/productsViewSettings.js"></script>
+    <script src="scripts/controllers/bottomSheet/sellingOptions.js"></script>
+    <script src="scripts/services/sellings.js"></script>
+    <script src="scripts/services/clients.js"></script>     
+    <script src="scripts/controllers/questionModal.js"></script>   
+    <script src="scripts/services/messages.js"></script>
+    <script src="scripts/services/notifier.js"></script>
+    <script src="scripts/services/searchInfo.js"></script>
+    <script src="scripts/services/sellingItemInfo.js"></script>
+    <script src="scripts/services/settings.js"></script>
+    <script src="scripts/services/productInfo.js"></script>
+    <script src="scripts/services/speechRecognition.js"></script>
+    <script src="scripts/directives/sellingquantity.js"></script>
+    <script src="scripts/directives/tagsproduct.js"></script>
+    <script src="scripts/directives/shoppingcart.js"></script>
+    <script src="scripts/directives/typeahead.js"></script>
+    <script src="scripts/directives/prodQuantityChart.js"></script>
+    <script src="scripts/directives/sellingsDatepicker.js"></script>
+    <script src="scripts/directives/sellingsbarchart.js"></script>
+    <script src="scripts/directives/checkimage.js"></script>
+    <script src="scripts/controllers/clientSearch.js"></script>
+    <script src="scripts/controllers/clientSamples.js"></script>
+    <script src="scripts/controllers/newclient.js"></script>
+    <script src="scripts/controllers/editclient.js"></script>
+    <script src="scripts/directives/productlocation.js"></script>
+    <script src="scripts/directives/uppercase.js"></script>
+    <script src="scripts/filters/checkedproduct.js"></script>
+    <!-- /build -->
+
+    <!-- build:js scripts/config.js -->
+    <!-- /build -->
 </body>
 </html>

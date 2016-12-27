@@ -3,7 +3,6 @@
 node_modules/*
 bower_components/*
 .tmp/*
-client/build/*
 
 app/scripts/config.js
 local.env.js

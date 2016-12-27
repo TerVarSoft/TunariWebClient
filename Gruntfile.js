@@ -416,7 +416,7 @@ module.exports = function (grunt) {
 
     // Copies remaining files to places other tasks can use
     copy: {
-      dist: {
+      baseFilesToBuild: {
         files: [{
           expand: true,
           dot: true,
@@ -533,13 +533,21 @@ module.exports = function (grunt) {
             dest: 'build/.tmp/app.css'
         },
 		
-        js: {
-            src: [
-                'app/scripts/**/*'
-            ],
-            dest: 'build/.tmp/app.js'
-        },
+    js: {
+        src: [
+            'app/scripts/**/*',
+            '!app/scripts/config.js'
+        ],
+        dest: 'build/.tmp/app.js'
+    },
 		
+    /**
+     *  Sometimes when there is an error when minifiying, using angular.min.js files
+     *  hides the real error in the console, and it just shows an injection problem
+     *  making really hard to find the problem.  So, first step when debbuging this
+     *  should be to use angular.js instead (without min) and then re-build and then
+     *  see if the error changes.
+     */
 		lib:{
             src: [                                
                 'bower_components/jquery/dist/jquery.min.js',
@@ -576,7 +584,7 @@ module.exports = function (grunt) {
     },
 
     uglify:{
-        js:{
+        scripts:{
             files:{
                 'build/scripts/app.min.js': ['build/.tmp/app.js'],
 //                'build/lib/dependencies.min.js': ['build/.tmp/dependencies.js'],
@@ -651,21 +659,22 @@ module.exports = function (grunt) {
     'test',
     'build'
   ]);
-  
+     
+  /**
+   *  To test without minification, comment the
+   *  clean:buildTmp task and copy the files 
+   *  in the .tmp folder to the scripts, lib and styles folders. 
+   */
   grunt.registerTask('tvsBuild',
     [
-      'ngconstant:generateClientConfig',
       'clean:build',
-      'copy:dist',
+      'copy:baseFilesToBuild',
       'concat',     
       'cssmin',                     
-      'uglify',
+      'uglify:scripts',
       'copy:dependencies',
       'clean:buildTmp',
       'processhtml',
-      'copy:toServer',
-      'clean:heroku',
-      'copy:toHeroku'
   ]); 
-  
+    
 };

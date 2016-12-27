@@ -1,0 +1,81 @@
+
+<md-content flex layout="column">        
+    <md-content flex class="background" layout="row">
+        <div  layout="row" layout-wrap flex=70 flex-sm=80 flex-offset-sm="10" flex-offset="15">
+            <div flex=100 class="md-padding">
+                <md-chips 
+                    ng-model="searchTags"
+                    md-on-add="search()"
+                    md-on-remove="search()"
+                    readonly="readonly"
+                    md-removable="removable"
+                    placeholder="Busquemos un producto!"
+                    delete-button-label="Remove Tag"
+                    delete-hint="Press delete to remove tag"
+                    secondary-placeholder="Escribe algo mas!">
+                </md-chips>                            
+            </div>        
+                
+            <div flex=100  layout=row layout-wrap>                
+                <div flex-xs=100 flex-sm=50 flex=33 style="padding:10px" ng-repeat="product in products">
+                    <div class="card sticky-action" md-whiteframe=4>
+                        <div class="card-image">
+                            <img materialboxed check-image="{{getProductImageUrl(product, '-L')}}" data-caption={{product.name}}
+                                class="materialboxed product-image" width="650" src="/images/defaultProduct.gif">
+                        </div>
+                        <div class="card-content">
+                            <span class="card-title activator grey-text text-darken-4">{{product.name}}</span>
+                        </div>
+                        <div class="card-action">
+                            <p ng-repeat="price in product.prices" ng-show="price.type == selectedPriceType">{{price.value}} Bs por {{price.type}}</p>                                                        
+                            <p ng-hide="hasPriceToShow(product)" style="color:#a9b9c1">No hay precio para mostrar</p>
+                        </div>
+
+                        <div class="card-reveal">
+                            <div flex layout="row">
+                                <div flex class="grey-text text-darken-4">                            
+                                    <i class="material-icons right" style="color:#607d8b" ng-click="openEditProductModal($event, product)">mode_edit</i>
+                                    <i class="material-icons right" style="color:#607d8b" ng-click="deleteProduct($event, product)">delete</i>                            
+                                </div>
+                            </div>
+                            <div flex>
+                                <div  flex class="card-title grey-text text-darken-4">
+                                    {{product.name}}                                                                            
+                                </div>
+                                <p>{{product.properties.type || product.category}}</p>
+                                </br>                                                                                                              
+                                <div ng-show="product.quantity"><b>Cantidad:</b> {{product.quantity}} Unidades en deposito</br></div>  
+                                <div ng-show="product.properties.size"><b>Tamaño:</b> {{product.properties.size}}</br></div>
+                                <div ng-repeat="location in product.locations">
+                                    <b>{{location.type}}:</b> {{location.value}}</br>
+                                </div>
+                            </div>
+                        </div> 
+                    </div>                                       
+                </div>
+                <div flex=100 ng-show="isLoading" layout="row" layout-sm="column" layout-align="center center">
+                    <md-progress-circular md-mode="indeterminate" class="md-accent md-hue-1" md-diameter="60">                        
+                    </md-progress-circular>
+                </div>
+                <div flex=100 layout=row layout-align="center center">
+                    <md-button ng-click="searchMore()">Mas Productos!</md-button>
+                </div>                                                                
+            </div>            
+        </div>        
+        
+    </md-content>
+
+    <md-button ng-click="openQuickSearchsModal()" class="md-fab md-fab-bottom-right" style="bottom: 90px" aria-label="productsSettings">          
+        <ng-md-icon style="fill: #fff" icon="zoom_in" class="fab-button-icon" size="40">
+        </ng-md-icon>  
+    </md-button>
+    <md-button ng-click="openCreateProductModal($event)" class="md-fab md-fab-bottom-right" aria-label="createProduct">          
+        <ng-md-icon style="fill: #fff" icon="add_circle_outline" class="fab-button-icon" size="40">
+        </ng-md-icon>  
+    </md-button>
+    <md-button ng-click="openProductsSettings($event)" class="md-fab md-fab-bottom-right" style="bottom: 160px" aria-label="productSettings">          
+        <ng-md-icon style="fill: #fff" icon="settings" class="fab-button-icon" size="40">
+        </ng-md-icon>  
+    </md-button>
+
+</md-content>

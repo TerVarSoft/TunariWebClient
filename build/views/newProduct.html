@@ -1,0 +1,49 @@
+<div ng-init="product={prices:[],properties:{},tags:[],locations:[]}" class="col-xs-12">
+    <div ng-if="config">
+        <div class="col-xs-8" align="left">            
+            <h4><strong>Nuevo Producto: {{product.name}}</strong></h4>
+        </div>   
+        <div class="col-xs-4" align="center">
+            <div class="form-group">
+                <div class="col-xs-12 col-sm-6">               
+                    <label for="category">Categoria :</label>
+                </div>                    
+                <div class="col-xs-12 col-sm-6">
+                    <select class="nya-selectpicker btn btn-info"
+                            ng-model="product.category" 
+                            ng-options="cat for cat in categories"
+                            ng-change="updateCategory()"
+                            name="category">
+                    </select>
+                </div>
+            </div>
+        </div> 
+        <hr noshade="noshade" width="90%"/>
+        <hr/>
+        <br/>
+        <div class="col-xs-12">
+            <form class="form-horizontal"name="productForm" ng-submit="productForm.$valid && createProduct()" role="form" novalidate>            
+                <div class="reveal-animation" ng-include="productView"></div>
+                <br/>
+                <br/>
+                <div class="row">
+                    <div class="col-xs-6" align="center">
+                        <button type="button" ng-click="cancelProduct()" class="btn btn-danger" >
+                            Cancelar
+                        </button>
+                        <br/>
+                        <br/>
+                    </div>
+                    <div class="col-xs-6" align="center">                                       
+                        <button type="submit" class="btn btn-success"  >
+                            Guardar
+                        </button>                   
+                        <br/>
+                        <br/>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+

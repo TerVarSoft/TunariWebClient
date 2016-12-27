@@ -1,0 +1,140 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>TunariApp</title>
+    <meta name="description" content="">
+    <meta name="viewport" content="width=device-width">
+    <!-- Place favicon.ico and apple-touch-icon.png in the root directory -->
+	<link rel="stylesheet" href="styles/app.min.css"/>
+  </head>
+  <body ng-app="tunariApp" layout="row" ng-cloak>
+    
+    <div ng-controller="ContentCtrl" flex layout="column">
+        <md-toolbar  md-scroll-shrink layout="column">
+            <div class="md-toolbar-tools" md- layout-align="space-between center" layout-wrap>
+                <md-button ng-click="toggleSidenav('sideNav')" aria-label="Menu">
+                    <ng-md-icon icon="menu" style="fill: #fff" size="40"></ng-md-icon>                 
+                </md-button>                
+                <h3>
+                    <span>{{layout.title}}</span>
+                </h3>
+                <span flex></span>
+                <md-button  ng-click="toogleRecording()" class="md-fab md-mini md-hue-2 " 
+                    ng-class="isRecording ? 'md-accent' : 'md-primary'"
+                    aria-label="Mic">
+                    <ng-md-icon options='{"rotation": "none"}' class="fab-button-icon"
+                        icon="{{layout.recordIcon}}" style="fill: #fff" size="30"></ng-md-icon>   
+                </md-button>
+            </div>               
+        </md-toolbar> 
+        <md-sidenav  md-component-id="sideNav" layout="column" class="md-sidenav-left md-whiteframe-z4">
+            <md-toolbar ng-click="closeSideNav('sideNav')" layout-align="center center" class="md-tall md-hue-2">
+                TunariApp
+            </md-toolbar>
+            <md-list ng-controller="NavBarCtrl">
+                <md-list-item ng-repeat="menu in menus" ng-click="changeView(menu.propName)">
+                    <a>
+                        <md-item-content md-ink-ripple layout="row" layout-align="start center">
+                            <div class="inset" >
+                                <ng-md-icon icon="{{menu.icon}}"></ng-md-icon>
+                            </div>
+                            <div class="inset" >
+                                {{menu.text}}
+                            </div>                    
+                        </md-item-content>                
+                    </a>
+                </md-list-item>                    
+            </md-list>
+        </md-sidenav>
+                
+        <!-- Main View -->
+        <div ng-view="" flex layout="row"></div>
+      
+
+       <!-- <md-button ng-click="bottomFabRightButtonClick($event)" class="md-fab md-fab-bottom-right" aria-label="Add">  
+            <md-tooltip hide-sm hide-xs show-gt-sm md-direction="top">
+                {{layout.bottomFabButtonIconTooltip}}
+            </md-tooltip>
+            <ng-md-icon style="fill: #fff" icon="{{layout.bottomFabButtonIcon}}" class="fab-button-icon" size="40">
+            </ng-md-icon>  
+        </md-button>
+        <md-button ng-click="bottomFabLeftButtonClick()" class="md-fab md-fab-bottom-left" aria-label="Add">  
+            <md-tooltip hide-sm hide-xs show-gt-sm md-direction="top">Opciones</md-tooltip>
+            <ng-md-icon style="fill: #fff" icon="low_priority" class="fab-button-icon" size="40">
+            </ng-md-icon>  
+        </md-button>-->
+    </div>
+
+    <!--[if lte IE 8]>
+      <p class="browsehappy">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</p>
+    <![endif]-->
+
+    <!-- Add your site or application content here -->
+    <!-- <div ng-controller="NavBarCtrl"  class="header">
+      <div class="navbar navbar-default" role="navigation">
+        <div class="container">
+          <div class="navbar-header">
+
+            <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#js-navbar-collapse">
+              <span class="sr-only">Toggle navigation</span>
+              <span class="icon-bar"></span>
+              <span class="icon-bar"></span>
+              <span class="icon-bar"></span>
+            </button>
+
+            <a class="navbar-brand" href="#/">TunariApp</a>
+          </div>
+
+          <div class="collapse navbar-collapse" id="js-navbar-collapse">
+
+            <ul class="nav navbar-nav">
+              <li ng-audio="sounds/click.mp3"  class="">
+                <a ng-click="changeView('products')">Productos</a>
+              </li> 
+              <li ng-audio="sounds/click.mp3"  class="">
+                <a ng-click="changeView('clients')">Clientes</a>
+              </li>                  
+              <li ng-audio="sounds/click.mp3"  class="">
+                <a ng-click="changeView('statistics')">Estadisticas</a>
+              </li>
+            </ul>
+          </div>
+        </div>
+        <div class="submenu">
+          <div ng-include="subMenu"></div>
+        </div>
+      </div>            
+    </div> -->
+
+    <!-- <div class="container-fluid">
+        <div  ng-view=""></div>
+       <div ng-view=""></div>
+    </div> -->
+
+    <!-- <div class="footer">
+      <div class="container">
+        <p><span class="glyphicon glyphicon-registration-mark"></span> El equipo de TervarSoft</p>
+      </div>
+    </div> -->
+
+
+    <!-- Google Analytics: change UA-XXXXX-X to be your site's ID -->
+     <script>
+       !function(A,n,g,u,l,a,r){A.GoogleAnalyticsObject=l,A[l]=A[l]||function(){
+       (A[l].q=A[l].q||[]).push(arguments)},A[l].l=+new Date,a=n.createElement(g),
+       r=n.getElementsByTagName(g)[0],a.src=u,r.parentNode.insertBefore(a,r)
+       }(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+       ga('create', 'UA-XXXXX-X');
+       ga('send', 'pageview');
+    </script>
+
+    <script src="lib/dependencies.js"></script>
+
+    
+    <script src="scripts/app.min.js"></script>
+
+    <script src="scripts/config.js"></script>
+</body>
+</html>

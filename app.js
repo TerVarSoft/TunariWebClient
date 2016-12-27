@@ -46,17 +46,16 @@ app.use(function (req, res, next) {
     next();
 });
 
-app.use(express.static(path.join(__dirname, 'public/frontend')));
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'build')));
 
 app.get('/', function(req, res) {
-    res.sendFile('./public/index.html',{root: __dirname }); 
+    res.sendFile('./build/index.html',{root: __dirname }); 
 });
 
-app.get('/config.js', function(req, res){
+app.get('/scripts/config.js', function(req, res){
     res.send("angular.module('tunariApp')" +
           ".constant('Config', {" +
-              "tunariApi:"+ (process.env.TUNARI_API || "https://tunariserver.herokuapp.com/") +
+              "tunariApi:"+ (process.env.TUNARI_API || "'https://tunariserver.herokuapp.com/'") +
           "});"
     );
 });

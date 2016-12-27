@@ -1,0 +1,8 @@
+<md-dialog>
+    <md-list ng-cloak>
+        <md-subheader class="md-no-sticky">Busquedas Rapidas!</md-subheader>
+        <md-list-item ng-repeat="tag in tags" ng-click=selectTag(tag)>
+          <p> {{ tag }} </p>      
+        </md-list-item>
+    </md-list>
+</md-dialog>
