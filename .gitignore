@@ -1,0 +1,15 @@
+# Server Exclusions
+
+node_modules/*
+
+# Client Exclusions
+
+bower_components/*
+client/.tmp/*
+client/build/*
+
+app/scripts/config.js
+
+#Other
+
+.idea/*
