@@ -152,13 +152,18 @@
                     </md-card>  
                 </md-content> 
             </md-tab>
-            <md-tab flex label="Imagenes">
-                <div carousel flex>
-                    <a class="carousel-item" >
-                        <img check-image="{{getProductImageUrl(product, '-L')}}" class="product-image" 
+            <md-tab flex label="Imagenes">                
+                <div layout="row" layout-align="center center" layout-wrap>
+                    <img flex=50 check-image="{{getProductImageUrl(product, '-L')}}" class="product-extra-image" 
                                 src="/images/defaultProduct.gif">
-                    </a>                   
+                    <img ng-repeat="image in product.images" flex=50 check-image="{{getExtraImageUrl(image)}}" 
+                        class="product-extra-image" src="/images/defaultProduct.gif">                   
                 </div>
+                <div class="md-padding">
+                    <md-chips placeholder="Agrega imagenes!" ng-model="product.images">
+                    </md-chips>
+                </div> 
+                <br/>                             
             </md-tab>            
         </md-tabs>        
     </md-dialog-content>   

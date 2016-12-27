@@ -515,6 +515,7 @@ module.exports = function (grunt) {
                     'bower_components/nya-bootstrap-select/dist/css/nya-bs-select.css',
                     'bower_components/angular-notify/dist/angular-notify.css',
                     'bower_components/angular-material/angular-material.css',
+                    'bower_components/angular-material-icons/angular-material-icons.css',
                     'app/custom_dependencies/angular-materialize/angular-materialize-0.97.8.css',
                     'app/custom_dependencies/angular-materialize/material-icons.css',
                     'app/styles/sandstone.css',

@@ -29,6 +29,11 @@
     object-fit: contain;
 }
 
+.product-extra-image {
+    height: 150px;
+    object-fit: contain;
+}
+
 .edit-product-img {
     height: 400px;
 }

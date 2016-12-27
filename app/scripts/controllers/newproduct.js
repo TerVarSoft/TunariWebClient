@@ -40,6 +40,7 @@ angular.module('tunariApp')
                                     $scope.product.category : $scope.categories[0].name;        
         
         $scope.product.tags = $scope.product.tags ? $scope.product.tags : [];
+        $scope.product.images =  $scope.product.images || [];
         $scope.product.properties = $scope.product.properties ? $scope.product.properties : {};
     }
 
@@ -112,6 +113,10 @@ angular.module('tunariApp')
 
     $scope.getProductImageUrl = function(product, sufix) {
         return  ProductInfo.getProductImageUrl(product, sufix);       
+    }
+
+    $scope.getExtraImageUrl = function(image) {
+        return  ProductInfo.getExtraImageUrl(image);
     }
 
     $('#name').focus();
