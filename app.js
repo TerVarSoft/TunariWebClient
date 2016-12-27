@@ -53,6 +53,14 @@ app.get('/', function(req, res) {
     res.sendFile('./public/index.html',{root: __dirname }); 
 });
 
+app.get('/config.js', function(req, res){
+    res.send("angular.module('tunariApp')" +
+          ".constant('Config', {" +
+              "tunariApi:"+ (process.env.TUNARI_API || "https://tunariserver.herokuapp.com/") +
+          "});"
+    );
+});
+
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
   var err = new Error('Not Found');
