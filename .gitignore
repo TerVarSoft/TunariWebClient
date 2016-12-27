@@ -1,14 +1,12 @@
-# Server Exclusions
-
-node_modules/*
-
 # Client Exclusions
 
+node_modules/*
 bower_components/*
-client/.tmp/*
+.tmp/*
 client/build/*
 
 app/scripts/config.js
+local.env.js
 
 #Other
 

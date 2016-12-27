@@ -1,0 +1,139 @@
+body {
+  /*background-image: url(../images/sandpaper.png);    */
+  /*background-color: rgb(229, 223, 223);*/
+}
+
+/* Everything but the jumbotron gets side spacing for mobile first views */
+.header,
+.marketing,
+.footer {
+  padding-left: 15px;
+  padding-right: 15px;
+}
+
+/* Custom page header */
+.header {
+  border-bottom: 1px solid #e5e5e5;
+  margin-bottom: 10px;
+}
+/* Make the masthead heading the same height as the navigation */
+.header h3 {
+  margin-top: 0;
+  margin-bottom: 0;
+  line-height: 40px;
+  padding-bottom: 19px;
+}
+
+/* Custom page footer */
+.footer {
+  padding-top: 19px;
+  color: #777;
+  border-top: 1px solid #e5e5e5;
+}
+
+/* Responsive: Portrait tablets and up */
+@media screen and (min-width: 768px) {
+  .container {
+    /*max-width: 730px;*/
+  }
+
+  /* Remove the padding we set earlier */
+  .header,
+  .marketing,
+  .footer {
+    padding-left: 0;
+    padding-right: 0;
+  }
+  /* Space out the masthead */
+  .header {
+    margin-bottom: 30px;
+  }
+  /* Remove the bottom border on the jumbotron for visual effect */
+  .jumbotron {
+    border-bottom: 0;
+  }
+}
+
+.reveal-animation.ng-enter {
+    -webkit-animation: Fade-Enter-Anime 0.5s;
+    -moz-animation: Fade-Enter-Anime 0.5s;
+    animation: Fade-Enter-Anime 0.5s;
+}
+.Content-Fade-Leave {
+    -webkit-animation: Fade-Leave-Anime 0.5s;
+    -moz-animation: Fade-Leave-Anime 0.5s;
+    animation: Fade-Leave-Anime 0.5s;
+}
+
+@keyframes Fade-Enter-Anime {
+   from { opacity: 0; }
+   to { opacity: 1; }
+ }
+
+@keyframes Fade-Leave-Anime {
+    from { opacity: 1; }
+    to { opacity: 0; }
+}
+
+
+@-webkit-keyframes Fade-Enter-Anime {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@-webkit-keyframes Fade-Leave-Anime {
+    from { opacity: 1; }
+    to { opacity: 0; }
+}
+
+@-moz-keyframes Fade-Enter-Anime {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@-moz-keyframes Fade-Leave-Anime {
+    from { opacity: 1; }
+    to { opacity: 0; }
+}
+
+a {
+    /*color: #fff;*/
+    fill: #737373;
+    color: #737373;
+    text-decoration: none;
+}
+
+a:hover, a:focus {
+    /*color: #fff;*/
+    fill: #737373;
+    color: #737373;
+    text-decoration: none;
+}
+
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.nav, .pagination, .carousel, .panel-title a { cursor: pointer; }
+
+/*Angular Material*/
+
+ng-md-icon.fab-button-icon {
+  position: relative;
+  top: 9px; 
+}
+
+.md-mini ng-md-icon.fab-button-icon {
+  position: relative;
+  top: 5px; 
+}
+
+.md-button.md-fab.md-fab-bottom-right {
+  fill: #ffffff;
+}
+
+.menu-button {
+  background-color: #737373;
+}

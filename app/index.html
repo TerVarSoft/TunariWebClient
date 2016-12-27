@@ -1,0 +1,241 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>TunariApp</title>
+    <meta name="description" content="">
+    <meta name="viewport" content="width=device-width">
+    <!-- Place favicon.ico and apple-touch-icon.png in the root directory -->
+	<!-- build:css styles/app.min.css -->
+      
+    <!-- bower:css -->
+    <link rel="stylesheet" href="bower_components/angular-notify/dist/angular-notify.css" />
+    <link rel="stylesheet" href="bower_components/angular-material/angular-material.css" />
+    <!-- endbower -->
+    
+    <link rel="stylesheet" href="custom_dependencies/angular-materialize/angular-materialize-0.97.8.css">
+    <link href="custom_dependencies/angular-materialize/material-icons.css" rel="stylesheet">
+    <link rel="stylesheet" href="styles/sandstone.css">
+    <!-- <link rel="stylesheet" href="bower_components/bootstrap/dist/css/bootstrap.css"> -->
+    <link rel="stylesheet" href="styles/scrollable-table.css" />
+
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="stylesheet" href="styles/productsearch.css">
+    <link rel="stylesheet" href="styles/products.css">
+    <link rel="stylesheet" href="styles/shoppingcart.css">
+    <link rel="stylesheet" href="styles/typeahead.css">      
+    <link rel="stylesheet" href="styles/clientsearch.css">
+    <link rel="stylesheet" href="styles/clientsamples.css">
+    <link rel="stylesheet" href="styles/newclient.css">
+    <link rel="stylesheet" href="styles/statistics.css">
+    <link rel="stylesheet" href="styles/sellingsCharts.css">
+    <link rel="stylesheet" href="styles/sellingOptions.css">
+    <!-- /build -->
+  </head>
+  <body ng-app="tunariApp" layout="row" ng-cloak>
+    
+    <div ng-controller="ContentCtrl" flex layout="column">
+        <md-toolbar  md-scroll-shrink layout="column">
+            <div class="md-toolbar-tools" md- layout-align="space-between center" layout-wrap>
+                <md-button ng-click="toggleSidenav('sideNav')" aria-label="Menu">
+                    <ng-md-icon icon="menu" style="fill: #fff" size="40"></ng-md-icon>                 
+                </md-button>                
+                <h3>
+                    <span>{{layout.title}}</span>
+                </h3>
+                <span flex></span>
+                <md-button  ng-click="toogleRecording()" class="md-fab md-mini md-hue-2 " 
+                    ng-class="isRecording ? 'md-accent' : 'md-primary'"
+                    aria-label="Mic">
+                    <ng-md-icon options='{"rotation": "none"}' class="fab-button-icon"
+                        icon="{{layout.recordIcon}}" style="fill: #fff" size="30"></ng-md-icon>   
+                </md-button>
+            </div>               
+        </md-toolbar> 
+        <md-sidenav  md-component-id="sideNav" layout="column" class="md-sidenav-left md-whiteframe-z4">
+            <md-toolbar ng-click="closeSideNav('sideNav')" layout-align="center center" class="md-tall md-hue-2">
+                TunariApp
+            </md-toolbar>
+            <md-list ng-controller="NavBarCtrl">
+                <md-list-item ng-repeat="menu in menus" ng-click="changeView(menu.propName)">
+                    <a>
+                        <md-item-content md-ink-ripple layout="row" layout-align="start center">
+                            <div class="inset" >
+                                <ng-md-icon icon="{{menu.icon}}"></ng-md-icon>
+                            </div>
+                            <div class="inset" >
+                                {{menu.text}}
+                            </div>                    
+                        </md-item-content>                
+                    </a>
+                </md-list-item>                    
+            </md-list>
+        </md-sidenav>
+                
+        <!-- Main View -->
+        <div ng-view="" flex layout="row"></div>
+      
+
+       <!-- <md-button ng-click="bottomFabRightButtonClick($event)" class="md-fab md-fab-bottom-right" aria-label="Add">  
+            <md-tooltip hide-sm hide-xs show-gt-sm md-direction="top">
+                {{layout.bottomFabButtonIconTooltip}}
+            </md-tooltip>
+            <ng-md-icon style="fill: #fff" icon="{{layout.bottomFabButtonIcon}}" class="fab-button-icon" size="40">
+            </ng-md-icon>  
+        </md-button>
+        <md-button ng-click="bottomFabLeftButtonClick()" class="md-fab md-fab-bottom-left" aria-label="Add">  
+            <md-tooltip hide-sm hide-xs show-gt-sm md-direction="top">Opciones</md-tooltip>
+            <ng-md-icon style="fill: #fff" icon="low_priority" class="fab-button-icon" size="40">
+            </ng-md-icon>  
+        </md-button>-->
+    </div>
+
+    <!--[if lte IE 8]>
+      <p class="browsehappy">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</p>
+    <![endif]-->
+
+    <!-- Add your site or application content here -->
+    <!-- <div ng-controller="NavBarCtrl"  class="header">
+      <div class="navbar navbar-default" role="navigation">
+        <div class="container">
+          <div class="navbar-header">
+
+            <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#js-navbar-collapse">
+              <span class="sr-only">Toggle navigation</span>
+              <span class="icon-bar"></span>
+              <span class="icon-bar"></span>
+              <span class="icon-bar"></span>
+            </button>
+
+            <a class="navbar-brand" href="#/">TunariApp</a>
+          </div>
+
+          <div class="collapse navbar-collapse" id="js-navbar-collapse">
+
+            <ul class="nav navbar-nav">
+              <li ng-audio="sounds/click.mp3"  class="">
+                <a ng-click="changeView('products')">Productos</a>
+              </li> 
+              <li ng-audio="sounds/click.mp3"  class="">
+                <a ng-click="changeView('clients')">Clientes</a>
+              </li>                  
+              <li ng-audio="sounds/click.mp3"  class="">
+                <a ng-click="changeView('statistics')">Estadisticas</a>
+              </li>
+            </ul>
+          </div>
+        </div>
+        <div class="submenu">
+          <div ng-include="subMenu"></div>
+        </div>
+      </div>            
+    </div> -->
+
+    <!-- <div class="container-fluid">
+        <div  ng-view=""></div>
+       <div ng-view=""></div>
+    </div> -->
+
+    <!-- <div class="footer">
+      <div class="container">
+        <p><span class="glyphicon glyphicon-registration-mark"></span> El equipo de TervarSoft</p>
+      </div>
+    </div> -->
+
+
+    <!-- Google Analytics: change UA-XXXXX-X to be your site's ID -->
+     <script>
+       !function(A,n,g,u,l,a,r){A.GoogleAnalyticsObject=l,A[l]=A[l]||function(){
+       (A[l].q=A[l].q||[]).push(arguments)},A[l].l=+new Date,a=n.createElement(g),
+       r=n.getElementsByTagName(g)[0],a.src=u,r.parentNode.insertBefore(a,r)
+       }(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+       ga('create', 'UA-XXXXX-X');
+       ga('send', 'pageview');
+    </script>
+
+    <!-- build:js lib/dependencies.js -->
+    <!-- bower:js -->
+    <script src="bower_components/jquery/dist/jquery.js"></script>
+    <script src="bower_components/angular/angular.js"></script>
+    <script src="bower_components/bootstrap/dist/js/bootstrap.js"></script>
+    <script src="bower_components/angular-animate/angular-animate.js"></script>
+    <script src="bower_components/angular-route/angular-route.js"></script>
+    <script src="bower_components/lodash/lodash.js"></script>
+    <script src="bower_components/restangular/dist/restangular.js"></script>
+    <script src="bower_components/angular-notify/dist/angular-notify.js"></script>
+    <script src="bower_components/d3/d3.js"></script>
+    <script src="bower_components/d3-tip/index.js"></script>
+    <script src="bower_components/moment/moment.js"></script>
+    <script src="bower_components/angular-aria/angular-aria.js"></script>
+    <script src="bower_components/angular-messages/angular-messages.js"></script>
+    <script src="bower_components/angular-material/angular-material.js"></script>
+    <script src="bower_components/svg-morpheus/compile/minified/svg-morpheus.js"></script>
+    <!-- endbower -->
+    <!--customDependencies-->
+    <script src="custom_dependencies/angular-bootstrap/ui-bootstrap-custom-tpls-0.14.3.js"></script>
+    <script src="custom_dependencies/angular-scrollable-table/angular-scrollable-table.js"></script>
+    <script src="custom_dependencies/angular-scrollable-table/angular-locale_es-419.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/angular-material-icons/0.7.0/angular-material-icons.min.js"></script>
+    <script src="custom_dependencies/angular-materialize/materialize-0.97.7.min.js"></script>
+    <script src="custom_dependencies/angular-materialize/angular-materialize-0.2.1.min.js"></script>    
+    <!--customDependencies-->
+    <!-- /build -->
+
+    
+        <!-- build:js scripts/app.min.js -->
+        <script src="scripts/app.js"></script>
+        <script src="scripts/config.js"></script>
+        <script src="scripts/controllers/products.js"></script>
+        <script src="scripts/controllers/addquantity.js"></script>
+        <script src="scripts/controllers/main.js"></script>
+        <script src="scripts/controllers/navBar.js"></script>
+        <script src="scripts/controllers/about.js"></script>
+        <script src="scripts/services/products.js"></script>
+        <script src="scripts/controllers/content.js"></script>
+        <script src="scripts/controllers/shopCtrl.js"></script>
+        <script src="scripts/services/serverdata.js"></script>
+        <script src="scripts/controllers/editProduct.js"></script>
+        <script src="scripts/controllers/newProduct.js"></script>
+        <script src="scripts/controllers/invitationDetails.js"></script>
+        <script src="scripts/controllers/addingProduct.js"></script>
+        <script src="scripts/controllers/samplebook.js"></script>
+        <script src="scripts/controllers/sellingItem.js"></script>
+        <script src="scripts/controllers/statistics.js"></script>
+        <script src="scripts/controllers/invitationsQuantityCharts.js"></script>
+        <script src="scripts/controllers/statisticsOptions.js"></script>
+        <script src="scripts/controllers/sellingsCharts.js"></script>
+        <script src="scripts/controllers/settings.js"></script>
+        <script src="scripts/controllers/modal/image.js"></script>
+        <script src="scripts/controllers/modal/summaryCart.js"></script>
+        <script src="scripts/controllers/modal/productQuickSearch.js"></script>
+        <script src="scripts/controllers/modal/productsViewSettings.js"></script>
+        <script src="scripts/controllers/bottomSheet/sellingOptions.js"></script>
+        <script src="scripts/services/sellings.js"></script>
+        <script src="scripts/services/clients.js"></script>     
+        <script src="scripts/controllers/questionModal.js"></script>   
+        <script src="scripts/services/messages.js"></script>
+        <script src="scripts/services/notifier.js"></script>
+        <script src="scripts/services/searchInfo.js"></script>
+        <script src="scripts/services/sellingItemInfo.js"></script>
+        <script src="scripts/services/settings.js"></script>
+        <script src="scripts/services/productInfo.js"></script>
+        <script src="scripts/services/speechRecognition.js"></script>
+        <script src="scripts/directives/sellingquantity.js"></script>
+        <script src="scripts/directives/tagsproduct.js"></script>
+        <script src="scripts/directives/shoppingcart.js"></script>
+        <script src="scripts/directives/typeahead.js"></script>
+        <script src="scripts/directives/prodQuantityChart.js"></script>
+        <script src="scripts/directives/sellingsDatepicker.js"></script>
+        <script src="scripts/directives/sellingsbarchart.js"></script>
+        <script src="scripts/directives/checkimage.js"></script>
+        <script src="scripts/controllers/clientSearch.js"></script>
+        <script src="scripts/controllers/clientSamples.js"></script>
+        <script src="scripts/controllers/newclient.js"></script>
+        <script src="scripts/controllers/editclient.js"></script>
+        <script src="scripts/directives/productlocation.js"></script>
+        <script src="scripts/directives/uppercase.js"></script>
+        <script src="scripts/filters/checkedproduct.js"></script>
+        <!-- /build -->
+</body>
+</html>
