@@ -117,7 +117,7 @@ angular.module('tunariApp')
         }, function() {});
     }
 
-    $scope.openQuickSearchsModal = function() {
+    $scope.openQuickSearchsModal = function(event) {
 
         $mdDialog.show({
             controller: 'ProductQuickSearchCtrl',
@@ -131,7 +131,7 @@ angular.module('tunariApp')
         }, function() {});        
     }
 
-    $scope.openProductsSettings = function() {
+    $scope.openProductsSettings = function(event) {
 
         $mdDialog.show({
             controller: 'ProductsViewSettingsCtrl',
@@ -145,6 +145,41 @@ angular.module('tunariApp')
         }, function() {});  
     }
 
+    $scope.openReduceQuantity = function(event, product) {
+        var helpMessage = product.quantity ? 
+                        'Existen ' + product.quantity + ' Unidades actualmente en el deposito.' :
+                        'No sabemos cuantas unidades hay de este producto :(';
+        if(product.quantity) {             
+            var confirm = $mdDialog.prompt()
+                .title('Venta del producto ' + product.name)
+                .textContent('Existen ' + product.quantity + ' Unidades actualmente en el deposito.' )
+                .placeholder('Cantidad')
+                .ariaLabel('quantity')            
+                .targetEvent(event)
+                .ok('Vender!')
+                .cancel('Cancelar');
+
+            $mdDialog.show(confirm).then(function(quantityToReduce) {
+                product.quantity -= quantityToReduce;
+                product.quantity = product.quantity < 0 ? 0 : product.quantity;
+
+                product.put().then(function(){
+                    $scope.showToast("Venta exitosa! Quedan: " +  product.quantity + " Unidades", product.name );
+                });
+            }, function() {});
+        } else {
+            $mdDialog.show(
+                $mdDialog.alert()
+                    .parent(angular.element(document.querySelector('#popupContainer')))
+                    .clickOutsideToClose(true)
+                    .title('No sabemos cuantas unidades hay de este producto!')
+                    .textContent('Edita el producto y especifica una cantidad')
+                    .ariaLabel('No quantity')
+                    .ok('Gracias!')
+                    .targetEvent(event));
+         }         
+    }
+    
     $scope.deleteProduct = function(event, product) {
         var deleteProductModal = $mdDialog.confirm()
           .title('Esta seguro de borrar este producto?')

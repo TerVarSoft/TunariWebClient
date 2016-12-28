@@ -49,9 +49,9 @@ angular.module('tunariApp')
     }
 
     var prepareProductBeforeSaving = function() {  
-        // Default value for sortTag, this can be overriden in prepareSpecificPropertiesBeforeProductSaving 
-        $scope.product.sortTag = $scope.product.category + $scope.product.name;
+        // Default value for sortTag, this can be overriden in prepareSpecificPropertiesBeforeProductSaving         
         $scope.product.name = _.toUpper($scope.product.name);
+        $scope.product.sortTag = $scope.product.category + $scope.product.name;
 
         console.log($scope.categories);
         $scope.product.tags = _.difference($scope.product.tags, _.intersection($scope.product.tags, _.map($scope.categories, 'name')));

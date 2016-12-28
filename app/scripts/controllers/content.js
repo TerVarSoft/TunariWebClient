@@ -44,7 +44,7 @@ angular.module('tunariApp')
             .action(action)
             .highlightAction(true)
             .position('right')
-            .hideDelay(1500)
+            .hideDelay(4000)
             .parent(angular.element(document.body))
         );       
     }

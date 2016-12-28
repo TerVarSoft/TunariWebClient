@@ -17,7 +17,10 @@
             <div flex="100" ng-if="showFavorites && favorites.length > 0" class="md-padding">
                 <div class="card" md-whiteframe=4>                    
                     <div class="card-image">
-                        <span style="color:#607d8b;top:0px;right:0px" class="card-title favorites-title">Favoritos</span>
+                        <span style="color:#607d8b;top:0px;right:0px" class="card-title favorites-title">
+                            Favoritos
+                            <i style="top:3px" class="material-icons left waves-effect" class="primary-color">star</i>
+                        </span>
                         <div carousel >                    
                             <a ng-repeat="product in favorites" class="carousel-item">
                                 <img check-image="{{getProductImageUrl(product, '-L')}}" ng-dblclick="searchFavorite(product.name)" 
@@ -50,7 +53,8 @@
                                     <i class="material-icons right waves-effect" style="color:#607d8b" ng-click="openEditProductModal($event, product)">mode_edit</i>
                                     <i class="material-icons right waves-effect" style="color:#607d8b" ng-click="deleteProduct($event, product)">delete</i>
                                     <i class="material-icons right waves-effect" ng-class="product.isFavorite ? 'accent-color' : 'primary-color'"
-                                         ng-click="toggleFavorite(product)">star</i>                            
+                                         ng-click="toggleFavorite(product)">star</i>  
+                                    <i class="material-icons right waves-effect" style="color:#607d8b" ng-click="openReduceQuantity($event, product)">shopping_basket</i>                                                                   
                                 </div>
                             </div>
                             <div flex>
@@ -80,7 +84,7 @@
         
     </md-content>
 
-    <md-button ng-click="openQuickSearchsModal()" class="md-fab md-fab-bottom-right" style="bottom: 90px" aria-label="productsSettings">          
+    <md-button ng-click="openQuickSearchsModal($event)" class="md-fab md-fab-bottom-right" style="bottom: 90px" aria-label="productsSettings">          
         <ng-md-icon style="fill: #fff" icon="zoom_in" class="fab-button-icon" size="40">
         </ng-md-icon>  
     </md-button>
