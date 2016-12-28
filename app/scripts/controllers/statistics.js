@@ -20,13 +20,16 @@ angular.module('tunariApp')
     $scope.search = function() {
         var query = _.isEmpty($scope.searchTags) ? {} : {tags: $scope.searchTags.join(' ')};
         query.category = 'Invitaciones';
-        query.querySort = 'quantity';
+        query.querySort = 'quantity';        
         query.excludeProductNames = excludeListForStatistics.join(",");
 
         var limitToGraph = $mdMedia('xs') ? 5 : ($mdMedia('sm') ? 8 : ($mdMedia('md') ? 14 : 20));        
         Products.getList(query).then(function(invitations) {            
+            $scope.showToast(invitations.meta.count + " Productos encontrados!","TUNARI");       
+            
+            // Dummy function to remove restangular stuff
             $scope.products = _.map(invitations, function(d){return d});
-            $scope.productsToGraph = _.take($scope.products, limitToGraph);            
+            $scope.productsToGraph = _.take($scope.products, limitToGraph);                   
         });
     }  
 

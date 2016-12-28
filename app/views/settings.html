@@ -3,6 +3,15 @@
         <h1 class="center primary-color"><strong>Configuraciones</strong></h1>
         </br>
         <md-list flex ng-cloack>
+            <md-subheader class="md-no-sticky">Tipos de Invitaciones</md-subheader>
+            <md-list-item>
+                <md-chips flex 
+                ng-model="invitationTypes.value"
+                placeholder="Agrega un tipo!"
+                secondary-placeholder="Etiquetas+">                        
+                </md-chips>
+            </md-list-item>
+            </br>
             <md-subheader class="md-no-sticky">Busquedas Rapidas</md-subheader>
             <md-list-item>
                 <md-chips flex 
@@ -11,7 +20,7 @@
                 secondary-placeholder="Etiquetas+">                        
                 </md-chips>
             </md-list-item>
-            </br>
+            </br>            
             <md-subheader class="md-no-sticky">Productos excluidos en las estadisticas</md-subheader>
             <md-list-item>
                 <md-chips flex 

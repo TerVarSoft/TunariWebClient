@@ -16,11 +16,18 @@ angular.module('tunariApp')
     Settings.getList().then(function(settings){
         $scope.imgServer = _.find(settings, {'key': 'imgServer'});    
         $scope.quickSearchs = _.find(settings, {'key': 'quickSearchs'});
-        $scope.excludeListForStatistics = _.find(settings, {'key': 'excludeListForStatistics'});        
+        $scope.excludeListForStatistics = _.find(settings, {'key': 'excludeListForStatistics'});   
+        $scope.invitationTypes = _.find(settings, {'key': 'invitationTypes'});
 
         if(!$scope.imgServer) {
             Settings.post({key:"imgServer", value:""}).then(function(newSetting){
               $scope.imgServer = newSetting;
+            });
+        }
+
+        if(!$scope.invitationTypes) {
+            Settings.post({key:"invitationTypes", value:[]}).then(function(newSetting){
+              $scope.invitationTypes = newSetting;
             });
         }
 
@@ -49,9 +56,8 @@ angular.module('tunariApp')
             ProductInfo.setProductQuickSearchs($scope.quickSearchs.value);
         });
         $scope.excludeListForStatistics.value = _.map($scope.excludeListForStatistics.value, _.toUpper)
-        $scope.excludeListForStatistics.save().then(function() {
-            ProductInfo.setExcludeListForStatistics($scope.excludeListForStatistics.value);
-        });;
+        $scope.excludeListForStatistics.save();
+        $scope.invitationTypes.save();
 
         $location.path('/products');
     }

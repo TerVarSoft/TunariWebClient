@@ -49,7 +49,7 @@ angular.module('tunariApp')
 
         Products.getList(query).then(function(products) {
             $scope.products = _.concat($scope.products, products);
-            $scope.totalProducts = products.meta.count;   
+            $scope.showToast(products.meta.count + " Productos encontrados!","TUNARI");   
             SearchInfo.setTags($scope.searchTags);
             $scope.isLoading = false;
         });
