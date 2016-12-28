@@ -46,7 +46,7 @@ angular.module('tunariApp')
     }
 
     this.getExtraImageUrl = function(image) {
-        return imgServer + "extras/" + image + ".jpg";     
+        return imgServer + "/extras/" + image + ".jpg";     
     }
 
     this.setImageServer = function(newImageServer) {

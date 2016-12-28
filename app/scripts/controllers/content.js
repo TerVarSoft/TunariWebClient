@@ -13,10 +13,10 @@ angular.module('tunariApp')
 
   	$scope.layout = {
   		title: 'Tunari',
-      backupTitle: 'Tunari',
+        backupTitle: 'Tunari',
   		bottomFabButtonIcon: 'add',
   		bottomFabButtonIconTooltip: 'Oprimeme!',	    		    	
-  	  recordIcon: 'mic' 
+  	    recordIcon: 'mic' 
     }    
 
     $scope.isRecording = false;

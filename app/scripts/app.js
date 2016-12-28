@@ -60,9 +60,9 @@ angular
     
     $routeProvider
       .when('/', {
-        templateUrl: 'views/shoppingTabs.html',
-        controller: 'ShopCtrl',
-        controllerAs: 'ProductSearcher'
+        templateUrl: 'views/products.html',
+        controller: 'ProductsCtrl',
+        controllerAs: 'Products'
       })
       .when('/about', {
         templateUrl: 'views/about.html',

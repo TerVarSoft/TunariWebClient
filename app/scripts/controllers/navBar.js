@@ -13,13 +13,13 @@ angular.module('tunariApp')
   	$scope.subMenu = "views/productsSubmenu.html"
   	 
     $scope.menus = {
-      shopping: {
+    /*  shopping: {
         icon: 'dashboard',
         redirectTo: '/productSearch',
         subMenuView: 'views/productsSubMenu.html',
         propName: 'shopping',
         text: 'Ventas'
-      },
+      },*/
       products: {
         icon: 'store',
         redirectTo: '/products',

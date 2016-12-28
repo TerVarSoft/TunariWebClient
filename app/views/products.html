@@ -1,7 +1,6 @@
-
 <md-content flex layout="column">        
-    <md-content flex class="background" layout="row">
-        <div  layout="row" layout-wrap flex=70 flex-sm=80 flex-offset-sm="10" flex-offset="15">
+    <md-content flex class="background" layout="row">        
+        <div  layout="row" layout-wrap flex=70 flex-sm=80 flex-offset-sm="10" flex-offset="15">                                    
             <div flex=100 class="md-padding">
                 <md-chips 
                     ng-model="searchTags"
@@ -15,11 +14,25 @@
                     secondary-placeholder="Escribe algo mas!">
                 </md-chips>                            
             </div>        
-                
+            <div flex="100" ng-if="showFavorites && favorites.length > 0" class="md-padding">
+                <div class="card" md-whiteframe=4>                    
+                    <div class="card-image">
+                        <span style="color:#607d8b;top:0px;right:0px" class="card-title favorites-title">Favoritos</span>
+                        <div carousel >                    
+                            <a ng-repeat="product in favorites" class="carousel-item">
+                                <img check-image="{{getProductImageUrl(product, '-L')}}" ng-dblclick="searchFavorite(product.name)" 
+                                    src="/images/defaultProduct.gif">                        
+                                <p class="center" layout-align"center center"><b>{{product.name}}</b></p>
+                            </a>                                                         
+                        </div>
+                        
+                    </div>                    
+                </div>             
+            </div>    
             <div flex=100  layout=row layout-wrap>                
                 <div flex-xs=100 flex-sm=50 flex=33 style="padding:10px" ng-repeat="product in products">
                     <div class="card sticky-action" md-whiteframe=4>
-                        <div class="card-image">
+                        <div class="card-image">                            
                             <img materialboxed check-image="{{getProductImageUrl(product, '-L')}}" data-caption={{product.name}}
                                 class="materialboxed product-image" width="650" src="/images/defaultProduct.gif">
                         </div>
@@ -33,9 +46,11 @@
 
                         <div class="card-reveal">
                             <div flex layout="row">
-                                <div flex class="grey-text text-darken-4">                            
-                                    <i class="material-icons right" style="color:#607d8b" ng-click="openEditProductModal($event, product)">mode_edit</i>
-                                    <i class="material-icons right" style="color:#607d8b" ng-click="deleteProduct($event, product)">delete</i>                            
+                                <div flex class="grey-text text-darken-4">                                                                
+                                    <i class="material-icons right waves-effect" style="color:#607d8b" ng-click="openEditProductModal($event, product)">mode_edit</i>
+                                    <i class="material-icons right waves-effect" style="color:#607d8b" ng-click="deleteProduct($event, product)">delete</i>
+                                    <i class="material-icons right waves-effect" ng-class="product.isFavorite ? 'accent-color' : 'primary-color'"
+                                         ng-click="toggleFavorite(product)">star</i>                            
                                 </div>
                             </div>
                             <div flex>
@@ -60,8 +75,8 @@
                 <div flex=100 layout=row layout-align="center center">
                     <md-button ng-click="searchMore()">Mas Productos!</md-button>
                 </div>                                                                
-            </div>            
-        </div>        
+            </div>          
+        </div>   
         
     </md-content>
 
@@ -77,5 +92,4 @@
         <ng-md-icon style="fill: #fff" icon="settings" class="fab-button-icon" size="40">
         </ng-md-icon>  
     </md-button>
-
 </md-content>

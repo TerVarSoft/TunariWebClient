@@ -8,8 +8,8 @@
  * Controller of the clientApp
  */
 angular.module('tunariApp')
-  .controller('ProductsCtrl', ['$scope', '$location', '$mdDialog', '$mdMedia', 'Restangular', 'Config', 'Messages', 'Products', 'ProductInfo', 'SearchInfo',
-        function ($scope, $location, $mdDialog, $mdMedia, Restangular, Config, Messages, Products, ProductInfo, SearchInfo) {
+  .controller('ProductsCtrl', ['$scope', '$location', '$timeout', '$mdDialog', '$mdMedia', 'Restangular', 'Config', 'Messages', 'Products', 'ProductInfo', 'SearchInfo',
+        function ($scope, $location, $timeout, $mdDialog, $mdMedia, Restangular, Config, Messages, Products, ProductInfo, SearchInfo) {
     
     $scope.layout.title = 'Productos';
     var pagination = {
@@ -19,13 +19,27 @@ angular.module('tunariApp')
     var useFullScreenForModals = ($mdMedia('xs'));     
     $scope.searchTags =[];
     $scope.products = [];
+    $scope.favorites = [];
+    $scope.showFavorites = false;
     $scope.selectedPriceType = ProductInfo.getSelectedPriceType() || 'Unidad';
     
+    Products.getList({isFavorite: true}).then(function(favorites) {
+        $scope.favorites = favorites
+        $scope.showFavorites = true;  
+    });
+
     $scope.search = function() {
         $scope.products = [];
         pagination.page = 0;
+
+        if(_.isEmpty($scope.searchTags)) {
+            $scope.showFavorites = true;
+        } else {
+            $scope.showFavorites = false;
+        }
+
         $scope.searchMore();
-    }
+    }    
 
     $scope.searchMore = function() {
         $scope.isLoading = true;
@@ -144,8 +158,55 @@ angular.module('tunariApp')
             product.remove().then(function(){
                 _.pull($scope.products, product);
                 $scope.showToast(Messages.message006, product.name);
-            });
+            }, function() {});
         });
+    }
+
+    $scope.searchFavorite = function(productName) {
+        $scope.searchTags = [];
+        $scope.searchTags.push(productName);
+        $scope.search();
+    }
+
+    $scope.toggleFavorite = function(product) {                
+
+        if(product.isFavorite) {
+            markProductAsNotFavorite(product);
+        } else {
+            markProductAsFavorite(product);
+        }                       
+    }
+
+    /**
+     * Timeout is needed due to refreshing  
+     * problems with materialize carousel.
+     */
+    function markProductAsFavorite(product) {
+            
+        product.isFavorite = true;                     
+        product.put().then(function() {
+            $scope.favorites.push(product); 
+            $timeout(function() {                 
+                var favoritesCarousel = $('.carousel');
+                favoritesCarousel.removeClass('initialized');
+                favoritesCarousel.carousel();
+            }, 200);
+            
+        })
+    }
+
+    function markProductAsNotFavorite(product) {
+        
+        product.isFavorite = false;                             
+        product.put().then(function() {
+            _.remove($scope.favorites, { _id: product._id });
+            $timeout(function() {                
+                var favoritesCarousel = $('.carousel');
+                favoritesCarousel.removeClass('initialized');
+                favoritesCarousel.carousel();
+            }, 200);
+                
+        });        
     }
 
     $scope.search();

@@ -38,6 +38,23 @@
     height: 400px;
 }
 
-.grid-item { width: 200px; }
-.grid-item--width2 { width: 30%; }
-.grid-item--width3 { width: 100%; }
+.primary-color {
+    color: #607d8b;
+}
+
+.accent-color {
+    color: #ff4081;
+}
+
+img:focus,
+i:focus {outline:0;}
+
+i {
+    border-radius: 20px;
+}
+
+.favorites-title {
+    color:#607d8b;
+    top:0px;
+    left:45%
+}
