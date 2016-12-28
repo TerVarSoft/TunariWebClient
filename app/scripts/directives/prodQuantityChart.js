@@ -147,7 +147,7 @@ angular.module('tunariApp')
 												"<img class='tooltip-img' src='" + productImg + "'>" +
 										"</div>" +
 										"<div clas='card-content'>" +
-												"<span class='card-title grey-text text-darken-4'>" + d.name + "</span>" +
+												"<p class='truncate card-title grey-text text-darken-4'>" + d.name + "</p>" +
 												"<p>" + d.quantity + " Unidades</p>" +
 										"</div>";
 				  });

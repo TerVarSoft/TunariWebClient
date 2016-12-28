@@ -18,8 +18,7 @@ angular.module('tunariApp')
     var excludeListForStatistics = [];
 
     $scope.search = function() {
-        var query = _.isEmpty($scope.searchTags) ? {} : {tags: $scope.searchTags.join(' ')};
-        query.category = 'Invitaciones';
+        var query = _.isEmpty($scope.searchTags) ? {} : {tags: $scope.searchTags.join(' ')};        
         query.querySort = 'quantity';        
         query.excludeProductNames = excludeListForStatistics.join(",");
 
