@@ -14,8 +14,11 @@ angular.module('tunariApp')
             
             $http.get(attrs.checkImage).then(function(){
                 element.attr('src', attrs.checkImage);
-            }, function() {
-                //element.attr('src', Config.tunariApi + "/images/" + "notFound.gif"); // set default image
+            }, function(response) {
+                if(response.status !== 404) {
+                    element.attr('src', "/images/" + "imgServerError.gif"); // set default image
+                }
+                
             });           
         }
     };

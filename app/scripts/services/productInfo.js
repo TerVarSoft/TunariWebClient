@@ -40,7 +40,7 @@ angular.module('tunariApp')
             }            
         }
         else {
-            imgUrl= "/images/defaultProduct.gif"
+            imgUrl= "/images/tunari-logo-1.gif"
         }
 
         return imgUrl;

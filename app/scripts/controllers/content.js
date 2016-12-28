@@ -12,8 +12,8 @@ angular.module('tunariApp')
     function ($scope, $mdSidenav, $mdToast, SpeechRecognition) {
 
   	$scope.layout = {
-  		title: 'Tunari',
-        backupTitle: 'Tunari',
+  		title: 'Producciones Tunari',
+        backupTitle: 'Producciones Tunari',
   		bottomFabButtonIcon: 'add',
   		bottomFabButtonIconTooltip: 'Oprimeme!',	    		    	
   	    recordIcon: 'mic' 

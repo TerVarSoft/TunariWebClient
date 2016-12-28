@@ -11,7 +11,7 @@ angular.module('tunariApp')
   .controller('StatisticsCtrl', ['$scope', '$mdMedia', 'Products', 'Settings' ,'ProductInfo', 
     function ($scope, $mdMedia, Products, Settings, ProductInfo) {
 
-    $scope.layout.title = 'Estadisticas';
+    //$scope.layout.title = 'Estadisticas';
     $scope.products = [];
     $scope.productsToGraph = [];
     $scope.searchTags = [];    

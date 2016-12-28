@@ -54,8 +54,8 @@
             </div>               
         </md-toolbar> 
         <md-sidenav  md-component-id="sideNav" layout="column" class="md-sidenav-left md-whiteframe-z4">
-            <md-toolbar ng-click="closeSideNav('sideNav')" layout-align="center center" class="md-tall md-hue-2">
-                TunariApp
+            <md-toolbar layout="row" ng-click="closeSideNav('sideNav')" layout-align="center center" class="md-tall md-hue-2">
+                <img flex=100 style="object-fit:contain"src="/images/tunari-logo-1.png">                
             </md-toolbar>
             <md-list ng-controller="NavBarCtrl">
                 <md-list-item ng-repeat="menu in menus" ng-click="changeView(menu.propName)">
