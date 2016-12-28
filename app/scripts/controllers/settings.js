@@ -15,18 +15,25 @@ angular.module('tunariApp')
 
     Settings.getList().then(function(settings){
         $scope.imgServer = _.find(settings, {'key': 'imgServer'});    
-        $scope.quickSearchs = _.find(settings, {'key': 'quickSearchs'});        
+        $scope.quickSearchs = _.find(settings, {'key': 'quickSearchs'});
+        $scope.excludeListForStatistics = _.find(settings, {'key': 'excludeListForStatistics'});        
 
         if(!$scope.imgServer) {
-          Settings.post({key:"imgServer", value:""}).then(function(newSetting){
-            $scope.imgServer = newSetting;
-          });
+            Settings.post({key:"imgServer", value:""}).then(function(newSetting){
+              $scope.imgServer = newSetting;
+            });
         }
 
         if(!$scope.quickSearchs) {
-          Settings.post({key:"quickSearchs", value:[]}).then(function(newSetting){
-            $scope.quickSearchs = newSetting;
-          });
+            Settings.post({key:"quickSearchs", value:[]}).then(function(newSetting){
+              $scope.quickSearchs = newSetting;
+            });
+        }
+
+        if(!$scope.excludeListForStatistics) {
+            Settings.post({key:"excludeListForStatistics", value:[]}).then(function(newSetting){
+              $scope.excludeListForStatistics = newSetting;
+            });
         }
     });
 
@@ -35,12 +42,16 @@ angular.module('tunariApp')
     }
 
     $scope.saveSettings = function() {
-        $scope.imgServer.save().then(function(){
+        $scope.imgServer.save().then(function() {
             ProductInfo.setImageServer($scope.imgServer.value);
         });
-        $scope.quickSearchs.save().then(function(){
+        $scope.quickSearchs.save().then(function() {
             ProductInfo.setProductQuickSearchs($scope.quickSearchs.value);
         });
+        $scope.excludeListForStatistics.value = _.map($scope.excludeListForStatistics.value, _.toUpper)
+        $scope.excludeListForStatistics.save().then(function() {
+            ProductInfo.setExcludeListForStatistics($scope.excludeListForStatistics.value);
+        });;
 
         $location.path('/products');
     }

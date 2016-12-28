@@ -10,15 +10,16 @@
 angular.module('tunariApp')
   .service('ProductInfo', ["Settings", "Config", function (Settings, Config) {
 
-
     var imgServer = "",
         selectedPriceType = "",
-        quickSearchs = [];
+        quickSearchs = [],
+        excludeListForStatistics = [];
 
     Settings.getList().then(function(settings){
         imgServer = _.find(settings, {'key': 'imgServer'}).value;
         quickSearchs = _.find(settings, {'key': 'quickSearchs'}).value;
         selectedPriceType = _.find(settings, {'key': 'priceTypes'}).value[0];
+        excludeListForStatistics = _.find(settings, {'key': 'excludeListForStatistics'}).value;
     });
 
     this.getProductImageUrl = function(product, suffix) {
@@ -67,5 +68,13 @@ angular.module('tunariApp')
 
     this.getSelectedPriceType = function() {
         return selectedPriceType;
+    }
+
+    this.setExcludeListForStatistics = function() {
+        return excludeListForStatistics;
+    }
+
+    this.getExcludeListForStatistics = function() {
+        return excludeListForStatistics;
     }
 }]);
