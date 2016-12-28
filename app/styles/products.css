@@ -46,6 +46,7 @@
     color: #ff4081;
 }
 
+h1:focus,
 img:focus,
 i:focus {outline:0;}
 
@@ -57,4 +58,13 @@ i {
     color:#607d8b;
     top:0px;
     left:45%
+}
+
+.tooltip {
+    width:100px;
+}
+
+.tooltip-img {
+    height: 100px;
+    object-fit: contain;
 }

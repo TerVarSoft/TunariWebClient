@@ -1,8 +1,44 @@
-<a  ng-click="openOptionsModal()" class="btn btn-default btn-lg btn-block">
-	Seleccionar Grafica  
-</a>
-</br>
-</br>
-<div ng-include="statisticsView">
-</div>
+<md-content flex class="background">
+		<h1 ng-click="search()" class="center primary-color"><strong>Invitaciones en el Depósito</strong></h1>		
+		<div flex=70 flex-offset="15" class="md-padding">
+				<md-chips 
+						ng-model="searchTags"
+						md-on-add="search()"
+						md-on-remove="search()"
+						readonly="readonly"
+						md-removable="removable"
+						placeholder="Busquemos un producto!"
+						delete-button-label="Remove Tag"
+						delete-hint="Press delete to remove tag"
+						secondary-placeholder="Escribe algo mas!">
+				</md-chips>                            
+		</div> 
+		<div layout="row" flex layout-wrap layout-align="center center">
+				<md-card flex="25" flex-xs="80" flex-sm="35" md-whiteframe="4" style="height:400px">
+						<md-content>
+								<md-list flex>
+										<md-subheader class="center">Productos</md-subheader>
+										<md-list-item class="md-2-line" ng-click="null" ng-repeat="product in products | orderBy:'quantity'">
+												<img check-image="{{getProductImageUrl(product, '-S')}}" class="md-avatar" 
+														src="/images/defaultProduct.gif" alt="{{product.name}}" />												
+												<div class="md-list-item-text" layout="column">
+														<h3>{{product.quantity}} Unidades</h3> 
+														<h4>{{product.name}}</h4>                           
+														<p>{{product.properties.type || product.category}}</p>
+												</div>
+										</md-list-item>                            
+								</md-list> 
+						</md-content>						
+				</md-card>
+				<md-card id="chart" md-whiteframe="4" flex="70" flex-xs="80" flex-sm="60" layout="row">
+						<product-quantity-chart ng-if="productsToGraph.length > 0" flex=100 
+								title-text="Deposito" 
+								data="productsToGraph" 
+								bars-color="'#607d8b'">
+						</product-quantity-chart>
+				</md-card>
+		</div>		
+</md-content>	
+<!--<div ng-include="'../../views/invitationsQuantityCharts.html'">
+</div>-->
 

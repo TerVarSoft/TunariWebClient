@@ -7,11 +7,11 @@
  * # prodQuantity
  */
 angular.module('tunariApp')
-  .directive('productQuantityChart', ["ServerData", function (ServerData) {
+  .directive('productQuantityChart', ["ProductInfo", function (ProductInfo) {
 
   	var margin = {top: 70, right: 10, bottom: 100, left: 60};
-	var	height = height = 500 - margin.top - margin.bottom;
-	var spaceBetweenBars = 10;	
+		var	height = height = 400 - margin.top - margin.bottom;
+		var spaceBetweenBars = 10;	
 
     return {
       restrict: 'E',
@@ -55,7 +55,7 @@ angular.module('tunariApp')
 
 				var dataLength = dataSet.length;
 				var barWidth = width/dataLength;
-				var maxValue = _.max(_.pluck(dataSet, 'quantity'));
+				var maxValue = _.max(_.map(dataSet, 'quantity'));
 
                 d3.select(element[0]).select("svg").attr("width", width + margin.left + margin.right);
 
@@ -130,7 +130,7 @@ angular.module('tunariApp')
 			    // Different position for the first bar because it is 
 			    // not displayed nice in small screens
                 var tip = d3.tip()
-				  .attr('class', 'well well-lg')
+				  .attr('class', 'card tooltip')
 				  .offset(function(d,i) {
 					  if(i == 0 && dataSet.length>1) return [0, 0]
 					  return [0, -40]
@@ -138,22 +138,18 @@ angular.module('tunariApp')
 				  .direction('w')
 				  tip.direction(function(d,i) {
 					  if(i == 0 && dataSet.length>1) return 'e'
-					  return 'n'
+					  return 'w'
 				     }
 				  )
 				  .html(function(d) {
-				    return "<div class='col-xs-12'>" +
-					    		"<div class='col-xs-7'>" +
-						    		"<img class='img-responsive' src='" +
-						    		ServerData.urlImages + "/" + d.category + "/" +
-						    		d.properties.type + "/" + d.name +"-S.jpg"+"'>" +
-									"</img>" + 
-					    		"</div>" +
-					    		"<div class='col-xs-5'>" +
-						    		"<strong>Producto:</strong> <span>" + d.name + "</span></br>" +
-						    		"<strong>Cantidad:</strong> <span>" + d.quantity + "</span>"+
-					    		"</div>" +
-				    		"</div>";
+						var productImg = ProductInfo.getProductImageUrl(d, "-L");
+						return 	"<div class='card-image'>" +
+												"<img class='tooltip-img' src='" + productImg + "'>" +
+										"</div>" +
+										"<div clas='card-content'>" +
+												"<span class='card-title grey-text text-darken-4'>" + d.name + "</span>" +
+												"<p>" + d.quantity + " Unidades</p>" +
+										"</div>";
 				  });
 
 				vis.call(tip);  

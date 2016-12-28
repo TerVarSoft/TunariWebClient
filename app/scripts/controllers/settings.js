@@ -15,8 +15,7 @@ angular.module('tunariApp')
 
     Settings.getList().then(function(settings){
         $scope.imgServer = _.find(settings, {'key': 'imgServer'});    
-        $scope.quickSearchs = _.find(settings, {'key': 'quickSearchs'});
-        console.log($scope.quickSearchs);
+        $scope.quickSearchs = _.find(settings, {'key': 'quickSearchs'});        
 
         if(!$scope.imgServer) {
           Settings.post({key:"imgServer", value:""}).then(function(newSetting){
