@@ -24,7 +24,7 @@
                             <i style="top:3px" class="material-icons left waves-effect" class="primary-color">star</i>
                         </span>
                         <div carousel >                    
-                            <a ng-repeat="product in favorites" class="carousel-item">
+                            <a ng-repeat="product in favorites" class="carousel-item unselectable">
                                 <img check-image="{{getProductImageUrl(product, '-L')}}" ng-dblclick="searchFavorite(product.name)" 
                                     src="/images/tunari-logo-1.png">                        
                                 <p class="center" layout-align"center center"><b>{{product.name}}</b></p>
@@ -35,7 +35,7 @@
                 </div>             
             </div>    
             <div flex=100  layout=row layout-wrap>                
-                <div flex-xs=100 flex-sm=50 flex=33 style="padding:10px" ng-repeat="product in products">
+                <div flex-xs=100 flex-sm=50 flex=33 ng-hide="isLoading"  style="padding:10px" ng-repeat="product in products">
                     <div class="card sticky-action" md-whiteframe=4>
                         <div class="card-image">                            
                             <img materialboxed check-image="{{getProductImageUrl(product, '-L')}}" data-caption={{product.name}}

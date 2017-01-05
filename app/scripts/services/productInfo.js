@@ -25,7 +25,7 @@ angular.module('tunariApp')
     this.getProductImageUrl = function(product, suffix) {
         var imgUrl = ""
         
-        if(product && !_.isEmpty(product.category))
+        if(product && product.name && !_.isEmpty(product.category))
         {
             if(product.category === 'Invitaciones' && !_.isEmpty(product.properties)) {
                 imgUrl= imgServer + "/" +
@@ -40,7 +40,7 @@ angular.module('tunariApp')
             }            
         }
         else {
-            imgUrl= "/images/tunari-logo-1.gif"
+            imgUrl= "/images/tunari-logo-1.png"
         }
 
         return imgUrl;

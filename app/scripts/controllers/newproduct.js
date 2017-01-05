@@ -39,6 +39,8 @@ angular.module('tunariApp')
         $scope.product.category = $scope.product.category ? 
                                     $scope.product.category : $scope.categories[0].name;        
         
+        $scope.product.prices = $scope.product.prices || [];
+        $scope.product.locations = $scope.product.locations || [];
         $scope.product.tags = $scope.product.tags ? $scope.product.tags : [];
         $scope.product.images =  $scope.product.images || [];
         $scope.product.properties = $scope.product.properties ? $scope.product.properties : {};
@@ -46,7 +48,16 @@ angular.module('tunariApp')
 
     $scope.updateView = function() {
         $scope.specificPropertiesView = _.find($scope.categories, {name:$scope.product.category}).view;
+    }    
+
+    $scope.cancel = function () {
+        $mdDialog.cancel();
     }
+
+    $scope.save = function() {
+        prepareProductBeforeSaving();
+        $mdDialog.hide();
+    }   
 
     var prepareProductBeforeSaving = function() {  
         // Default value for sortTag, this can be overriden in prepareSpecificPropertiesBeforeProductSaving         
@@ -68,15 +79,6 @@ angular.module('tunariApp')
         });
     }
 
-    $scope.cancel = function () {
-        $mdDialog.cancel();
-    }
-
-    $scope.save = function() {
-        prepareProductBeforeSaving();
-        $mdDialog.hide();
-    }   
-
     $scope.selectPriceType = function() {
         if(_.includes($scope.newPrice.type, 'Paquete')) {
             $scope.isNewPriceQuantityShowed = true;
@@ -90,7 +92,6 @@ angular.module('tunariApp')
             $scope.newPrice.quantity = 1;
         }        
     }
-
 
     $scope.addPrice = function() {
         $scope.isPriceTypeInputShowed = false;

@@ -63,7 +63,7 @@ angular.module('tunariApp')
         return _.some(product.prices, { type:  $scope.selectedPriceType });     
     }
 
-    $scope.openCreateProductModal = function(event){    
+    $scope.openCreateProductModal = function(event) {    
         var newProduct = Restangular.one('products');
 
         $mdDialog.show({
@@ -86,9 +86,11 @@ angular.module('tunariApp')
         }, function() {});
     }
 
-    function manageCreateProductError(response) {
-        if(response.code = 409) {    
-            console.log(_.template(Messages.message018)({product : $scope.product.name}));                
+    function manageCreateProductError(response) {     
+        var productName = response.config.data.name;
+        if(response.status === 409) {
+            $scope.showToast(_.template(Messages.message018)({product : productName}), productName);    
+            console.log(_.template(Messages.message018)({product : productName}));                
         }
         else {                
             console.log(Messages.message019);

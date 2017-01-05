@@ -17,8 +17,7 @@ angular.module('tunariApp')
             }, function(response) {
                 if(response.status !== 404) {
                     element.attr('src', "/images/" + "imgServerError.gif"); // set default image
-                }
-                
+                }                
             });           
         }
     };
