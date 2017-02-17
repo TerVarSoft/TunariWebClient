@@ -14,7 +14,6 @@ angular
     'ngRoute',
     'restangular',
     'cgNotify',
-    'ui.bootstrap',
     'ngMaterial',
     'ngMdIcons',
     'ngMessages',
@@ -59,6 +58,16 @@ angular
 
     
     $routeProvider
+      .when('/login', {
+        templateUrl: 'views/login.html',
+        controller: 'LoginCtrl',
+        controllerAs: 'login'
+      })
+      .when('/register', {
+        templateUrl: 'views/register.html',
+        controller: 'RegisterCtrl',
+        controllerAs: 'register'
+      })
       .when('/', {
         templateUrl: 'views/products.html',
         controller: 'ProductsCtrl',

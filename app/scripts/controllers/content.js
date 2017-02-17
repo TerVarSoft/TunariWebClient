@@ -12,11 +12,12 @@ angular.module('tunariApp')
     function ($scope, $mdSidenav, $mdToast, SpeechRecognition) {
 
   	$scope.layout = {
-  		title: 'Producciones Tunari',
+        title: 'Producciones Tunari',
         backupTitle: 'Producciones Tunari',
-  		bottomFabButtonIcon: 'add',
-  		bottomFabButtonIconTooltip: 'Oprimeme!',	    		    	
-  	    recordIcon: 'mic' 
+        bottomFabButtonIcon: 'add',
+        bottomFabButtonIconTooltip: 'Oprimeme!',	    		    	
+        recordIcon: 'mic', 
+        hideHeader: false
     }    
 
     $scope.isRecording = false;

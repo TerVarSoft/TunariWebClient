@@ -1,0 +1,29 @@
+<div flex layout="row" layout-align="center center">  
+  <md-card flex="90" flex-gt-sm=70 flex-gt-md=40>
+    <md-content layout-padding>
+      <div flex layout="row" layout-align="center center">
+        <img flex=50 style="object-fit:contain;height:100px"src="/images/tunari-logo-1.png">
+      </div>
+      
+      <form name="loginForm" ng-submit="loginForm.$valid && loginUser()">
+        <md-input-container class="md-block" flex-gt-xs>
+          <label>Nombre</label>
+          <input name="userName" ng-model="userName" type="text" validate-not-empty autocomplete="off"/>
+          <div ng-messages="loginForm.userName.$error">
+            <div ng-message="empty">Escribe tu nombre!.</div>
+          </div>
+        </md-input-container>
+        <md-input-container class="md-block" flex-gt-xs>
+          <label>Contraseña</label>
+          <input name="password" ng-model="password" type="password" validate-not-empty/>
+          <div ng-messages="loginForm.password.$error">
+            <div ng-message="empty">Escribe tu password!.</div>
+          </div>
+        </md-input-container>          
+        <md-card-actions layout="row" layout-align="end center">      
+          <md-button type="submit" class="md-raised md-primary">Login</md-button>
+        </md-card-actions>
+    </md-card>
+      </form>      
+    </md-content>   
+</div>
