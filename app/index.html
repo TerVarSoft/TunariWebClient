@@ -36,8 +36,8 @@
   <body ng-app="tunariApp" layout="row" ng-cloak>
     
     <div ng-controller="ContentCtrl" flex layout="column">
-        <md-toolbar  md-scroll-shrink layout="column" >
-            <div class="md-toolbar-tools" md- layout-align="space-between center" layout-wrap ng-hide="layout.hideHeader">
+        <md-toolbar  md-scroll-shrink layout="column" ng-if="!layout.hideHeader">
+            <div class="md-toolbar-tools" md- layout-align="space-between center" layout-wrap>
                 <md-button ng-click="toggleSidenav('sideNav')" aria-label="Menu">
                     <ng-md-icon icon="menu" style="fill: #fff" size="40"></ng-md-icon>                 
                 </md-button>                

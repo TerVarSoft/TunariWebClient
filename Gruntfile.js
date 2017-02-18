@@ -568,7 +568,6 @@ module.exports = function (grunt) {
                 "bower_components/angular-material/angular-material.js",
                 "bower_components/svg-morpheus/compile/minified/svg-morpheus.js",
                 "bower_components/angular-material-icons/angular-material-icons.min.js",
-                'app/custom_dependencies/angular-bootstrap/ui-bootstrap-custom-tpls-0.14.3.min.js',
                 'app/custom_dependencies/angular-scrollable-table/angular-scrollable-table.min.js',
                 'app/custom_dependencies/angular-scrollable-table/angular-locale_es-419.js',
                 'app/custom_dependencies/angular-materialize/materialize-0.97.7.min.js',

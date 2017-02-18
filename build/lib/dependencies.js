@@ -2037,7 +2037,7 @@ function ngMessageDirectiveFactory() {
  * Angular Material Design
  * https://github.com/angular/material
  * @license MIT
- * v1.1.1
+ * v1.1.3
  */
 (function( window, angular, undefined ){
 "use strict";
@@ -2045,7 +2045,7 @@ function ngMessageDirectiveFactory() {
 (function(){
 "use strict";
 
-angular.module('ngMaterial', ["ng","ngAnimate","ngAria","material.core","material.core.gestures","material.core.layout","material.core.meta","material.core.theming.palette","material.core.theming","material.core.animate","material.components.autocomplete","material.components.backdrop","material.components.bottomSheet","material.components.button","material.components.card","material.components.chips","material.components.checkbox","material.components.colors","material.components.content","material.components.datepicker","material.components.dialog","material.components.divider","material.components.fabActions","material.components.fabShared","material.components.fabSpeedDial","material.components.fabToolbar","material.components.gridList","material.components.icon","material.components.input","material.components.list","material.components.menu","material.components.menuBar","material.components.navBar","material.components.panel","material.components.progressCircular","material.components.progressLinear","material.components.radioButton","material.components.select","material.components.showHide","material.components.sidenav","material.components.slider","material.components.sticky","material.components.subheader","material.components.swipe","material.components.switch","material.components.tabs","material.components.toast","material.components.toolbar","material.components.tooltip","material.components.virtualRepeat","material.components.whiteframe"]);
+angular.module('ngMaterial', ["ng","ngAnimate","ngAria","material.core","material.core.gestures","material.core.interaction","material.core.layout","material.core.meta","material.core.theming.palette","material.core.theming","material.core.animate","material.components.autocomplete","material.components.backdrop","material.components.bottomSheet","material.components.button","material.components.card","material.components.checkbox","material.components.chips","material.components.colors","material.components.content","material.components.datepicker","material.components.dialog","material.components.divider","material.components.fabActions","material.components.fabShared","material.components.fabSpeedDial","material.components.fabToolbar","material.components.gridList","material.components.icon","material.components.input","material.components.list","material.components.menu","material.components.menuBar","material.components.panel","material.components.navBar","material.components.progressCircular","material.components.progressLinear","material.components.radioButton","material.components.select","material.components.showHide","material.components.sidenav","material.components.slider","material.components.sticky","material.components.subheader","material.components.swipe","material.components.switch","material.components.toast","material.components.tabs","material.components.toolbar","material.components.tooltip","material.components.truncate","material.components.virtualRepeat","material.components.whiteframe"]);
 })();
 (function(){
 "use strict";
@@ -2057,11 +2057,13 @@ angular.module('ngMaterial', ["ng","ngAnimate","ngAria","material.core","materia
 DetectNgTouch.$inject = ["$log", "$injector"];
 MdCoreConfigure.$inject = ["$provide", "$mdThemingProvider"];
 rAFDecorator.$inject = ["$delegate"];
+qDecorator.$inject = ["$delegate"];
 angular
   .module('material.core', [
     'ngAnimate',
     'material.core.animate',
     'material.core.layout',
+    'material.core.interaction',
     'material.core.gestures',
     'material.core.theming'
   ])
@@ -2089,7 +2091,8 @@ function DetectNgTouch($log, $injector) {
  */
 function MdCoreConfigure($provide, $mdThemingProvider) {
 
-  $provide.decorator('$$rAF', ["$delegate", rAFDecorator]);
+  $provide.decorator('$$rAF', ['$delegate', rAFDecorator]);
+  $provide.decorator('$q', ['$delegate', qDecorator]);
 
   $mdThemingProvider.theme('default')
     .primaryPalette('indigo')
@@ -2132,11 +2135,30 @@ function rAFDecorator($delegate) {
   return $delegate;
 }
 
+/**
+ * @ngInject
+ */
+function qDecorator($delegate) {
+  /**
+   * Adds a shim for $q.resolve for Angular version that don't have it,
+   * so we don't have to think about it.
+   *
+   * via https://github.com/angular/angular.js/pull/11987
+   */
+
+  // TODO(crisbeto): this won't be necessary once we drop Angular 1.3
+  if (!$delegate.resolve) {
+    $delegate.resolve = $delegate.when;
+  }
+  return $delegate;
+}
+
 })();
 (function(){
 "use strict";
 
-angular.module('material.core')
+
+MdAutofocusDirective.$inject = ["$parse"];angular.module('material.core')
   .directive('mdAutofocus', MdAutofocusDirective)
 
   // Support the deprecated md-auto-focus and md-sidenav-focus as well
@@ -2228,21 +2250,42 @@ angular.module('material.core')
  * </div>
  * </hljs>
  **/
-function MdAutofocusDirective() {
+function MdAutofocusDirective($parse) {
   return {
     restrict: 'A',
+    link: {
+      pre: preLink
+    }
+  };
 
-    link: postLink
+  function preLink(scope, element, attr) {
+    var attrExp = attr.mdAutoFocus || attr.mdAutofocus || attr.mdSidenavFocus;
+
+    // Initially update the expression by manually parsing the expression as per $watch source.
+    updateExpression($parse(attrExp)(scope));
+
+    // Only watch the expression if it is not empty.
+    if (attrExp) {
+      scope.$watch(attrExp, updateExpression);
+    }
+
+    /**
+     * Updates the autofocus class which is used to determine whether the attribute
+     * expression evaluates to true or false.
+     * @param {string|boolean} value Attribute Value
+     */
+    function updateExpression(value) {
+
+      // Rather than passing undefined to the jqLite toggle class function we explicitly set the
+      // value to true. Otherwise the class will be just toggled instead of being forced.
+      if (angular.isUndefined(value)) {
+        value = true;
+      }
+
+      element.toggleClass('md-autofocus', !!value);
+    }
   }
-}
 
-function postLink(scope, element, attrs) {
-  var attr = attrs.mdAutoFocus || attrs.mdAutofocus || attrs.mdSidenavFocus;
-
-  // Setup a watcher on the proper attribute to update a class we can check for in $mdUtil
-  scope.$watch(attr, function(canAutofocus) {
-    element.toggleClass('md-autofocus', canAutofocus);
-  });
 }
 
 })();
@@ -2320,26 +2363,26 @@ function ColorUtilFactory() {
     hexToRgba: hexToRgba,
     rgbToRgba: rgbToRgba,
     rgbaToRgb: rgbaToRgb
-  }
+  };
 }
+
 })();
 (function(){
 "use strict";
 
-
-MdConstantFactory.$inject = ["$sniffer", "$window", "$document"];angular.module('material.core')
+angular.module('material.core')
 .factory('$mdConstant', MdConstantFactory);
 
 /**
  * Factory function that creates the grab-bag $mdConstant service.
  * @ngInject
  */
-function MdConstantFactory($sniffer, $window, $document) {
+function MdConstantFactory() {
 
-  var vendorPrefix = $sniffer.vendorPrefix;
+  var prefixTestEl = document.createElement('div');
+  var vendorPrefix = getVendorPrefix(prefixTestEl);
   var isWebkit = /webkit/i.test(vendorPrefix);
   var SPECIAL_CHARS_REGEXP = /([:\-_]+(.))/g;
-  var prefixTestEl = document.createElement('div');
 
   function vendorProperty(name) {
     // Add a dash between the prefix and name, to be able to transform the string into camelcase.
@@ -2347,13 +2390,13 @@ function MdConstantFactory($sniffer, $window, $document) {
     var ucPrefix = camelCase(prefixedName);
     var lcPrefix = ucPrefix.charAt(0).toLowerCase() + ucPrefix.substring(1);
 
-    return hasStyleProperty(name)     ? name     :       // The current browser supports the un-prefixed property
-           hasStyleProperty(ucPrefix) ? ucPrefix :       // The current browser only supports the prefixed property.
-           hasStyleProperty(lcPrefix) ? lcPrefix : name; // Some browsers are only supporting the prefix in lowercase.
+    return hasStyleProperty(prefixTestEl, name)     ? name     :       // The current browser supports the un-prefixed property
+           hasStyleProperty(prefixTestEl, ucPrefix) ? ucPrefix :       // The current browser only supports the prefixed property.
+           hasStyleProperty(prefixTestEl, lcPrefix) ? lcPrefix : name; // Some browsers are only supporting the prefix in lowercase.
   }
 
-  function hasStyleProperty(property) {
-    return angular.isDefined(prefixTestEl.style[property]);
+  function hasStyleProperty(testElement, property) {
+    return angular.isDefined(testElement.style[property]);
   }
 
   function camelCase(input) {
@@ -2362,14 +2405,41 @@ function MdConstantFactory($sniffer, $window, $document) {
     });
   }
 
+  function getVendorPrefix(testElement) {
+    var prop, match;
+    var vendorRegex = /^(Moz|webkit|ms)(?=[A-Z])/;
+
+    for (prop in testElement.style) {
+      if (match = vendorRegex.exec(prop)) {
+        return match[0];
+      }
+    }
+  }
+
   var self = {
     isInputKey : function(e) { return (e.keyCode >= 31 && e.keyCode <= 90); },
     isNumPadKey : function (e){ return (3 === e.location && e.keyCode >= 97 && e.keyCode <= 105); },
     isNavigationKey : function(e) {
       var kc = self.KEY_CODE, NAVIGATION_KEYS =  [kc.SPACE, kc.ENTER, kc.UP_ARROW, kc.DOWN_ARROW];
-      return (NAVIGATION_KEYS.indexOf(e.keyCode) != -1);    
+      return (NAVIGATION_KEYS.indexOf(e.keyCode) != -1);
     },
 
+    /**
+     * Maximum size, in pixels, that can be explicitly set to an element. The actual value varies
+     * between browsers, but IE11 has the very lowest size at a mere 1,533,917px. Ideally we could
+     * compute this value, but Firefox always reports an element to have a size of zero if it
+     * goes over the max, meaning that we'd have to binary search for the value.
+     */
+    ELEMENT_MAX_PIXELS: 1533917,
+
+    /**
+     * Priority for a directive that should run before the directives from ngAria.
+     */
+    BEFORE_NG_ARIA: 210,
+
+    /**
+     * Common Keyboard actions and their associated keycode.
+     */
     KEY_CODE: {
       COMMA: 188,
       SEMICOLON : 186,
@@ -2388,6 +2458,11 @@ function MdConstantFactory($sniffer, $window, $document) {
       BACKSPACE: 8,
       DELETE: 46
     },
+
+    /**
+     * Vendor prefixed CSS properties to be used to support the given functionality in older browsers
+     * as well.
+     */
     CSS: {
       /* Constants */
       TRANSITIONEND: 'transitionend' + (isWebkit ? ' webkitTransitionEnd' : ''),
@@ -2403,6 +2478,7 @@ function MdConstantFactory($sniffer, $window, $document) {
       ANIMATION_TIMING: vendorProperty('animationTimingFunction'),
       ANIMATION_DIRECTION: vendorProperty('animationDirection')
     },
+
     /**
      * As defined in core/style/variables.scss
      *
@@ -2426,6 +2502,7 @@ function MdConstantFactory($sniffer, $window, $document) {
       'portrait'  : '(orientation: portrait)'                    ,
       'print' : 'print'
     },
+
     MEDIA_PRIORITY: [
       'xl',
       'gt-lg',
@@ -2866,7 +2943,7 @@ function mdMediaFactory($mdConstant, $rootScope, $window) {
     });
 
     return function unwatch() {
-      unwatchFns.forEach(function(fn) { fn(); })
+      unwatchFns.forEach(function(fn) { fn(); });
     };
   }
 
@@ -2926,7 +3003,7 @@ function MdPrefixer(initialAttributes, buildSelector) {
 
     return _buildList(attributes)
       .map(function(item) {
-        return '[' + item + ']'
+        return '[' + item + ']';
       })
       .join(',');
   }
@@ -2977,6 +3054,7 @@ function MdPrefixer(initialAttributes, buildSelector) {
   }
 
 }
+
 })();
 (function(){
 "use strict";
@@ -3043,9 +3121,28 @@ function UtilFactory($document, $timeout, $compile, $rootScope, $$mdAnimate, $in
 
   var $mdUtil = {
     dom: {},
-    now: window.performance ?
+    now: window.performance && window.performance.now ?
       angular.bind(window.performance, window.performance.now) : Date.now || function() {
       return new Date().getTime();
+    },
+
+    /**
+     * Cross-version compatibility method to retrieve an option of a ngModel controller,
+     * which supports the breaking changes in the AngularJS snapshot (SHA 87a2ff76af5d0a9268d8eb84db5755077d27c84c).
+     * @param {!angular.ngModelCtrl} ngModelCtrl
+     * @param {!string} optionName
+     * @returns {Object|undefined}
+     */
+    getModelOption: function (ngModelCtrl, optionName) {
+      if (!ngModelCtrl.$options) {
+        return;
+      }
+
+      var $options = ngModelCtrl.$options;
+
+      // The newer versions of Angular introduced a `getOption function and made the option values no longer
+      // visible on the $options object.
+      return $options.getOption ? $options.getOption(optionName) : $options[optionName]
     },
 
     /**
@@ -3117,18 +3214,12 @@ function UtilFactory($document, $timeout, $compile, $rootScope, $$mdAnimate, $in
     },
 
     /**
-     * Calculate the positive scroll offset
-     * TODO: Check with pinch-zoom in IE/Chrome;
-     *       https://code.google.com/p/chromium/issues/detail?id=496285
+     * Determines the absolute position of the viewport.
+     * Useful when making client rectangles absolute.
+     * @returns {number}
      */
-    scrollTop: function(element) {
-      element = angular.element(element || $document[0].body);
-
-      var body = (element[0] == $document[0].body) ? $document[0].body : undefined;
-      var scrollTop = body ? body.scrollTop + body.parentElement.scrollTop : 0;
-
-      // Calculate the positive scroll offset
-      return scrollTop || Math.abs(element[0].getBoundingClientRect().top);
+    getViewportTop: function() {
+      return window.scrollY || window.pageYOffset || 0;
     },
 
     /**
@@ -3188,44 +3279,56 @@ function UtilFactory($document, $timeout, $compile, $rootScope, $$mdAnimate, $in
      *     use the passed parent element.
      */
     disableScrollAround: function(element, parent, options) {
-      $mdUtil.disableScrollAround._count = $mdUtil.disableScrollAround._count || 0;
-      ++$mdUtil.disableScrollAround._count;
-      if ($mdUtil.disableScrollAround._enableScrolling) return $mdUtil.disableScrollAround._enableScrolling;
-      var body = $document[0].body,
-        restoreBody = disableBodyScroll(),
-        restoreElement = disableElementScroll(parent);
+      options = options || {};
 
-      return $mdUtil.disableScrollAround._enableScrolling = function() {
-        if (!--$mdUtil.disableScrollAround._count) {
+      $mdUtil.disableScrollAround._count = Math.max(0, $mdUtil.disableScrollAround._count || 0);
+      $mdUtil.disableScrollAround._count++;
+
+      if ($mdUtil.disableScrollAround._restoreScroll) {
+        return $mdUtil.disableScrollAround._restoreScroll;
+      }
+
+      var body = $document[0].body;
+      var restoreBody = disableBodyScroll();
+      var restoreElement = disableElementScroll(parent);
+
+      return $mdUtil.disableScrollAround._restoreScroll = function() {
+        if (--$mdUtil.disableScrollAround._count <= 0) {
           restoreBody();
           restoreElement();
-          delete $mdUtil.disableScrollAround._enableScrolling;
+          delete $mdUtil.disableScrollAround._restoreScroll;
         }
       };
 
-      // Creates a virtual scrolling mask to absorb touchmove, keyboard, scrollbar clicking, and wheel events
+      /**
+       * Creates a virtual scrolling mask to prevent touchmove, keyboard, scrollbar clicking,
+       * and wheel events
+       */
       function disableElementScroll(element) {
         element = angular.element(element || body);
+
         var scrollMask;
-        if (options && options.disableScrollMask) {
+
+        if (options.disableScrollMask) {
           scrollMask = element;
         } else {
-          element = element[0];
           scrollMask = angular.element(
             '<div class="md-scroll-mask">' +
             '  <div class="md-scroll-mask-bar"></div>' +
             '</div>');
-          element.appendChild(scrollMask[0]);
+          element.append(scrollMask);
         }
 
         scrollMask.on('wheel', preventDefault);
         scrollMask.on('touchmove', preventDefault);
 
-        return function restoreScroll() {
+        return function restoreElementScroll() {
           scrollMask.off('wheel');
           scrollMask.off('touchmove');
-          scrollMask[0].parentNode.removeChild(scrollMask[0]);
-          delete $mdUtil.disableScrollAround._enableScrolling;
+
+          if (!options.disableScrollMask) {
+            scrollMask[0].parentNode.removeChild(scrollMask[0]);
+          }
         };
 
         function preventDefault(e) {
@@ -3235,42 +3338,51 @@ function UtilFactory($document, $timeout, $compile, $rootScope, $$mdAnimate, $in
 
       // Converts the body to a position fixed block and translate it to the proper scroll position
       function disableBodyScroll() {
-        var htmlNode = body.parentNode;
-        var restoreHtmlStyle = htmlNode.style.cssText || '';
-        var restoreBodyStyle = body.style.cssText || '';
-        var scrollOffset = $mdUtil.scrollTop(body);
-        var clientWidth = body.clientWidth;
+        var documentElement = $document[0].documentElement;
 
-        if (body.scrollHeight > body.clientHeight + 1) {
-          applyStyles(body, {
+        var prevDocumentStyle = documentElement.style.cssText || '';
+        var prevBodyStyle = body.style.cssText || '';
+
+        var viewportTop = $mdUtil.getViewportTop();
+        var clientWidth = body.clientWidth;
+        var hasVerticalScrollbar = body.scrollHeight > body.clientHeight + 1;
+
+        if (hasVerticalScrollbar) {
+          angular.element(body).css({
             position: 'fixed',
             width: '100%',
-            top: -scrollOffset + 'px'
+            top: -viewportTop + 'px'
           });
-
-          htmlNode.style.overflowY = 'scroll';
         }
 
-        if (body.clientWidth < clientWidth) applyStyles(body, {overflow: 'hidden'});
+        if (body.clientWidth < clientWidth) {
+          body.style.overflow = 'hidden';
+        }
+
+        // This should be applied after the manipulation to the body, because
+        // adding a scrollbar can potentially resize it, causing the measurement
+        // to change.
+        if (hasVerticalScrollbar) {
+          documentElement.style.overflowY = 'scroll';
+        }
 
         return function restoreScroll() {
-          body.style.cssText = restoreBodyStyle;
-          htmlNode.style.cssText = restoreHtmlStyle;
-          body.scrollTop = scrollOffset;
-          htmlNode.scrollTop = scrollOffset;
+          // Reset the inline style CSS to the previous.
+          body.style.cssText = prevBodyStyle;
+          documentElement.style.cssText = prevDocumentStyle;
+
+          // The body loses its scroll position while being fixed.
+          body.scrollTop = viewportTop;
         };
       }
 
-      function applyStyles(el, styles) {
-        for (var key in styles) {
-          el.style[key] = styles[key];
-        }
-      }
     },
+
     enableScrolling: function() {
-      var method = this.disableScrollAround._enableScrolling;
-      method && method();
+      var restoreFn = this.disableScrollAround._restoreScroll;
+      restoreFn && restoreFn();
     },
+
     floatingScrollbars: function() {
       if (this.floatingScrollbars.cached === undefined) {
         var tempNode = angular.element('<div><div></div></div>').css({
@@ -3494,7 +3606,7 @@ function UtilFactory($document, $timeout, $compile, $rootScope, $$mdAnimate, $in
       if ( angular.isString(validateWith) ) {
         var tagName = validateWith.toUpperCase();
         validateWith = function(el) {
-          return el.nodeName === tagName;
+          return el.nodeName.toUpperCase() === tagName;
         };
       }
 
@@ -3747,10 +3859,11 @@ function UtilFactory($document, $timeout, $compile, $rootScope, $$mdAnimate, $in
     /**
      * Animate the requested element's scrollTop to the requested scrollPosition with basic easing.
      *
-     * @param element The element to scroll.
-     * @param scrollEnd The new/final scroll position.
+     * @param {!HTMLElement} element The element to scroll.
+     * @param {number} scrollEnd The new/final scroll position.
+     * @param {number=} duration Duration of the scroll. Default is 1000ms.
      */
-    animateScrollTo: function(element, scrollEnd) {
+    animateScrollTo: function(element, scrollEnd, duration) {
       var scrollStart = element.scrollTop;
       var scrollChange = scrollEnd - scrollStart;
       var scrollingDown = scrollStart < scrollEnd;
@@ -3760,19 +3873,19 @@ function UtilFactory($document, $timeout, $compile, $rootScope, $$mdAnimate, $in
 
       function scrollChunk() {
         var newPosition = calculateNewPosition();
-        
+
         element.scrollTop = newPosition;
-        
+
         if (scrollingDown ? newPosition < scrollEnd : newPosition > scrollEnd) {
           $$rAF(scrollChunk);
         }
       }
-      
+
       function calculateNewPosition() {
-        var duration = 1000;
+        var easeDuration = duration || 1000;
         var currentTime = $mdUtil.now() - startTime;
-        
-        return ease(currentTime, scrollStart, scrollChange, duration);
+
+        return ease(currentTime, scrollStart, scrollChange, easeDuration);
       }
 
       function ease(currentTime, start, change, duration) {
@@ -3781,12 +3894,31 @@ function UtilFactory($document, $timeout, $compile, $rootScope, $$mdAnimate, $in
         if (currentTime > duration) {
           return start + change;
         }
-        
+
         var ts = (currentTime /= duration) * currentTime;
         var tc = ts * currentTime;
 
         return start + change * (-2 * tc + 3 * ts);
       }
+    },
+
+    /**
+     * Provides an easy mechanism for removing duplicates from an array.
+     *
+     *    var myArray = [1, 2, 2, 3, 3, 3, 4, 4, 4, 4];
+     *
+     *    $mdUtil.uniq(myArray) => [1, 2, 3, 4]
+     *
+     * @param {array} array The array whose unique values should be returned.
+     *
+     * @returns {array} A copy of the array containing only unique values.
+     */
+    uniq: function(array) {
+      if (!array) { return; }
+
+      return array.filter(function(value, index, self) {
+        return self.indexOf(value) === index;
+      });
     }
   };
 
@@ -3827,6 +3959,341 @@ angular.element.prototype.blur = angular.element.prototype.blur || function() {
 
 /**
  * @ngdoc module
+ * @name material.core.compiler
+ * @description
+ * Angular Material template and element compiler.
+ */
+MdCompilerService.$inject = ["$q", "$templateRequest", "$injector", "$compile", "$controller"];
+angular
+  .module('material.core')
+  .service('$mdCompiler', MdCompilerService);
+
+/**
+ * @ngdoc service
+ * @name $mdCompiler
+ * @module material.core.compiler
+ * @description
+ * The $mdCompiler service is an abstraction of Angular's compiler, that allows developers
+ * to easily compile an element with options like in a Directive Definition Object.
+ *
+ * > The compiler powers a lot of components inside of Angular Material.
+ * > Like the `$mdPanel` or `$mdDialog`.
+ *
+ * @usage
+ *
+ * Basic Usage with a template
+ *
+ * <hljs lang="js">
+ *   $mdCompiler.compile({
+ *     templateUrl: 'modal.html',
+ *     controller: 'ModalCtrl',
+ *     locals: {
+ *       modal: myModalInstance;
+ *     }
+ *   }).then(function (compileData) {
+ *     compileData.element; // Compiled DOM element
+ *     compileData.link(myScope); // Instantiate controller and link element to scope.
+ *   });
+ * </hljs>
+ *
+ * Example with a content element
+ *
+ * <hljs lang="js">
+ *
+ *   // Create a virtual element and link it manually.
+ *   // The compiler doesn't need to recompile the element each time.
+ *   var myElement = $compile('<span>Test</span>')(myScope);
+ *
+ *   $mdCompiler.compile({
+ *     contentElement: myElement
+ *   }).then(function (compileData) {
+ *     compileData.element // Content Element (same as above)
+ *     compileData.link // This does nothing when using a contentElement.
+ *   });
+ * </hljs>
+ *
+ * > Content Element is a significant performance improvement when the developer already knows that the
+ * > compiled element will be always the same and the scope will not change either.
+ *
+ * The `contentElement` option also supports DOM elements which will be temporary removed and restored
+ * at its old position.
+ *
+ * <hljs lang="js">
+ *   var domElement = document.querySelector('#myElement');
+ *
+ *   $mdCompiler.compile({
+ *     contentElement: myElement
+ *   }).then(function (compileData) {
+ *     compileData.element // Content Element (same as above)
+ *     compileData.link // This does nothing when using a contentElement.
+ *   });
+ * </hljs>
+ *
+ * The `$mdCompiler` can also query for the element in the DOM itself.
+ *
+ * <hljs lang="js">
+ *   $mdCompiler.compile({
+ *     contentElement: '#myElement'
+ *   }).then(function (compileData) {
+ *     compileData.element // Content Element (same as above)
+ *     compileData.link // This does nothing when using a contentElement.
+ *   });
+ * </hljs>
+ *
+ */
+function MdCompilerService($q, $templateRequest, $injector, $compile, $controller) {
+  /** @private @const {!angular.$q} */
+  this.$q = $q;
+
+  /** @private @const {!angular.$templateRequest} */
+  this.$templateRequest = $templateRequest;
+
+  /** @private @const {!angular.$injector} */
+  this.$injector = $injector;
+
+  /** @private @const {!angular.$compile} */
+  this.$compile = $compile;
+
+  /** @private @const {!angular.$controller} */
+  this.$controller = $controller;
+}
+
+/**
+ * @ngdoc method
+ * @name $mdCompiler#compile
+ * @description
+ *
+ * A method to compile a HTML template with the Angular compiler.
+ * The `$mdCompiler` is wrapper around the Angular compiler and provides extra functionality
+ * like controller instantiation or async resolves.
+ *
+ * @param {!Object} options An options object, with the following properties:
+ *
+ *    - `controller` - `{string|Function}` Controller fn that should be associated with
+ *         newly created scope or the name of a registered controller if passed as a string.
+ *    - `controllerAs` - `{string=}` A controller alias name. If present the controller will be
+ *         published to scope under the `controllerAs` name.
+ *    - `contentElement` - `{string|Element}`: Instead of using a template, which will be
+ *         compiled each time, you can also use a DOM element.<br/>
+ *    - `template` - `{string=}` An html template as a string.
+ *    - `templateUrl` - `{string=}` A path to an html template.
+ *    - `transformTemplate` - `{function(template)=}` A function which transforms the template after
+ *        it is loaded. It will be given the template string as a parameter, and should
+ *        return a a new string representing the transformed template.
+ *    - `resolve` - `{Object.<string, function>=}` - An optional map of dependencies which should
+ *        be injected into the controller. If any of these dependencies are promises, the compiler
+ *        will wait for them all to be resolved, or if one is rejected before the controller is
+ *        instantiated `compile()` will fail..
+ *      * `key` - `{string}`: a name of a dependency to be injected into the controller.
+ *      * `factory` - `{string|function}`: If `string` then it is an alias for a service.
+ *        Otherwise if function, then it is injected and the return value is treated as the
+ *        dependency. If the result is a promise, it is resolved before its value is
+ *        injected into the controller.
+ *
+ * @returns {Object} promise A promise, which will be resolved with a `compileData` object.
+ * `compileData` has the following properties:
+ *
+ *   - `element` - `{element}`: an uncompiled element matching the provided template.
+ *   - `link` - `{function(scope)}`: A link function, which, when called, will compile
+ *     the element and instantiate the provided controller (if given).
+ *   - `locals` - `{object}`: The locals which will be passed into the controller once `link` is
+ *     called. If `bindToController` is true, they will be coppied to the ctrl instead
+ *
+ */
+MdCompilerService.prototype.compile = function(options) {
+
+  if (options.contentElement) {
+    return this._prepareContentElement(options);
+  } else {
+    return this._compileTemplate(options);
+  }
+
+};
+
+/**
+ * Instead of compiling any template, the compiler just fetches an existing HTML element from the DOM and
+ * provides a restore function to put the element back it old DOM position.
+ * @param {!Object} options Options to be used for the compiler.
+ * @private
+ */
+MdCompilerService.prototype._prepareContentElement = function(options) {
+
+  var contentElement = this._fetchContentElement(options);
+
+  return this.$q.resolve({
+    element: contentElement.element,
+    cleanup: contentElement.restore,
+    locals: {},
+    link: function() {
+      return contentElement.element;
+    }
+  });
+
+};
+
+/**
+ * Compiles a template by considering all options and waiting for all resolves to be ready.
+ * @param {!Object} options Compile options
+ * @returns {!Object} Compile data with link function.
+ * @private
+ */
+MdCompilerService.prototype._compileTemplate = function(options) {
+
+  var self = this;
+  var templateUrl = options.templateUrl;
+  var template = options.template || '';
+  var resolve = angular.extend({}, options.resolve);
+  var locals = angular.extend({}, options.locals);
+  var transformTemplate = options.transformTemplate || angular.identity;
+
+  // Take resolve values and invoke them.
+  // Resolves can either be a string (value: 'MyRegisteredAngularConst'),
+  // or an invokable 'factory' of sorts: (value: function ValueGetter($dependency) {})
+  angular.forEach(resolve, function(value, key) {
+    if (angular.isString(value)) {
+      resolve[key] = self.$injector.get(value);
+    } else {
+      resolve[key] = self.$injector.invoke(value);
+    }
+  });
+
+  // Add the locals, which are just straight values to inject
+  // eg locals: { three: 3 }, will inject three into the controller
+  angular.extend(resolve, locals);
+
+  if (templateUrl) {
+    resolve.$$ngTemplate = this.$templateRequest(templateUrl);
+  } else {
+    resolve.$$ngTemplate = this.$q.when(template);
+  }
+
+
+  // Wait for all the resolves to finish if they are promises
+  return this.$q.all(resolve).then(function(locals) {
+
+    var template = transformTemplate(locals.$$ngTemplate, options);
+    var element = options.element || angular.element('<div>').html(template.trim()).contents();
+
+    return self._compileElement(locals, element, options);
+  });
+
+};
+
+/**
+ * Method to compile an element with the given options.
+ * @param {!Object} locals Locals to be injected to the controller if present
+ * @param {!JQLite} element Element to be compiled and linked
+ * @param {!Object} options Options to be used for linking.
+ * @returns {!Object} Compile data with link function.
+ * @private
+ */
+MdCompilerService.prototype._compileElement = function(locals, element, options) {
+  var self = this;
+  var ngLinkFn = this.$compile(element);
+
+  var compileData = {
+    element: element,
+    cleanup: element.remove.bind(element),
+    locals: locals,
+    link: linkFn
+  };
+
+  function linkFn(scope) {
+    locals.$scope = scope;
+
+    // Instantiate controller if the developer provided one.
+    if (options.controller) {
+
+      var injectLocals = angular.extend(locals, {
+        $element: element
+      });
+
+      var invokeCtrl = self.$controller(options.controller, injectLocals, true, options.controllerAs);
+
+      if (options.bindToController) {
+        angular.extend(invokeCtrl.instance, locals);
+      }
+
+      var ctrl = invokeCtrl();
+
+      // Unique identifier for Angular Route ngView controllers.
+      element.data('$ngControllerController', ctrl);
+      element.children().data('$ngControllerController', ctrl);
+
+      // Expose the instantiated controller to the compile data
+      compileData.controller = ctrl;
+    }
+
+    // Invoke the Angular $compile link function.
+    return ngLinkFn(scope);
+  }
+
+  return compileData;
+
+};
+
+/**
+ * Fetches an element removing it from the DOM and using it temporary for the compiler.
+ * Elements which were fetched will be restored after use.
+ * @param {!Object} options Options to be used for the compilation.
+ * @returns {{element: !JQLite, restore: !Function}}
+ * @private
+ */
+MdCompilerService.prototype._fetchContentElement = function(options) {
+
+  var contentEl = options.contentElement;
+  var restoreFn = null;
+
+  if (angular.isString(contentEl)) {
+    contentEl = document.querySelector(contentEl);
+    restoreFn = createRestoreFn(contentEl);
+  } else {
+    contentEl = contentEl[0] || contentEl;
+
+    // When the element is visible in the DOM, then we restore it at close of the dialog.
+    // Otherwise it will be removed from the DOM after close.
+    if (document.contains(contentEl)) {
+      restoreFn = createRestoreFn(contentEl);
+    } else {
+      restoreFn = function() {
+        if (contentEl.parentNode) {
+          contentEl.parentNode.removeChild(contentEl);
+        }
+      }
+    }
+  }
+
+  return {
+    element: angular.element(contentEl),
+    restore: restoreFn
+  };
+
+  function createRestoreFn(element) {
+    var parent = element.parentNode;
+    var nextSibling = element.nextElementSibling;
+
+    return function() {
+      if (!nextSibling) {
+        // When the element didn't had any sibling, then it can be simply appended to the
+        // parent, because it plays no role, which index it had before.
+        parent.appendChild(element);
+      } else {
+        // When the element had a sibling, which marks the previous position of the element
+        // in the DOM, we insert it correctly before the sibling, to have the same index as
+        // before.
+        parent.insertBefore(element, nextSibling);
+      }
+    }
+  }
+};
+
+
+})();
+(function(){
+"use strict";
+
+/**
+ * @ngdoc module
  * @name material.core.aria
  * @description
  * Aria Expectations for ngMaterial components.
@@ -3858,18 +4325,15 @@ angular
  */
 function MdAriaProvider() {
 
-  var self = this;
-
-  /**
-   * Whether we should show ARIA warnings in the console, if labels are missing on the element
-   * By default the warnings are enabled
-   */
-  self.showWarnings = true;
+  var config = {
+    /** Whether we should show ARIA warnings in the console if labels are missing on the element */
+    showWarnings: true
+  };
 
   return {
     disableWarnings: disableWarnings,
     $get: ["$$rAF", "$log", "$window", "$interpolate", function($$rAF, $log, $window, $interpolate) {
-      return MdAriaService.apply(self, arguments);
+      return MdAriaService.apply(config, arguments);
     }]
   };
 
@@ -3879,7 +4343,7 @@ function MdAriaProvider() {
    * @description Disables all ARIA warnings generated by Angular Material.
    */
   function disableWarnings() {
-    self.showWarnings = false;
+    config.showWarnings = false;
   }
 }
 
@@ -3896,7 +4360,8 @@ function MdAriaService($$rAF, $log, $window, $interpolate) {
     expect: expect,
     expectAsync: expectAsync,
     expectWithText: expectWithText,
-    expectWithoutText: expectWithoutText
+    expectWithoutText: expectWithoutText,
+    getText: getText
   };
 
   /**
@@ -3938,7 +4403,7 @@ function MdAriaService($$rAF, $log, $window, $interpolate) {
     var content = getText(element) || "";
     var hasBinding = content.indexOf($interpolate.startSymbol()) > -1;
 
-    if ( hasBinding ) {
+    if (hasBinding) {
       expectAsync(element, attrName, function() {
         return getText(element);
       });
@@ -4002,147 +4467,6 @@ function MdAriaService($$rAF, $log, $window, $interpolate) {
 
     return hasAttr;
   }
-}
-
-})();
-(function(){
-"use strict";
-
-
-mdCompilerService.$inject = ["$q", "$templateRequest", "$injector", "$compile", "$controller"];angular
-  .module('material.core')
-  .service('$mdCompiler', mdCompilerService);
-
-function mdCompilerService($q, $templateRequest, $injector, $compile, $controller) {
-  /* jshint validthis: true */
-
-  /*
-   * @ngdoc service
-   * @name $mdCompiler
-   * @module material.core
-   * @description
-   * The $mdCompiler service is an abstraction of angular's compiler, that allows the developer
-   * to easily compile an element with a templateUrl, controller, and locals.
-   *
-   * @usage
-   * <hljs lang="js">
-   * $mdCompiler.compile({
-   *   templateUrl: 'modal.html',
-   *   controller: 'ModalCtrl',
-   *   locals: {
-   *     modal: myModalInstance;
-   *   }
-   * }).then(function(compileData) {
-   *   compileData.element; // modal.html's template in an element
-   *   compileData.link(myScope); //attach controller & scope to element
-   * });
-   * </hljs>
-   */
-
-   /*
-    * @ngdoc method
-    * @name $mdCompiler#compile
-    * @description A helper to compile an HTML template/templateUrl with a given controller,
-    * locals, and scope.
-    * @param {object} options An options object, with the following properties:
-    *
-    *    - `controller` - `{(string=|function()=}` Controller fn that should be associated with
-    *      newly created scope or the name of a registered controller if passed as a string.
-    *    - `controllerAs` - `{string=}` A controller alias name. If present the controller will be
-    *      published to scope under the `controllerAs` name.
-    *    - `template` - `{string=}` An html template as a string.
-    *    - `templateUrl` - `{string=}` A path to an html template.
-    *    - `transformTemplate` - `{function(template)=}` A function which transforms the template after
-    *      it is loaded. It will be given the template string as a parameter, and should
-    *      return a a new string representing the transformed template.
-    *    - `resolve` - `{Object.<string, function>=}` - An optional map of dependencies which should
-    *      be injected into the controller. If any of these dependencies are promises, the compiler
-    *      will wait for them all to be resolved, or if one is rejected before the controller is
-    *      instantiated `compile()` will fail..
-    *      * `key` - `{string}`: a name of a dependency to be injected into the controller.
-    *      * `factory` - `{string|function}`: If `string` then it is an alias for a service.
-    *        Otherwise if function, then it is injected and the return value is treated as the
-    *        dependency. If the result is a promise, it is resolved before its value is
-    *        injected into the controller.
-    *
-    * @returns {object=} promise A promise, which will be resolved with a `compileData` object.
-    * `compileData` has the following properties:
-    *
-    *   - `element` - `{element}`: an uncompiled element matching the provided template.
-    *   - `link` - `{function(scope)}`: A link function, which, when called, will compile
-    *     the element and instantiate the provided controller (if given).
-    *   - `locals` - `{object}`: The locals which will be passed into the controller once `link` is
-    *     called. If `bindToController` is true, they will be coppied to the ctrl instead
-    *   - `bindToController` - `bool`: bind the locals to the controller, instead of passing them in.
-    */
-  this.compile = function(options) {
-    var templateUrl = options.templateUrl;
-    var template = options.template || '';
-    var controller = options.controller;
-    var controllerAs = options.controllerAs;
-    var resolve = angular.extend({}, options.resolve || {});
-    var locals = angular.extend({}, options.locals || {});
-    var transformTemplate = options.transformTemplate || angular.identity;
-    var bindToController = options.bindToController;
-
-    // Take resolve values and invoke them.
-    // Resolves can either be a string (value: 'MyRegisteredAngularConst'),
-    // or an invokable 'factory' of sorts: (value: function ValueGetter($dependency) {})
-    angular.forEach(resolve, function(value, key) {
-      if (angular.isString(value)) {
-        resolve[key] = $injector.get(value);
-      } else {
-        resolve[key] = $injector.invoke(value);
-      }
-    });
-    //Add the locals, which are just straight values to inject
-    //eg locals: { three: 3 }, will inject three into the controller
-    angular.extend(resolve, locals);
-
-    if (templateUrl) {
-      resolve.$template = $templateRequest(templateUrl)
-        .then(function(response) {
-          return response;
-        });
-    } else {
-      resolve.$template = $q.when(template);
-    }
-
-    // Wait for all the resolves to finish if they are promises
-    return $q.all(resolve).then(function(locals) {
-
-      var compiledData;
-      var template = transformTemplate(locals.$template, options);
-      var element = options.element || angular.element('<div>').html(template.trim()).contents();
-      var linkFn = $compile(element);
-
-      // Return a linking function that can be used later when the element is ready
-      return compiledData = {
-        locals: locals,
-        element: element,
-        link: function link(scope) {
-          locals.$scope = scope;
-
-          //Instantiate controller if it exists, because we have scope
-          if (controller) {
-            var invokeCtrl = $controller(controller, locals, true, controllerAs);
-            if (bindToController) {
-              angular.extend(invokeCtrl.instance, locals);
-            }
-            var ctrl = invokeCtrl();
-            //See angular-route source for this logic
-            element.data('$ngControllerController', ctrl);
-            element.children().data('$ngControllerController', ctrl);
-
-            // Publish reference to this controller
-            compiledData.controller = ctrl;
-          }
-          return linkFn(scope);
-        }
-      };
-    });
-
-  };
 }
 
 })();
@@ -4232,8 +4556,6 @@ function MdGesture($$MdGestureHandler, $$rAF, $timeout) {
   var self = {
     handler: addHandler,
     register: register,
-    isIos: isIos,
-    isAndroid: isAndroid,
     // On mobile w/out jQuery, we normally intercept clicks. Should we skip that?
     isHijackingClicks: (isIos || isAndroid) && !hasJQuery && !forceSkipClickHijack
   };
@@ -4403,7 +4725,7 @@ function MdGesture($$MdGestureHandler, $$rAF, $timeout) {
         if (touchActionProperty) {
           // We check for horizontal to be false, because otherwise we would overwrite the default opts.
           this.oldTouchAction = element[0].style[touchActionProperty];
-          element[0].style[touchActionProperty] = options.horizontal === false ? 'pan-y' : 'pan-x';
+          element[0].style[touchActionProperty] = options.horizontal ? 'pan-y' : 'pan-x';
         }
       },
       onCleanup: function(element) {
@@ -4922,7 +5244,7 @@ angular.module('material.core')
  */
 
 function InterimElementProvider() {
-  InterimElementFactory.$inject = ["$document", "$q", "$$q", "$rootScope", "$timeout", "$rootElement", "$animate", "$mdUtil", "$mdCompiler", "$mdTheming", "$injector"];
+  InterimElementFactory.$inject = ["$document", "$q", "$rootScope", "$timeout", "$rootElement", "$animate", "$mdUtil", "$mdCompiler", "$mdTheming", "$injector", "$exceptionHandler"];
   createInterimElementProvider.$get = InterimElementFactory;
   return createInterimElementProvider;
 
@@ -4951,8 +5273,8 @@ function InterimElementProvider() {
      * all interim elements will come with the 'build' preset
      */
     provider.addPreset('build', {
-      methods: ['controller', 'controllerAs', 'resolve',
-        'template', 'templateUrl', 'themable', 'transformTemplate', 'parent']
+      methods: ['controller', 'controllerAs', 'resolve', 'multiple',
+        'template', 'templateUrl', 'themable', 'transformTemplate', 'parent', 'contentElement']
     });
 
     return provider;
@@ -5142,8 +5464,8 @@ function InterimElementProvider() {
   }
 
   /* @ngInject */
-  function InterimElementFactory($document, $q, $$q, $rootScope, $timeout, $rootElement, $animate,
-                                 $mdUtil, $mdCompiler, $mdTheming, $injector ) {
+  function InterimElementFactory($document, $q, $rootScope, $timeout, $rootElement, $animate,
+                                 $mdUtil, $mdCompiler, $mdTheming, $injector, $exceptionHandler) {
     return function createInterimElementService() {
       var SHOW_CANCELLED = false;
 
@@ -5155,15 +5477,20 @@ function InterimElementProvider() {
        * A service used to control inserting and removing an element into the DOM.
        *
        */
-      var service, stack = [];
+
+      var service;
+
+      var showPromises = []; // Promises for the interim's which are currently opening.
+      var hidePromises = []; // Promises for the interim's which are currently hiding.
+      var showingInterims = []; // Interim elements which are currently showing up.
 
       // Publish instance $$interimElement service;
       // ... used as $mdDialog, $mdToast, $mdMenu, and $mdSelect
 
       return service = {
         show: show,
-        hide: hide,
-        cancel: cancel,
+        hide: waitForInterim(hide),
+        cancel: waitForInterim(cancel),
         destroy : destroy,
         $injector_: $injector
       };
@@ -5184,29 +5511,47 @@ function InterimElementProvider() {
       function show(options) {
         options = options || {};
         var interimElement = new InterimElement(options || {});
+
         // When an interim element is currently showing, we have to cancel it.
         // Just hiding it, will resolve the InterimElement's promise, the promise should be
         // rejected instead.
-        var hideExisting = !options.skipHide && stack.length ? service.cancel() : $q.when(true);
+        var hideAction = options.multiple ? $q.resolve() : $q.all(showPromises);
 
-        // This hide()s only the current interim element before showing the next, new one
-        // NOTE: this is not reversible (e.g. interim elements are not stackable)
+        if (!options.multiple) {
+          // Wait for all opening interim's to finish their transition.
+          hideAction = hideAction.then(function() {
+            // Wait for all closing and showing interim's to be completely closed.
+            var promiseArray = hidePromises.concat(showingInterims.map(service.cancel));
+            return $q.all(promiseArray);
+          });
+        }
 
-        hideExisting.finally(function() {
+        var showAction = hideAction.then(function() {
 
-          stack.push(interimElement);
-          interimElement
+          return interimElement
             .show()
-            .catch(function( reason ) {
-              //$log.error("InterimElement.show() error: " + reason );
-              return reason;
+            .catch(function(reason) { return reason; })
+            .finally(function() {
+              showPromises.splice(showPromises.indexOf(showAction), 1);
+              showingInterims.push(interimElement);
             });
 
         });
 
+        showPromises.push(showAction);
+
+        // In Angular 1.6+, exceptions inside promises will cause a rejection. We need to handle
+        // the rejection and only log it if it's an error.
+        interimElement.deferred.promise.catch(function(fault) {
+          if (fault instanceof Error) {
+            $exceptionHandler(fault);
+          }
+
+          return fault;
+        });
+
         // Return a promise that will be resolved when the interim
         // element is hidden or cancelled...
-
         return interimElement.deferred.promise;
       }
 
@@ -5223,27 +5568,30 @@ function InterimElementProvider() {
        *
        */
       function hide(reason, options) {
-        if ( !stack.length ) return $q.when(reason);
         options = options || {};
 
         if (options.closeAll) {
-          var promise = $q.all(stack.reverse().map(closeElement));
-          stack = [];
-          return promise;
+          // We have to make a shallow copy of the array, because otherwise the map will break.
+          return $q.all(showingInterims.slice().reverse().map(closeElement));
         } else if (options.closeTo !== undefined) {
-          return $q.all(stack.splice(options.closeTo).map(closeElement));
-        } else {
-          var interim = stack.pop();
-          return closeElement(interim);
+          return $q.all(showingInterims.slice(options.closeTo).map(closeElement));
         }
 
+        // Hide the latest showing interim element.
+        return closeElement(showingInterims[showingInterims.length - 1]);
+
         function closeElement(interim) {
-          interim
+
+          var hideAction = interim
             .remove(reason, false, options || { })
-            .catch(function( reason ) {
-              //$log.error("InterimElement.hide() error: " + reason );
-              return reason;
+            .catch(function(reason) { return reason; })
+            .finally(function() {
+              hidePromises.splice(hidePromises.indexOf(hideAction), 1);
             });
+
+          showingInterims.splice(showingInterims.indexOf(interim), 1);
+          hidePromises.push(hideAction);
+
           return interim.deferred.promise;
         }
       }
@@ -5261,15 +5609,19 @@ function InterimElementProvider() {
        *
        */
       function cancel(reason, options) {
-        var interim = stack.pop();
-        if ( !interim ) return $q.when(reason);
+        var interim = showingInterims.pop();
+        if (!interim) {
+          return $q.when(reason);
+        }
 
-        interim
-          .remove(reason, true, options || { })
-          .catch(function( reason ) {
-            //$log.error("InterimElement.cancel() error: " + reason );
-            return reason;
+        var cancelAction = interim
+          .remove(reason, true, options || {})
+          .catch(function(reason) { return reason; })
+          .finally(function() {
+            hidePromises.splice(hidePromises.indexOf(cancelAction), 1);
           });
+
+        hidePromises.push(cancelAction);
 
         // Since Angular 1.6.7, promises will be logged to $exceptionHandler when the promise
         // is not handling the rejection. We create a pseudo catch handler, which will prevent the
@@ -5277,30 +5629,56 @@ function InterimElementProvider() {
         return interim.deferred.promise.catch(angular.noop);
       }
 
+      /**
+       * Creates a function to wait for at least one interim element to be available.
+       * @param callbackFn Function to be used as callback
+       * @returns {Function}
+       */
+      function waitForInterim(callbackFn) {
+        return function() {
+          var fnArguments = arguments;
+
+          if (!showingInterims.length) {
+            // When there are still interim's opening, then wait for the first interim element to
+            // finish its open animation.
+            if (showPromises.length) {
+              return showPromises[0].finally(function () {
+                return callbackFn.apply(service, fnArguments);
+              });
+            }
+
+            return $q.when("No interim elements currently showing up.");
+          }
+
+          return callbackFn.apply(service, fnArguments);
+        };
+      }
+
       /*
        * Special method to quick-remove the interim element without animations
        * Note: interim elements are in "interim containers"
        */
-      function destroy(target) {
-        var interim = !target ? stack.shift() : null;
-        var cntr = angular.element(target).length ? angular.element(target)[0].parentNode : null;
+      function destroy(targetEl) {
+        var interim = !targetEl ? showingInterims.shift() : null;
 
-        if (cntr) {
-            // Try to find the interim element in the stack which corresponds to the supplied DOM element.
-            var filtered = stack.filter(function(entry) {
-                  var currNode = entry.options.element[0];
-                  return  (currNode === cntr);
-                });
+        var parentEl = angular.element(targetEl).length && angular.element(targetEl)[0].parentNode;
 
-            // Note: this function might be called when the element already has been removed, in which
-            //       case we won't find any matches. That's ok.
-            if (filtered.length > 0) {
-              interim = filtered[0];
-              stack.splice(stack.indexOf(interim), 1);
-            }
+        if (parentEl) {
+          // Try to find the interim in the stack which corresponds to the supplied DOM element.
+          var filtered = showingInterims.filter(function(entry) {
+            return entry.options.element[0] === parentEl;
+          });
+
+          // Note: This function might be called when the element already has been removed,
+          // in which case we won't find any matches.
+          if (filtered.length) {
+            interim = filtered[0];
+            showingInterims.splice(showingInterims.indexOf(interim), 1);
+          }
         }
 
-        return interim ? interim.remove(SHOW_CANCELLED, false, {'$destroy':true}) : $q.when(SHOW_CANCELLED);
+        return interim ? interim.remove(SHOW_CANCELLED, false, { '$destroy': true }) :
+                         $q.when(SHOW_CANCELLED);
       }
 
       /*
@@ -5334,10 +5712,12 @@ function InterimElementProvider() {
               .then(function( compiledData ) {
                 element = linkElement( compiledData, options );
 
+                // Expose the cleanup function from the compiler.
+                options.cleanupElement = compiledData.cleanup;
+
                 showAction = showElement(element, options, compiledData.controller)
                   .then(resolve, rejectAll);
-
-              }, rejectAll);
+              }).catch(rejectAll);
 
             function rejectAll(fault) {
               // Force the '$md<xxx>.show()' promise to reject
@@ -5371,15 +5751,11 @@ function InterimElementProvider() {
             });
 
           } else {
-
-            $q.when(showAction)
-                .finally(function() {
-                  hideElement(options.element, options).then(function() {
-
-                    (isCancelled && rejectAll(response)) || resolveAll(response);
-
-                  }, rejectAll);
-                });
+            $q.when(showAction).finally(function() {
+              hideElement(options.element, options).then(function() {
+                isCancelled ? rejectAll(response) : resolveAll(response);
+              }, rejectAll);
+            });
 
             return self.deferred.promise;
           }
@@ -5510,14 +5886,14 @@ function InterimElementProvider() {
             autoHideTimer = $timeout(service.hide, options.hideDelay) ;
             cancelAutoHide = function() {
               $timeout.cancel(autoHideTimer);
-            }
+            };
           }
 
           // Cache for subsequent use
           options.cancelAutoHide = function() {
             cancelAutoHide();
             options.cancelAutoHide = undefined;
-          }
+          };
         }
 
         /**
@@ -5530,7 +5906,12 @@ function InterimElementProvider() {
           // Trigger onComplete callback when the `show()` finishes
           var notifyComplete = options.onComplete || angular.noop;
 
-          notifyShowing(options.scope, element, options, controller);
+          // Necessary for consistency between Angular 1.5 and 1.6.
+          try {
+            notifyShowing(options.scope, element, options, controller);
+          } catch (e) {
+            return $q.reject(e);
+          }
 
           return $q(function (resolve, reject) {
             try {
@@ -5541,10 +5922,9 @@ function InterimElementProvider() {
                   startAutoHide();
 
                   resolve(element);
+                }, reject);
 
-                }, reject );
-
-            } catch(e) {
+            } catch (e) {
               reject(e.message);
             }
           });
@@ -5553,35 +5933,34 @@ function InterimElementProvider() {
         function hideElement(element, options) {
           var announceRemoving = options.onRemoving || angular.noop;
 
-          return $$q(function (resolve, reject) {
+          return $q(function (resolve, reject) {
             try {
               // Start transitionIn
-              var action = $$q.when( options.onRemove(options.scope, element, options) || true );
+              var action = $q.when( options.onRemove(options.scope, element, options) || true );
 
               // Trigger callback *before* the remove operation starts
               announceRemoving(element, action);
 
-              if ( options.$destroy == true ) {
-
+              if (options.$destroy) {
                 // For $destroy, onRemove should be synchronous
                 resolve(element);
 
+                if (!options.preserveScope && options.scope ) {
+                  // scope destroy should still be be done after the current digest is done
+                  action.then( function() { options.scope.$destroy(); });
+                }
               } else {
-
                 // Wait until transition-out is done
                 action.then(function () {
-
                   if (!options.preserveScope && options.scope ) {
                     options.scope.$destroy();
                   }
 
                   resolve(element);
-
-                }, reject );
+                }, reject);
               }
-
-            } catch(e) {
-              reject(e);
+            } catch (e) {
+              reject(e.message);
             }
           });
         }
@@ -5592,6 +5971,161 @@ function InterimElementProvider() {
   }
 
 }
+
+})();
+(function(){
+"use strict";
+
+/**
+ * @ngdoc module
+ * @name material.core.interaction
+ * @description
+ * User interaction detection to provide proper accessibility.
+ */
+MdInteractionService.$inject = ["$timeout", "$mdUtil"];
+angular
+  .module('material.core.interaction', [])
+  .service('$mdInteraction', MdInteractionService);
+
+
+/**
+ * @ngdoc service
+ * @name $mdInteraction
+ * @module material.core.interaction
+ *
+ * @description
+ *
+ * Service which keeps track of the last interaction type and validates them for several browsers.
+ * The service hooks into the document's body and listens for touch, mouse and keyboard events.
+ *
+ * The most recent interaction type can be retrieved by calling the `getLastInteractionType` method.
+ *
+ * Here is an example markup for using the interaction service.
+ *
+ * <hljs lang="js">
+ *   var lastType = $mdInteraction.getLastInteractionType();
+ *
+ *   if (lastType === 'keyboard') {
+ *     // We only restore the focus for keyboard users.
+ *     restoreFocus();
+ *   }
+ * </hljs>
+ *
+ */
+function MdInteractionService($timeout, $mdUtil) {
+  this.$timeout = $timeout;
+  this.$mdUtil = $mdUtil;
+
+  this.bodyElement = angular.element(document.body);
+  this.isBuffering = false;
+  this.bufferTimeout = null;
+  this.lastInteractionType = null;
+  this.lastInteractionTime = null;
+
+  // Type Mappings for the different events
+  // There will be three three interaction types
+  // `keyboard`, `mouse` and `touch`
+  // type `pointer` will be evaluated in `pointerMap` for IE Browser events
+  this.inputEventMap = {
+    'keydown': 'keyboard',
+    'mousedown': 'mouse',
+    'mouseenter': 'mouse',
+    'touchstart': 'touch',
+    'pointerdown': 'pointer',
+    'MSPointerDown': 'pointer'
+  };
+
+  // IE PointerDown events will be validated in `touch` or `mouse`
+  // Index numbers referenced here: https://msdn.microsoft.com/library/windows/apps/hh466130.aspx
+  this.iePointerMap = {
+    2: 'touch',
+    3: 'touch',
+    4: 'mouse'
+  };
+
+  this.initializeEvents();
+}
+
+/**
+ * Initializes the interaction service, by registering all interaction events to the
+ * body element.
+ */
+MdInteractionService.prototype.initializeEvents = function() {
+  // IE browsers can also trigger pointer events, which also leads to an interaction.
+  var pointerEvent = 'MSPointerEvent' in window ? 'MSPointerDown' : 'PointerEvent' in window ? 'pointerdown' : null;
+
+  this.bodyElement.on('keydown mousedown', this.onInputEvent.bind(this));
+
+  if ('ontouchstart' in document.documentElement) {
+    this.bodyElement.on('touchstart', this.onBufferInputEvent.bind(this));
+  }
+
+  if (pointerEvent) {
+    this.bodyElement.on(pointerEvent, this.onInputEvent.bind(this));
+  }
+
+};
+
+/**
+ * Event listener for normal interaction events, which should be tracked.
+ * @param event {MouseEvent|KeyboardEvent|PointerEvent|TouchEvent}
+ */
+MdInteractionService.prototype.onInputEvent = function(event) {
+  if (this.isBuffering) {
+    return;
+  }
+
+  var type = this.inputEventMap[event.type];
+
+  if (type === 'pointer') {
+    type = this.iePointerMap[event.pointerType] || event.pointerType;
+  }
+
+  this.lastInteractionType = type;
+  this.lastInteractionTime = this.$mdUtil.now();
+};
+
+/**
+ * Event listener for interaction events which should be buffered (touch events).
+ * @param event {TouchEvent}
+ */
+MdInteractionService.prototype.onBufferInputEvent = function(event) {
+  this.$timeout.cancel(this.bufferTimeout);
+
+  this.onInputEvent(event);
+  this.isBuffering = true;
+
+  // The timeout of 650ms is needed to delay the touchstart, because otherwise the touch will call
+  // the `onInput` function multiple times.
+  this.bufferTimeout = this.$timeout(function() {
+    this.isBuffering = false;
+  }.bind(this), 650, false);
+
+};
+
+/**
+ * @ngdoc method
+ * @name $mdInteraction#getLastInteractionType
+ * @description Retrieves the last interaction type triggered in body.
+ * @returns {string|null} Last interaction type.
+ */
+MdInteractionService.prototype.getLastInteractionType = function() {
+  return this.lastInteractionType;
+};
+
+/**
+ * @ngdoc method
+ * @name $mdInteraction#isUserInvoked
+ * @description Method to detect whether any interaction happened recently or not.
+ * @param {number=} checkDelay Time to check for any interaction to have been triggered.
+ * @returns {boolean} Whether there was any interaction or not.
+ */
+MdInteractionService.prototype.isUserInvoked = function(checkDelay) {
+  var delay = angular.isNumber(checkDelay) ? checkDelay : 15;
+
+  // Check for any interaction to be within the specified check time.
+  return this.lastInteractionTime >= this.$mdUtil.now() - delay;
+};
 
 })();
 (function(){
@@ -6130,6 +6664,100 @@ function InterimElementProvider() {
 "use strict";
 
 /**
+ * @ngdoc module
+ * @name material.core.liveannouncer
+ * @description
+ * Angular Material Live Announcer to provide accessibility for Voice Readers.
+ */
+MdLiveAnnouncer.$inject = ["$timeout"];
+angular
+  .module('material.core')
+  .service('$mdLiveAnnouncer', MdLiveAnnouncer);
+
+/**
+ * @ngdoc service
+ * @name $mdLiveAnnouncer
+ * @module material.core.liveannouncer
+ *
+ * @description
+ *
+ * Service to announce messages to supported screenreaders.
+ *
+ * > The `$mdLiveAnnouncer` service is internally used for components to provide proper accessibility.
+ *
+ * <hljs lang="js">
+ *   module.controller('AppCtrl', function($mdLiveAnnouncer) {
+ *     // Basic announcement (Polite Mode)
+ *     $mdLiveAnnouncer.announce('Hey Google');
+ *
+ *     // Custom announcement (Assertive Mode)
+ *     $mdLiveAnnouncer.announce('Hey Google', 'assertive');
+ *   });
+ * </hljs>
+ *
+ */
+function MdLiveAnnouncer($timeout) {
+  /** @private @const @type {!angular.$timeout} */
+  this._$timeout = $timeout;
+
+  /** @private @const @type {!HTMLElement} */
+  this._liveElement = this._createLiveElement();
+
+  /** @private @const @type {!number} */
+  this._announceTimeout = 100;
+}
+
+/**
+ * @ngdoc method
+ * @name $mdLiveAnnouncer#announce
+ * @description Announces messages to supported screenreaders.
+ * @param {string} message Message to be announced to the screenreader
+ * @param {'off'|'polite'|'assertive'} politeness The politeness of the announcer element.
+ */
+MdLiveAnnouncer.prototype.announce = function(message, politeness) {
+  if (!politeness) {
+    politeness = 'polite';
+  }
+
+  var self = this;
+
+  self._liveElement.textContent = '';
+  self._liveElement.setAttribute('aria-live', politeness);
+
+  // This 100ms timeout is necessary for some browser + screen-reader combinations:
+  // - Both JAWS and NVDA over IE11 will not announce anything without a non-zero timeout.
+  // - With Chrome and IE11 with NVDA or JAWS, a repeated (identical) message won't be read a
+  //   second time without clearing and then using a non-zero delay.
+  // (using JAWS 17 at time of this writing).
+  self._$timeout(function() {
+    self._liveElement.textContent = message;
+  }, self._announceTimeout, false);
+};
+
+/**
+ * Creates a live announcer element, which listens for DOM changes and announces them
+ * to the screenreaders.
+ * @returns {!HTMLElement}
+ * @private
+ */
+MdLiveAnnouncer.prototype._createLiveElement = function() {
+  var liveEl = document.createElement('div');
+
+  liveEl.classList.add('md-visually-hidden');
+  liveEl.setAttribute('role', 'status');
+  liveEl.setAttribute('aria-atomic', 'true');
+  liveEl.setAttribute('aria-live', 'polite');
+
+  document.body.appendChild(liveEl);
+
+  return liveEl;
+};
+
+})();
+(function(){
+"use strict";
+
+/**
  * @ngdoc service
  * @name $$mdMeta
  * @module material.core.meta
@@ -6423,10 +7051,10 @@ angular.module('material.core.meta', [])
         return {
           isMenuItem: element.hasClass('md-menu-item'),
           dimBackground: true
-        }
+        };
       }
-    };
-  };
+    }
+  }
 })();
 
 })();
@@ -6464,8 +7092,8 @@ angular.module('material.core.meta', [])
         dimBackground: false,
         fitRipple: true
       }, options));
-    };
-  };
+    }
+  }
 })();
 
 })();
@@ -6504,8 +7132,8 @@ angular.module('material.core.meta', [])
         outline: false,
         rippleSize: 'full'
       }, options));
-    };
-  };
+    }
+  }
 })();
 
 })();
@@ -7012,8 +7640,8 @@ function attrNoDirective () {
         outline: false,
         rippleSize: 'full'
       }, options));
-    };
-  };
+    }
+  }
 })();
 
 })();
@@ -7393,7 +8021,7 @@ angular.module('material.core.theming.palette', [])
  * Theming
  */
 detectDisabledThemes.$inject = ["$mdThemingProvider"];
-ThemingDirective.$inject = ["$mdTheming", "$interpolate", "$log"];
+ThemingDirective.$inject = ["$mdTheming", "$interpolate", "$parse", "$mdUtil", "$q", "$log"];
 ThemableDirective.$inject = ["$mdTheming"];
 ThemingProvider.$inject = ["$mdColorPalette", "$$mdMetaProvider"];
 generateAllThemes.$inject = ["$injector", "$mdTheming"];
@@ -7427,7 +8055,7 @@ function detectDisabledThemes($mdThemingProvider) {
  * ### Default Theme
  * The `$mdThemingProvider` uses by default the following theme configuration:
  *
- * - Primary Palette: `Primary`
+ * - Primary Palette: `Blue`
  * - Accent Palette: `Pink`
  * - Warn Palette: `Deep-Orange`
  * - Background Palette: `Grey`
@@ -7654,7 +8282,7 @@ var themeConfig = {
  *
  */
 function ThemingProvider($mdColorPalette, $$mdMetaProvider) {
-  ThemingService.$inject = ["$rootScope", "$log"];
+  ThemingService.$inject = ["$rootScope", "$mdUtil", "$q", "$log"];
   PALETTES = { };
   var THEMES = { };
 
@@ -7682,7 +8310,7 @@ function ThemingProvider($mdColorPalette, $$mdMetaProvider) {
     return function () {
       removeChrome();
       removeWindows();
-    }
+    };
   };
 
   /**
@@ -7912,12 +8540,13 @@ function ThemingProvider($mdColorPalette, $$mdMetaProvider) {
   /**
    * @ngdoc service
    * @name $mdTheming
+   * @module material.core.theming
    *
    * @description
    *
-   * Service that makes an element apply theming related classes to itself.
+   * Service that makes an element apply theming related <b>classes</b> to itself.
    *
-   * ```js
+   * <hljs lang="js">
    * app.directive('myFancyDirective', function($mdTheming) {
    *   return {
    *     restrict: 'e',
@@ -7926,11 +8555,78 @@ function ThemingProvider($mdColorPalette, $$mdMetaProvider) {
    *     }
    *   };
    * });
-   * ```
-   * @param {el=} element to apply theming to
+   * </hljs>
+   * @param {element=} element to apply theming to
    */
+
+  /**
+   * @ngdoc property
+   * @name $mdTheming#THEMES
+   * @description
+   * Property to get all the themes defined
+   * @returns {Object} All the themes defined with their properties
+   */
+
+  /**
+   * @ngdoc property
+   * @name $mdTheming#PALETTES
+   * @description
+   * Property to get all the palettes defined
+   * @returns {Object} All the palettes defined with their colors
+   */
+
+  /**
+   * @ngdoc method
+   * @name $mdTheming#registered
+   * @description
+   * Determine is specified theme name is a valid, registered theme
+   * @param {string} themeName the theme to check if registered
+   * @returns {boolean} whether the theme is registered or not
+   */
+
+  /**
+   * @ngdoc method
+   * @name $mdTheming#defaultTheme
+   * @description
+   * Returns the default theme
+   * @returns {string} The default theme
+   */
+
+  /**
+   * @ngdoc method
+   * @name $mdTheming#generateTheme
+   * @description
+   * Lazy generate themes - by default, every theme is generated when defined.
+   * You can disable this in the configuration section using the
+   * `$mdThemingProvider.generateThemesOnDemand(true);`
+   *
+   * The theme name that is passed in must match the name of the theme that was defined as part of the configuration block.
+   *
+   * @param name {string} theme name to generate
+   */
+
+  /**
+   * @ngdoc method
+   * @name $mdTheming#setBrowserColor
+   * @description
+   * Sets browser header coloring
+   * for more info please visit:
+   * https://developers.google.com/web/fundamentals/design-and-ui/browser-customization/theme-color
+   *
+   * The default color is `800` from `primary` palette of the `default` theme
+   *
+   * options are:<br/>
+   * `theme`   - A defined theme via `$mdThemeProvider` to use the palettes from. Default is `default` theme.<br/>
+   * `palette` - Can be any one of the basic material design palettes, extended defined palettes and 'primary',
+   *             'accent', 'background' and 'warn'. Default is `primary`<br/>
+   * `hue`     - The hue from the selected palette. Default is `800`
+   *
+   * @param {Object} options Options object for the browser color
+   * @returns {Function} remove function of the browser color
+   */
+
   /* @ngInject */
-  function ThemingService($rootScope, $log) {
+  function ThemingService($rootScope, $mdUtil, $q, $log) {
         // Allow us to be invoked via a linking function signature.
     var applyTheme = function (scope, el) {
           if (el === undefined) { el = scope; scope = undefined; }
@@ -7938,12 +8634,50 @@ function ThemingProvider($mdColorPalette, $$mdMetaProvider) {
           applyTheme.inherit(el, el);
         };
 
-    applyTheme.THEMES = angular.extend({}, THEMES);
-    applyTheme.PALETTES = angular.extend({}, PALETTES);
+    Object.defineProperty(applyTheme, 'THEMES', {
+      get: function () {
+        return angular.extend({}, THEMES);
+      }
+    });
+    Object.defineProperty(applyTheme, 'PALETTES', {
+      get: function () {
+        return angular.extend({}, PALETTES);
+      }
+    });
+    Object.defineProperty(applyTheme, 'ALWAYS_WATCH', {
+      get: function () {
+        return alwaysWatchTheme;
+      }
+    });
     applyTheme.inherit = inheritTheme;
     applyTheme.registered = registered;
     applyTheme.defaultTheme = function() { return defaultTheme; };
     applyTheme.generateTheme = function(name) { generateTheme(THEMES[name], name, themeConfig.nonce); };
+    applyTheme.defineTheme = function(name, options) {
+      options = options || {};
+
+      var theme = registerTheme(name);
+
+      if (options.primary) {
+        theme.primaryPalette(options.primary);
+      }
+      if (options.accent) {
+        theme.accentPalette(options.accent);
+      }
+      if (options.warn) {
+        theme.warnPalette(options.warn);
+      }
+      if (options.background) {
+        theme.backgroundPalette(options.background);
+      }
+      if (options.dark){
+        theme.dark();
+      }
+
+      this.generateTheme(name);
+
+      return $q.resolve(name);
+    };
     applyTheme.setBrowserColor = enableBrowserColor;
 
     return applyTheme;
@@ -7960,14 +8694,25 @@ function ThemingProvider($mdColorPalette, $$mdMetaProvider) {
      * Get theme name for the element, then update with Theme CSS class
      */
     function inheritTheme (el, parent) {
-      var ctrl = parent.controller('mdTheme');
-      var attrThemeValue = el.attr('md-theme-watch');
-      var watchTheme = (alwaysWatchTheme || angular.isDefined(attrThemeValue)) && attrThemeValue != 'false';
+      var ctrl = parent.controller('mdTheme') || el.data('$mdThemeController');
 
       updateThemeClass(lookupThemeName());
 
-      if ((alwaysWatchTheme && !registerChangeCallback()) || (!alwaysWatchTheme && watchTheme)) {
-        el.on('$destroy', $rootScope.$watch(lookupThemeName, updateThemeClass) );
+      if (ctrl) {
+        var watchTheme = alwaysWatchTheme ||
+                         ctrl.$shouldWatch ||
+                         $mdUtil.parseAttributeBoolean(el.attr('md-theme-watch'));
+
+        var unwatch = ctrl.registerChanges(function (name) {
+          updateThemeClass(name);
+
+          if (!watchTheme) {
+            unwatch();
+          }
+          else {
+            el.on('$destroy', unwatch);
+          }
+        });
       }
 
       /**
@@ -7975,7 +8720,6 @@ function ThemingProvider($mdColorPalette, $$mdMetaProvider) {
        */
       function lookupThemeName() {
         // As a few components (dialog) add their controllers later, we should also watch for a controller init.
-        ctrl = parent.controller('mdTheme') || el.data('$mdThemeController');
         return ctrl && ctrl.$mdTheme || (defaultTheme == 'default' ? '' : defaultTheme);
       }
 
@@ -7998,29 +8742,34 @@ function ThemingProvider($mdColorPalette, $$mdMetaProvider) {
           el.data('$mdThemeController', ctrl);
         }
       }
-
-      /**
-       * Register change callback with parent mdTheme controller
-       */
-      function registerChangeCallback() {
-        var parentController = parent.controller('mdTheme');
-        if (!parentController) return false;
-        el.on('$destroy', parentController.registerChanges( function() {
-          updateThemeClass(lookupThemeName());
-        }));
-        return true;
-      }
     }
 
   }
 }
 
-function ThemingDirective($mdTheming, $interpolate, $log) {
+function ThemingDirective($mdTheming, $interpolate, $parse, $mdUtil, $q, $log) {
   return {
-    priority: 100,
+    priority: 101, // has to be more than 100 to be before interpolation (issue on IE)
     link: {
       pre: function(scope, el, attrs) {
         var registeredCallbacks = [];
+
+        var startSymbol = $interpolate.startSymbol();
+        var endSymbol = $interpolate.endSymbol();
+
+        var theme = attrs.mdTheme.trim();
+
+        var hasInterpolation =
+          theme.substr(0, startSymbol.length) === startSymbol &&
+          theme.lastIndexOf(endSymbol) === theme.length - endSymbol.length;
+
+        var oneTimeOperator = '::';
+        var oneTimeBind = attrs.mdTheme
+            .split(startSymbol).join('')
+            .split(endSymbol).join('')
+            .trim()
+            .substr(0, oneTimeOperator.length) === oneTimeOperator;
+
         var ctrl = {
           registerChanges: function (cb, context) {
             if (context) {
@@ -8041,16 +8790,50 @@ function ThemingDirective($mdTheming, $interpolate, $log) {
             if (!$mdTheming.registered(theme)) {
               $log.warn('attempted to use unregistered theme \'' + theme + '\'');
             }
+
             ctrl.$mdTheme = theme;
 
-            registeredCallbacks.forEach(function (cb) {
-              cb();
-            });
-          }
+            // Iterating backwards to support unregistering during iteration
+            // http://stackoverflow.com/a/9882349/890293
+            // we don't use `reverse()` of array because it mutates the array and we don't want it to get re-indexed
+            for (var i = registeredCallbacks.length; i--;) {
+              registeredCallbacks[i](theme);
+            }
+          },
+          $shouldWatch: $mdUtil.parseAttributeBoolean(el.attr('md-theme-watch')) ||
+                        $mdTheming.ALWAYS_WATCH ||
+                        (hasInterpolation && !oneTimeBind)
         };
+
         el.data('$mdThemeController', ctrl);
-        ctrl.$setTheme($interpolate(attrs.mdTheme)(scope));
-        attrs.$observe('mdTheme', ctrl.$setTheme);
+
+        var getTheme = function () {
+          var interpolation = $interpolate(attrs.mdTheme)(scope);
+          return $parse(interpolation)(scope) || interpolation;
+        };
+
+        var setParsedTheme = function (theme) {
+          if (typeof theme === 'string') {
+            return ctrl.$setTheme(theme);
+          }
+
+          $q.when( angular.isFunction(theme) ?  theme() : theme )
+            .then(function(name){
+              ctrl.$setTheme(name);
+            });
+        };
+
+        setParsedTheme(getTheme());
+
+        var unwatch = scope.$watch(getTheme, function(theme) {
+          if (theme) {
+            setParsedTheme(theme);
+
+            if (!ctrl.$shouldWatch) {
+              unwatch();
+            }
+          }
+        });
       }
     }
   };
@@ -8136,9 +8919,10 @@ function parseRules(theme, colorType, rules) {
     // Don't apply a selector rule to the default theme, making it easier to override
     // styles of the base-component
     if (theme.name == 'default') {
-      var themeRuleRegex = /((?:(?:(?: |>|\.|\w|-|:|\(|\)|\[|\]|"|'|=)+) )?)((?:(?:\w|\.|-)+)?)\.md-default-theme((?: |>|\.|\w|-|:|\(|\)|\[|\]|"|'|=)*)/g;
-      newRule = newRule.replace(themeRuleRegex, function(match, prefix, target, suffix) {
-        return match + ', ' + prefix + target + suffix;
+      var themeRuleRegex = /((?:\s|>|\.|\w|-|:|\(|\)|\[|\]|"|'|=)*)\.md-default-theme((?:\s|>|\.|\w|-|:|\(|\)|\[|\]|"|'|=)*)/g;
+
+      newRule = newRule.replace(themeRuleRegex, function(match, start, end) {
+        return match + ', ' + start + end;
       });
     }
     generatedRules.push(newRule);
@@ -8380,11 +9164,12 @@ function AnimateDomUtils($mdUtil, $q, $timeout, $mdConstant, $animateCss) {
      *
      */
     translate3d : function( target, from, to, options ) {
-      return $animateCss(target,{
-        from:from,
-        to:to,
-        addClass:options.transitionInClass,
-        removeClass:options.transitionOutClass
+      return $animateCss(target, {
+        from: from,
+        to: to,
+        addClass: options.transitionInClass,
+        removeClass: options.transitionOutClass,
+        duration: options.duration
       })
       .start()
       .then(function(){
@@ -8399,7 +9184,8 @@ function AnimateDomUtils($mdUtil, $q, $timeout, $mdConstant, $animateCss) {
         return $animateCss(target, {
            to: newFrom || from,
            addClass: options.transitionOutClass,
-           removeClass: options.transitionInClass
+           removeClass: options.transitionInClass,
+           duration: options.duration
         }).start();
 
       }
@@ -8620,12 +9406,11 @@ function AnimateDomUtils($mdUtil, $q, $timeout, $mdConstant, $animateCss) {
 (function(){
 "use strict";
 
-"use strict";
-
 if (angular.version.minor >= 4) {
   angular.module('material.core.animate', []);
 } else {
 (function() {
+  "use strict";
 
   var forEach = angular.forEach;
 
@@ -8640,7 +9425,7 @@ if (angular.version.minor >= 4) {
   var $$ForceReflowFactory = ['$document', function($document) {
     return function() {
       return $document[0].body.clientWidth + 1;
-    }
+    };
   }];
 
   var $$rAFMutexFactory = ['$$rAF', function($$rAF) {
@@ -8918,7 +9703,7 @@ if (angular.version.minor >= 4) {
               return runner;
             }
           }
-        }
+        };
       }
 
       function applyClasses(element, options) {
@@ -8934,7 +9719,7 @@ if (angular.version.minor >= 4) {
 
       function computeTimings(element) {
         var node = getDomNode(element);
-        var cs = $window.getComputedStyle(node)
+        var cs = $window.getComputedStyle(node);
         var tdr = parseMaxTime(cs[prop('transitionDuration')]);
         var adr = parseMaxTime(cs[prop('animationDuration')]);
         var tdy = parseMaxTime(cs[prop('transitionDelay')]);
@@ -9247,6 +10032,7 @@ function MdBottomSheetDirective($mdBottomSheet) {
  *   of 3.
  *   - `clickOutsideToClose` - `{boolean=}`: Whether the user can click outside the bottom sheet to
  *     close it. Default true.
+ *   - `bindToController` - `{boolean=}`: When set to true, the locals will be bound to the controller instance.
  *   - `disableBackdrop` - `{boolean=}`: When set to true, the bottomsheet will not show a backdrop.
  *   - `escapeToClose` - `{boolean=}`: Whether the user can press escape to close the bottom sheet.
  *     Default true.
@@ -9458,7 +10244,7 @@ function MdBottomSheetProvider($$interimElementProvider) {
  *
  * Button
  */
-MdButtonDirective.$inject = ["$mdButtonInkRipple", "$mdTheming", "$mdAria", "$timeout"];
+MdButtonDirective.$inject = ["$mdButtonInkRipple", "$mdTheming", "$mdAria", "$mdInteraction"];
 MdAnchorDirective.$inject = ["$mdTheming"];
 angular
     .module('material.components.button', [ 'material.core' ])
@@ -9569,7 +10355,7 @@ function MdAnchorDirective($mdTheming) {
  *  </md-button>
  * </hljs>
  */
-function MdButtonDirective($mdButtonInkRipple, $mdTheming, $mdAria, $timeout) {
+function MdButtonDirective($mdButtonInkRipple, $mdTheming, $mdAria, $mdInteraction) {
 
   return {
     restrict: 'EA',
@@ -9617,20 +10403,17 @@ function MdButtonDirective($mdButtonInkRipple, $mdTheming, $mdAria, $timeout) {
     });
 
     if (!element.hasClass('md-no-focus')) {
-      // restrict focus styles to the keyboard
-      scope.mouseActive = false;
-      element.on('mousedown', function() {
-        scope.mouseActive = true;
-        $timeout(function(){
-          scope.mouseActive = false;
-        }, 100);
-      })
-      .on('focus', function() {
-        if (scope.mouseActive === false) {
+
+      element.on('focus', function() {
+
+        // Only show the focus effect when being focused through keyboard interaction or programmatically
+        if (!$mdInteraction.isUserInvoked() || $mdInteraction.getLastInteractionType() === 'keyboard') {
           element.addClass('md-focused');
         }
-      })
-      .on('blur', function(ev) {
+
+      });
+
+      element.on('blur', function() {
         element.removeClass('md-focused');
       });
     }
@@ -9692,8 +10475,8 @@ angular.module('material.components.card', [
  *    - `md-media-sm` - Class for small image
  *    - `md-media-md` - Class for medium image
  *    - `md-media-lg` - Class for large image
+ *    - `md-media-xl` - Class for extra large image
  * * `<md-card-content>` - Card content
- *  - `md-media-xl` - Class for extra large image
  * * `<md-card-actions>` - Card actions
  *  - `<md-card-icon-actions>` - Icon actions
  *
@@ -9782,26 +10565,10 @@ function mdCardDirective($mdTheming) {
 
 /**
  * @ngdoc module
- * @name material.components.chips
- */
-/*
- * @see js folder for chips implementation
- */
-angular.module('material.components.chips', [
-  'material.core',
-  'material.components.autocomplete'
-]);
-
-})();
-(function(){
-"use strict";
-
-/**
- * @ngdoc module
  * @name material.components.checkbox
  * @description Checkbox module!
  */
-MdCheckboxDirective.$inject = ["inputDirective", "$mdAria", "$mdConstant", "$mdTheming", "$mdUtil", "$timeout"];
+MdCheckboxDirective.$inject = ["inputDirective", "$mdAria", "$mdConstant", "$mdTheming", "$mdUtil", "$mdInteraction"];
 angular
   .module('material.components.checkbox', ['material.core'])
   .directive('mdCheckbox', MdCheckboxDirective);
@@ -9853,14 +10620,14 @@ angular
  * </hljs>
  *
  */
-function MdCheckboxDirective(inputDirective, $mdAria, $mdConstant, $mdTheming, $mdUtil, $timeout) {
+function MdCheckboxDirective(inputDirective, $mdAria, $mdConstant, $mdTheming, $mdUtil, $mdInteraction) {
   inputDirective = inputDirective[0];
 
   return {
     restrict: 'E',
     transclude: true,
-    require: '?ngModel',
-    priority: 210, // Run before ngAria
+    require: ['^?mdInputContainer', '?ngModel', '?^form'],
+    priority: $mdConstant.BEFORE_NG_ARIA,
     template:
       '<div class="md-container" md-ink-ripple md-ink-ripple-checkbox>' +
         '<div class="md-icon"></div>' +
@@ -9891,9 +10658,22 @@ function MdCheckboxDirective(inputDirective, $mdAria, $mdConstant, $mdTheming, $
       post: postLink
     };
 
-    function postLink(scope, element, attr, ngModelCtrl) {
+    function postLink(scope, element, attr, ctrls) {
       var isIndeterminate;
-      ngModelCtrl = ngModelCtrl || $mdUtil.fakeNgModel();
+      var containerCtrl = ctrls[0];
+      var ngModelCtrl = ctrls[1] || $mdUtil.fakeNgModel();
+      var formCtrl = ctrls[2];
+
+      if (containerCtrl) {
+        var isErrorGetter = containerCtrl.isErrorGetter || function() {
+          return ngModelCtrl.$invalid && (ngModelCtrl.$touched || (formCtrl && formCtrl.$submitted));
+        };
+
+        containerCtrl.input = element;
+
+        scope.$watch(isErrorGetter, containerCtrl.setInvalid);
+      }
+
       $mdTheming(element);
 
       // Redirect focus events to the root element, because IE11 is always focusing the container element instead
@@ -9929,17 +10709,10 @@ function MdCheckboxDirective(inputDirective, $mdAria, $mdConstant, $mdTheming, $
         0: {}
       }, attr, [ngModelCtrl]);
 
-      scope.mouseActive = false;
       element.on('click', listener)
         .on('keypress', keypressHandler)
-        .on('mousedown', function() {
-          scope.mouseActive = true;
-          $timeout(function() {
-            scope.mouseActive = false;
-          }, 100);
-        })
         .on('focus', function() {
-          if (scope.mouseActive === false) {
+          if ($mdInteraction.getLastInteractionType() === 'keyboard') {
             element.addClass('md-focused');
           }
         })
@@ -9999,6 +10772,22 @@ function MdCheckboxDirective(inputDirective, $mdAria, $mdConstant, $mdTheming, $
     }
   }
 }
+
+})();
+(function(){
+"use strict";
+
+/**
+ * @ngdoc module
+ * @name material.components.chips
+ */
+/*
+ * @see js folder for chips implementation
+ */
+angular.module('material.components.chips', [
+  'material.core',
+  'material.components.autocomplete'
+]);
 
 })();
 (function(){
@@ -10726,8 +11515,30 @@ function MdDialogDirective($$rAF, $mdTheming, $mdDialog) {
  * })(angular);
  * </hljs>
  *
+ * ### Multiple Dialogs
+ * Using the `multiple` option for the `$mdDialog` service allows developers to show multiple dialogs
+ * at the same time.
+ *
+ * <hljs lang="js">
+ *   // From plain options
+ *   $mdDialog.show({
+ *     multiple: true
+ *   });
+ *
+ *   // From a dialog preset
+ *   $mdDialog.show(
+ *     $mdDialog
+ *       .alert()
+ *       .multiple(true)
+ *   );
+ *
+ * </hljs>
+ *
  * ### Pre-Rendered Dialogs
  * By using the `contentElement` option, it is possible to use an already existing element in the DOM.
+ *
+ * > Pre-rendered dialogs will be not linked to any scope and will not instantiate any new controller.<br/>
+ * > You can manually link the elements to a scope or instantiate a controller from the template (`ng-controller`)
  *
  * <hljs lang="js">
  *   $scope.showPrerenderedDialog = function() {
@@ -11084,13 +11895,13 @@ function MdDialogDirective($$rAF, $mdTheming, $mdDialog) {
 function MdDialogProvider($$interimElementProvider) {
   // Elements to capture and redirect focus when the user presses tab at the dialog boundary.
   advancedDialogOptions.$inject = ["$mdDialog", "$mdConstant"];
-  dialogDefaultOptions.$inject = ["$mdDialog", "$mdAria", "$mdUtil", "$mdConstant", "$animate", "$document", "$window", "$rootElement", "$log", "$injector", "$mdTheming"];
+  dialogDefaultOptions.$inject = ["$mdDialog", "$mdAria", "$mdUtil", "$mdConstant", "$animate", "$document", "$window", "$rootElement", "$log", "$injector", "$mdTheming", "$interpolate", "$mdInteraction"];
   var topFocusTrap, bottomFocusTrap;
 
   return $$interimElementProvider('$mdDialog')
     .setDefaults({
       methods: ['disableParentScroll', 'hasBackdrop', 'clickOutsideToClose', 'escapeToClose',
-          'targetEvent', 'closeTo', 'openFrom', 'parent', 'fullscreen', 'contentElement'],
+          'targetEvent', 'closeTo', 'openFrom', 'parent', 'fullscreen', 'multiple'],
       options: dialogDefaultOptions
     })
     .addPreset('alert', {
@@ -11113,7 +11924,7 @@ function MdDialogProvider($$interimElementProvider) {
   function advancedDialogOptions($mdDialog, $mdConstant) {
     return {
       template: [
-        '<md-dialog md-theme="{{ dialog.theme }}" aria-label="{{ dialog.ariaLabel }}" ng-class="dialog.css">',
+        '<md-dialog md-theme="{{ dialog.theme || dialog.defaultTheme }}" aria-label="{{ dialog.ariaLabel }}" ng-class="dialog.css">',
         '  <md-dialog-content class="md-dialog-content" role="document" tabIndex="-1">',
         '    <h2 class="md-title">{{ dialog.title }}</h2>',
         '    <div ng-if="::dialog.mdHtmlContent" class="md-dialog-content-body" ',
@@ -11163,7 +11974,7 @@ function MdDialogProvider($$interimElementProvider) {
 
   /* @ngInject */
   function dialogDefaultOptions($mdDialog, $mdAria, $mdUtil, $mdConstant, $animate, $document, $window, $rootElement,
-                                $log, $injector, $mdTheming) {
+                                $log, $injector, $mdTheming, $interpolate, $mdInteraction) {
 
     return {
       hasBackdrop: true,
@@ -11175,7 +11986,6 @@ function MdDialogProvider($$interimElementProvider) {
       clickOutsideToClose: false,
       escapeToClose: true,
       targetEvent: null,
-      contentElement: null,
       closeTo: null,
       openFrom: null,
       focusOnOpen: true,
@@ -11187,7 +11997,10 @@ function MdDialogProvider($$interimElementProvider) {
         // an element outside of the container, and the focus trap won't work probably..
         // Also the tabindex is needed for the `escapeToClose` functionality, because
         // the keyDown event can't be triggered when the focus is outside of the container.
-        return '<div class="md-dialog-container" tabindex="-1">' + validatedTemplate(template) + '</div>';
+        var startSymbol = $interpolate.startSymbol();
+        var endSymbol = $interpolate.endSymbol();
+        var theme = startSymbol + (options.themeWatch ? '' : '::') + 'theme' + endSymbol;
+        return '<div class="md-dialog-container" tabindex="-1" md-theme="' + theme + '">' + validatedTemplate(template) + '</div>';
 
         /**
          * The specified template should contain a <md-dialog> wrapper element....
@@ -11206,27 +12019,29 @@ function MdDialogProvider($$interimElementProvider) {
       // Automatically apply the theme, if the user didn't specify a theme explicitly.
       // Those option changes need to be done, before the compilation has started, because otherwise
       // the option changes will be not available in the $mdCompilers locales.
-      detectTheming(options);
+      options.defaultTheme = $mdTheming.defaultTheme();
 
-      if (options.contentElement) {
-        options.restoreContentElement = installContentElement(options);
-      }
+      detectTheming(options);
     }
 
     function beforeShow(scope, element, options, controller) {
 
       if (controller) {
-        controller.mdHtmlContent = controller.htmlContent || options.htmlContent || '';
-        controller.mdTextContent = controller.textContent || options.textContent ||
+        var mdHtmlContent = controller.htmlContent || options.htmlContent || '';
+        var mdTextContent = controller.textContent || options.textContent ||
             controller.content || options.content || '';
 
-        if (controller.mdHtmlContent && !$injector.has('$sanitize')) {
+        if (mdHtmlContent && !$injector.has('$sanitize')) {
           throw Error('The ngSanitize module must be loaded in order to use htmlContent.');
         }
 
-        if (controller.mdHtmlContent && controller.mdTextContent) {
+        if (mdHtmlContent && mdTextContent) {
           throw Error('md-dialog cannot have both `htmlContent` and `textContent`');
         }
+
+        // Only assign the content if nothing throws, otherwise it'll still be compiled.
+        controller.mdHtmlContent = mdHtmlContent;
+        controller.mdTextContent = mdTextContent;
       }
     }
 
@@ -11239,7 +12054,7 @@ function MdDialogProvider($$interimElementProvider) {
       // Once a dialog has `ng-cloak` applied on his template the dialog animation will not work properly.
       // This is a very common problem, so we have to notify the developer about this.
       if (dialogElement.hasClass('ng-cloak')) {
-        var message = '$mdDialog: using `<md-dialog ng-cloak >` will affect the dialog opening animations.';
+        var message = '$mdDialog: using `<md-dialog ng-cloak>` will affect the dialog opening animations.';
         $log.warn( message, element[0] );
       }
 
@@ -11281,14 +12096,7 @@ function MdDialogProvider($$interimElementProvider) {
          * If we find no actions at all, log a warning to the console.
          */
         function findCloseButton() {
-          var closeButton = element[0].querySelector('.dialog-close');
-
-          if (!closeButton) {
-            var actionButtons = element[0].querySelectorAll('.md-actions button, md-dialog-actions button');
-            closeButton = actionButtons[actionButtons.length - 1];
-          }
-
-          return closeButton;
+          return element[0].querySelector('.dialog-close, md-dialog-actions button:last-child');
         }
       }
     }
@@ -11327,82 +12135,51 @@ function MdDialogProvider($$interimElementProvider) {
        */
       function detachAndClean() {
         angular.element($document[0].body).removeClass('md-dialog-is-showing');
-        // Only remove the element, if it's not provided through the contentElement option.
-        if (!options.contentElement) {
-          element.remove();
-        } else {
+
+        // Reverse the container stretch if using a content element.
+        if (options.contentElement) {
           options.reverseContainerStretch();
-          options.restoreContentElement();
         }
 
-        if (!options.$destroy) options.origin.focus();
+        // Exposed cleanup function from the $mdCompiler.
+        options.cleanupElement();
+
+        // Restores the focus to the origin element if the last interaction upon opening was a keyboard.
+        if (!options.$destroy && options.originInteraction === 'keyboard') {
+          options.origin.focus();
+        }
       }
     }
 
     function detectTheming(options) {
-      // Only detect the theming, if the developer didn't specify the theme specifically.
-      if (options.theme) return;
-
-      options.theme = $mdTheming.defaultTheme();
-
+      // Once the user specifies a targetEvent, we will automatically try to find the correct
+      // nested theme.
+      var targetEl;
       if (options.targetEvent && options.targetEvent.target) {
-        var targetEl = angular.element(options.targetEvent.target);
-
-        // Once the user specifies a targetEvent, we will automatically try to find the correct
-        // nested theme.
-        options.theme = (targetEl.controller('mdTheme') || {}).$mdTheme || options.theme;
+        targetEl = angular.element(options.targetEvent.target);
       }
 
-    }
+      var themeCtrl = targetEl && targetEl.controller('mdTheme');
 
-    /**
-     * Installs a content element to the current $$interimElement provider options.
-     * @returns {Function} Function to restore the content element at its old DOM location.
-     */
-    function installContentElement(options) {
-      var contentEl = options.contentElement;
-      var restoreFn = null;
+      if (!themeCtrl) {
+        return;
+      }
 
-      if (angular.isString(contentEl)) {
-        contentEl = document.querySelector(contentEl);
-        restoreFn = createRestoreFn(contentEl);
-      } else {
-        contentEl = contentEl[0] || contentEl;
+      options.themeWatch = themeCtrl.$shouldWatch;
 
-        // When the element is visible in the DOM, then we restore it at close of the dialog.
-        // Otherwise it will be removed from the DOM after close.
-        if (document.contains(contentEl)) {
-          restoreFn = createRestoreFn(contentEl);
-        } else {
-          restoreFn = function() {
-            contentEl.parentNode.removeChild(contentEl);
-          }
+      var theme = options.theme || themeCtrl.$mdTheme;
+
+      if (theme) {
+        options.scope.theme = theme;
+      }
+
+      var unwatch = themeCtrl.registerChanges(function (newTheme) {
+        options.scope.theme = newTheme;
+
+        if (!options.themeWatch) {
+          unwatch();
         }
-      }
-
-      // Overwrite the options to use the content element.
-      options.element = angular.element(contentEl);
-      options.skipCompile = true;
-
-      return restoreFn;
-
-      function createRestoreFn(element) {
-        var parent = element.parentNode;
-        var nextSibling = element.nextElementSibling;
-
-        return function() {
-          if (!nextSibling) {
-            // When the element didn't had any sibling, then it can be simply appended to the
-            // parent, because it plays no role, which index it had before.
-            parent.appendChild(element);
-          } else {
-            // When the element had a sibling, which marks the previous position of the element
-            // in the DOM, we insert it correctly before the sibling, to have the same index as
-            // before.
-            parent.insertBefore(element, nextSibling);
-          }
-        }
-      }
+      });
     }
 
     /**
@@ -11422,7 +12199,8 @@ function MdDialogProvider($$interimElementProvider) {
           options.openFrom = getBoundingClientRect(getDomElement(options.openFrom));
 
           if ( options.targetEvent ) {
-            options.origin   = getBoundingClientRect(options.targetEvent.target, options.origin);
+            options.origin = getBoundingClientRect(options.targetEvent.target, options.origin);
+            options.originInteraction = $mdInteraction.getLastInteractionType();
           }
 
 
@@ -11583,7 +12361,7 @@ function MdDialogProvider($$interimElementProvider) {
 
 
         if (options.disableParentScroll) {
-          options.restoreScroll();
+          options.restoreScroll && options.restoreScroll();
           delete options.restoreScroll;
         }
 
@@ -11704,8 +12482,11 @@ function MdDialogProvider($$interimElementProvider) {
         height: container.css('height')
       };
 
+      // If the body is fixed, determine the distance to the viewport in relative from the parent.
+      var parentTop = Math.abs(options.parent[0].getBoundingClientRect().top);
+
       container.css({
-        top: (isFixed ? $mdUtil.scrollTop(options.parent) : 0) + 'px',
+        top: (isFixed ? parentTop : 0) + 'px',
         height: height ? height + 'px' : '100%'
       });
 
@@ -11897,7 +12678,7 @@ function MdDividerDirective($mdTheming) {
           children.wrap('<div class="md-fab-action-item">');
         }
       }
-    }
+    };
   }
 
 })();
@@ -11915,6 +12696,7 @@ function MdDividerDirective($mdTheming) {
 
   function MdFabController($scope, $element, $animate, $mdUtil, $mdConstant, $timeout) {
     var vm = this;
+    var initialAnimationAttempts = 0;
 
     // NOTE: We use async eval(s) below to avoid conflicts with any existing digest loops
 
@@ -11935,12 +12717,23 @@ function MdDividerDirective($mdTheming) {
       $scope.$evalAsync("vm.isOpen = !vm.isOpen");
     };
 
-    setupDefaults();
-    setupListeners();
-    setupWatchers();
+    /*
+     * Angular Lifecycle hook for newer Angular versions.
+     * Bindings are not guaranteed to have been assigned in the controller, but they are in the $onInit hook.
+     */
+    vm.$onInit = function() {
+      setupDefaults();
+      setupListeners();
+      setupWatchers();
 
-    var initialAnimationAttempts = 0;
-    fireInitialAnimations();
+      fireInitialAnimations();
+    };
+
+    // For Angular 1.4 and older, where there are no lifecycle hooks but bindings are pre-assigned,
+    // manually call the $onInit hook.
+    if (angular.version.major === 1 && angular.version.minor <= 4) {
+      this.$onInit();
+    }
 
     function setupDefaults() {
       // Set the default direction to 'down' if none is specified
@@ -12288,16 +13081,16 @@ function MdDividerDirective($mdTheming) {
    * <hljs lang="html">
    * <md-fab-speed-dial md-direction="up" class="md-fling">
    *   <md-fab-trigger>
-   *     <md-button aria-label="Add..."><md-icon icon="/img/icons/plus.svg"></md-icon></md-button>
+   *     <md-button aria-label="Add..."><md-icon md-svg-src="/img/icons/plus.svg"></md-icon></md-button>
    *   </md-fab-trigger>
    *
    *   <md-fab-actions>
    *     <md-button aria-label="Add User">
-   *       <md-icon icon="/img/icons/user.svg"></md-icon>
+   *       <md-icon md-svg-src="/img/icons/user.svg"></md-icon>
    *     </md-button>
    *
    *     <md-button aria-label="Add Group">
-   *       <md-icon icon="/img/icons/group.svg"></md-icon>
+   *       <md-icon md-svg-src="/img/icons/group.svg"></md-icon>
    *     </md-button>
    *   </md-fab-actions>
    * </md-fab-speed-dial>
@@ -12417,7 +13210,7 @@ function MdDividerDirective($mdTheming) {
         runAnimation(element);
         delayDone(done);
       }
-    }
+    };
   }
 
   function MdFabSpeedDialScaleAnimation($timeout) {
@@ -12460,7 +13253,7 @@ function MdDividerDirective($mdTheming) {
         runAnimation(element);
         delayDone(done);
       }
-    }
+    };
   }
 })();
 
@@ -12501,7 +13294,7 @@ function MdDividerDirective($mdTheming) {
    *
    * @description
    *
-   * The `<md-fab-toolbar>` directive is used present a toolbar of elements (usually `<md-button>`s)
+   * The `<md-fab-toolbar>` directive is used to present a toolbar of elements (usually `<md-button>`s)
    * for quick access to common actions when a floating action button is activated (via click or
    * keyboard navigation).
    *
@@ -12520,17 +13313,17 @@ function MdDividerDirective($mdTheming) {
    * <hljs lang="html">
    * <md-fab-toolbar md-direction='left'>
    *   <md-fab-trigger>
-   *     <md-button aria-label="Add..."><md-icon icon="/img/icons/plus.svg"></md-icon></md-button>
+   *     <md-button aria-label="Add..."><md-icon md-svg-src="/img/icons/plus.svg"></md-icon></md-button>
    *   </md-fab-trigger>
    *
    *   <md-toolbar>
    *    <md-fab-actions>
    *      <md-button aria-label="Add User">
-   *        <md-icon icon="/img/icons/user.svg"></md-icon>
+   *        <md-icon md-svg-src="/img/icons/user.svg"></md-icon>
    *      </md-button>
    *
    *      <md-button aria-label="Add Group">
-   *        <md-icon icon="/img/icons/group.svg"></md-icon>
+   *        <md-icon md-svg-src="/img/icons/group.svg"></md-icon>
    *      </md-button>
    *    </md-fab-actions>
    *   </md-toolbar>
@@ -12662,7 +13455,7 @@ function MdDividerDirective($mdTheming) {
         runAnimation(element, className, done);
         done();
       }
-    }
+    };
   }
 })();
 
@@ -13461,10 +14254,10 @@ mdMaxlengthDirective.$inject = ["$animate", "$mdUtil"];
 placeholderDirective.$inject = ["$compile"];
 ngMessageDirective.$inject = ["$mdUtil"];
 mdSelectOnFocusDirective.$inject = ["$timeout"];
-mdInputInvalidMessagesAnimation.$inject = ["$$AnimateRunner", "$animateCss", "$mdUtil"];
-ngMessagesAnimation.$inject = ["$$AnimateRunner", "$animateCss", "$mdUtil"];
-ngMessageAnimation.$inject = ["$$AnimateRunner", "$animateCss", "$mdUtil"];
-angular.module('material.components.input', [
+mdInputInvalidMessagesAnimation.$inject = ["$$AnimateRunner", "$animateCss", "$mdUtil", "$log"];
+ngMessagesAnimation.$inject = ["$$AnimateRunner", "$animateCss", "$mdUtil", "$log"];
+ngMessageAnimation.$inject = ["$$AnimateRunner", "$animateCss", "$mdUtil", "$log"];
+var inputModule = angular.module('material.components.input', [
     'material.core'
   ])
   .directive('mdInputContainer', mdInputContainerDirective)
@@ -13480,12 +14273,26 @@ angular.module('material.components.input', [
 
   .animation('.md-input-invalid', mdInputInvalidMessagesAnimation)
   .animation('.md-input-messages-animation', ngMessagesAnimation)
-  .animation('.md-input-message-animation', ngMessageAnimation)
+  .animation('.md-input-message-animation', ngMessageAnimation);
+
+// If we are running inside of tests; expose some extra services so that we can test them
+if (window._mdMocksIncluded) {
+  inputModule.service('$$mdInput', function() {
+    return {
+      // special accessor to internals... useful for testing
+      messages: {
+        show        : showInputMessages,
+        hide        : hideInputMessages,
+        getElement  : getMessagesElement
+      }
+    }
+  })
 
   // Register a service for each animation so that we can easily inject them into unit tests
   .service('mdInputInvalidAnimation', mdInputInvalidMessagesAnimation)
   .service('mdInputMessagesAnimation', ngMessagesAnimation)
   .service('mdInputMessageAnimation', ngMessageAnimation);
+}
 
 /**
  * @ngdoc directive
@@ -14035,7 +14842,8 @@ function inputTextareaDirective($mdUtil, $window, $mdAria, $timeout, $mdGesture)
 
         function onDrag(ev) {
           if (!isDragging) return;
-          element.css('height', startHeight + (ev.pointer.y - dragStart) - $mdUtil.scrollTop() + 'px');
+
+          element.css('height', (startHeight + ev.pointer.distanceY) + 'px');
         }
 
         function onDragEnd(ev) {
@@ -14099,12 +14907,6 @@ function mdMaxlengthDirective($animate, $mdUtil) {
       // over the maxlength still counts as invalid.
       attr.$set('ngTrim', 'false');
 
-      ngModelCtrl.$formatters.push(renderCharCount);
-      ngModelCtrl.$viewChangeListeners.push(renderCharCount);
-      element.on('input keydown keyup', function() {
-        renderCharCount(); //make sure it's called with no args
-      });
-
       scope.$watch(attr.mdMaxlength, function(value) {
         maxlength = value;
         if (angular.isNumber(value) && value > 0) {
@@ -14121,6 +14923,11 @@ function mdMaxlengthDirective($animate, $mdUtil) {
         if (!angular.isNumber(maxlength) || maxlength < 0) {
           return true;
         }
+
+        // We always update the char count, when the modelValue has changed.
+        // Using the $validators for triggering the update works very well.
+        renderCharCount();
+
         return ( modelValue || element.val() || viewValue || '' ).length <= maxlength;
       };
     });
@@ -14353,10 +15160,10 @@ function ngMessageDirective($mdUtil) {
   }
 }
 
-var $$AnimateRunner, $animateCss, $mdUtil;
+var $$AnimateRunner, $animateCss, $mdUtil, $log;
 
-function mdInputInvalidMessagesAnimation($$AnimateRunner, $animateCss, $mdUtil) {
-  saveSharedServices($$AnimateRunner, $animateCss, $mdUtil);
+function mdInputInvalidMessagesAnimation($$AnimateRunner, $animateCss, $mdUtil, $log) {
+  saveSharedServices($$AnimateRunner, $animateCss, $mdUtil, $log);
 
   return {
     addClass: function(element, className, done) {
@@ -14367,8 +15174,8 @@ function mdInputInvalidMessagesAnimation($$AnimateRunner, $animateCss, $mdUtil) 
   };
 }
 
-function ngMessagesAnimation($$AnimateRunner, $animateCss, $mdUtil) {
-  saveSharedServices($$AnimateRunner, $animateCss, $mdUtil);
+function ngMessagesAnimation($$AnimateRunner, $animateCss, $mdUtil, $log) {
+  saveSharedServices($$AnimateRunner, $animateCss, $mdUtil, $log);
 
   return {
     enter: function(element, done) {
@@ -14394,11 +15201,11 @@ function ngMessagesAnimation($$AnimateRunner, $animateCss, $mdUtil) {
         done();
       }
     }
-  }
+  };
 }
 
-function ngMessageAnimation($$AnimateRunner, $animateCss, $mdUtil) {
-  saveSharedServices($$AnimateRunner, $animateCss, $mdUtil);
+function ngMessageAnimation($$AnimateRunner, $animateCss, $mdUtil, $log) {
+  saveSharedServices($$AnimateRunner, $animateCss, $mdUtil, $log);
 
   return {
     enter: function(element, done) {
@@ -14412,14 +15219,21 @@ function ngMessageAnimation($$AnimateRunner, $animateCss, $mdUtil) {
 
       animator.start().done(done);
     }
-  }
+  };
 }
 
 function showInputMessages(element, done) {
   var animators = [], animator;
   var messages = getMessagesElement(element);
+  var children = messages.children();
 
-  angular.forEach(messages.children(), function(child) {
+  if (messages.length == 0 || children.length == 0) {
+    $log.warn('mdInput messages show animation called on invalid messages element: ', element);
+    done();
+    return;
+  }
+
+  angular.forEach(children, function(child) {
     animator = showMessage(angular.element(child));
 
     animators.push(animator.start());
@@ -14431,8 +15245,15 @@ function showInputMessages(element, done) {
 function hideInputMessages(element, done) {
   var animators = [], animator;
   var messages = getMessagesElement(element);
+  var children = messages.children();
 
-  angular.forEach(messages.children(), function(child) {
+  if (messages.length == 0 || children.length == 0) {
+    $log.warn('mdInput messages hide animation called on invalid messages element: ', element);
+    done();
+    return;
+  }
+
+  angular.forEach(children, function(child) {
     animator = hideMessage(angular.element(child));
 
     animators.push(animator.start());
@@ -14470,7 +15291,7 @@ function hideMessage(element) {
   var styles = window.getComputedStyle(element[0]);
 
   // If we are already hidden, just return an empty animation
-  if (styles.opacity == 0) {
+  if (parseInt(styles.opacity) === 0) {
     return $animateCss(element, {});
   }
 
@@ -14491,6 +15312,11 @@ function getInputElement(element) {
 }
 
 function getMessagesElement(element) {
+  // If we ARE the messages element, just return ourself
+  if (element.hasClass('md-input-messages-animation')) {
+    return element;
+  }
+
   // If we are a ng-message element, we need to traverse up the DOM tree
   if (element.hasClass('md-input-message-animation')) {
     return angular.element($mdUtil.getClosest(element, function(node) {
@@ -14502,10 +15328,11 @@ function getMessagesElement(element) {
   return angular.element(element[0].querySelector('.md-input-messages-animation'));
 }
 
-function saveSharedServices(_$$AnimateRunner_, _$animateCss_, _$mdUtil_) {
+function saveSharedServices(_$$AnimateRunner_, _$animateCss_, _$mdUtil_, _$log_) {
   $$AnimateRunner = _$$AnimateRunner_;
   $animateCss = _$animateCss_;
   $mdUtil = _$mdUtil_;
+  $log = _$log_;
 }
 
 })();
@@ -14633,7 +15460,18 @@ function mdListDirective($mdTheming) {
  * - `md-menu` (Open)
  *
  * This means, when using a supported proxy item inside of `md-list-item`, the list item will
- * become clickable and executes the associated action of the proxy element on click.
+ * automatically become clickable and executes the associated action of the proxy element on click.
+ *
+ * It is possible to disable this behavior by applying the `md-no-proxy` class to the list item.
+ *
+ * <hljs lang="html">
+ *   <md-list-item class="md-no-proxy">
+ *     <span>No Proxy List</span>
+ *     <md-checkbox class="md-secondary"></md-checkbox>
+ *   </md-list-item>
+ * </hljs>
+ *
+ * Here are a few examples of proxy elements inside of a list item.
  *
  * <hljs lang="html">
  *   <md-list-item>
@@ -14698,7 +15536,7 @@ function mdListDirective($mdTheming) {
  *     <span>Alan Turing</span>
  * </hljs>
  *
- * When using `<md-icon>` for an avater, you have to use the `.md-avatar-icon` class.
+ * When using `<md-icon>` for an avatar, you have to use the `.md-avatar-icon` class.
  * <hljs lang="html">
  *   <md-list-item>
  *     <md-icon class="md-avatar-icon" md-svg-icon="avatars:timothy"></md-icon>
@@ -14750,18 +15588,21 @@ function mdListItemDirective($mdAria, $mdConstant, $mdUtil, $timeout) {
 
       if (tAttrs.ngClick || tAttrs.ngDblclick ||  tAttrs.ngHref || tAttrs.href || tAttrs.uiSref || tAttrs.ngAttrUiSref) {
         wrapIn('button');
-      } else {
+      } else if (!tEl.hasClass('md-no-proxy')) {
+
         for (var i = 0, type; type = proxiedTypes[i]; ++i) {
           if (proxyElement = tEl[0].querySelector(type)) {
             hasProxiedElement = true;
             break;
           }
         }
+
         if (hasProxiedElement) {
           wrapIn('div');
-        } else if (!tEl[0].querySelector('md-button:not(.md-secondary):not(.md-exclude)')) {
+        } else {
           tEl.addClass('md-no-proxy');
         }
+
       }
 
       wrapSecondaryItems();
@@ -14798,7 +15639,7 @@ function mdListItemDirective($mdAria, $mdConstant, $mdUtil, $timeout) {
           // When the proxy item is aligned at the end of the list, we have to set the origin to the end.
           xAxisPosition = 'right';
         }
-        
+
         // Set the position mode / origin of the proxied menu.
         if (!menuEl.attr('md-position-mode')) {
           menuEl.attr('md-position-mode', xAxisPosition + ' target');
@@ -14807,7 +15648,7 @@ function mdListItemDirective($mdAria, $mdConstant, $mdUtil, $timeout) {
         // Apply menu open binding to menu button
         var menuOpenButton = menuEl.children().eq(0);
         if (!hasClickEvent(menuOpenButton[0])) {
-          menuOpenButton.attr('ng-click', '$mdOpenMenu($event)');
+          menuOpenButton.attr('ng-click', '$mdMenu.open($event)');
         }
 
         if (!menuOpenButton.attr('aria-label')) {
@@ -14833,9 +15674,13 @@ function mdListItemDirective($mdAria, $mdConstant, $mdUtil, $timeout) {
             '<md-button class="md-no-style"></md-button>'
           );
 
-          buttonWrap[0].setAttribute('aria-label', tEl[0].textContent);
-
           copyAttributes(tEl[0], buttonWrap[0]);
+
+          // If there is no aria-label set on the button (previously copied over if present)
+          // we determine the label from the content and copy it to the button.
+          if (!buttonWrap.attr('aria-label')) {
+            buttonWrap.attr('aria-label', $mdAria.getText(tEl));
+          }
 
           // We allow developers to specify the `md-no-focus` class, to disable the focus style
           // on the button executor. Once more classes should be forwarded, we should probably make the
@@ -14947,12 +15792,13 @@ function mdListItemDirective($mdAria, $mdConstant, $mdUtil, $timeout) {
             firstElement  = $element[0].firstElementChild,
             isButtonWrap  = $element.hasClass('_md-button-wrap'),
             clickChild    = isButtonWrap ? firstElement.firstElementChild : firstElement,
-            hasClick      = clickChild && hasClickEvent(clickChild);
+            hasClick      = clickChild && hasClickEvent(clickChild),
+            noProxies     = $element.hasClass('md-no-proxy');
 
         computeProxies();
         computeClickable();
 
-        if ($element.hasClass('md-proxy-focus') && proxies.length) {
+        if (proxies.length) {
           angular.forEach(proxies, function(proxy) {
             proxy = angular.element(proxy);
 
@@ -14975,7 +15821,8 @@ function mdListItemDirective($mdAria, $mdConstant, $mdUtil, $timeout) {
 
 
         function computeProxies() {
-          if (firstElement && firstElement.children && !hasClick) {
+
+          if (firstElement && firstElement.children && !hasClick && !noProxies) {
 
             angular.forEach(proxiedTypes, function(type) {
 
@@ -15103,7 +15950,7 @@ angular.module('material.components.menu', [
 
 /**
  * @ngdoc module
- * @name material.components.menu-bar
+ * @name material.components.menuBar
  */
 
 angular.module('material.components.menuBar', [
@@ -15118,566 +15965,147 @@ angular.module('material.components.menuBar', [
 
 /**
  * @ngdoc module
- * @name material.components.navBar
+ * @name material.components.panel
  */
-
-
-MdNavBarController.$inject = ["$element", "$scope", "$timeout", "$mdConstant"];
-MdNavItem.$inject = ["$$rAF"];
-MdNavItemController.$inject = ["$element"];
-MdNavBar.$inject = ["$mdAria", "$mdTheming"];
-angular.module('material.components.navBar', ['material.core'])
-    .controller('MdNavBarController', MdNavBarController)
-    .directive('mdNavBar', MdNavBar)
-    .controller('MdNavItemController', MdNavItemController)
-    .directive('mdNavItem', MdNavItem);
+MdPanelService.$inject = ["presets", "$rootElement", "$rootScope", "$injector", "$window"];
+angular
+  .module('material.components.panel', [
+    'material.core',
+    'material.components.backdrop'
+  ])
+  .provider('$mdPanel', MdPanelProvider);
 
 
 /*****************************************************************************
  *                            PUBLIC DOCUMENTATION                           *
  *****************************************************************************/
+
+
 /**
- * @ngdoc directive
- * @name mdNavBar
- * @module material.components.navBar
- *
- * @restrict E
+ * @ngdoc service
+ * @name $mdPanelProvider
+ * @module material.components.panel
  *
  * @description
- * The `<md-nav-bar>` directive renders a list of material tabs that can be used
- * for top-level page navigation. Unlike `<md-tabs>`, it has no concept of a tab
- * body and no bar pagination.
- *
- * Because it deals with page navigation, certain routing concepts are built-in.
- * Route changes via via ng-href, ui-sref, or ng-click events are supported.
- * Alternatively, the user could simply watch currentNavItem for changes.
- *
- * Accessibility functionality is implemented as a site navigator with a
- * listbox, according to
- * https://www.w3.org/TR/wai-aria-practices/#Site_Navigator_Tabbed_Style
- *
- * @param {string=} mdSelectedNavItem The name of the current tab; this must
- * match the name attribute of `<md-nav-item>`
- * @param {string=} navBarAriaLabel An aria-label for the nav-bar
+ * `$mdPanelProvider` allows users to create configuration presets that will be
+ * stored within a cached presets object. When the configuration is needed, the
+ * user can request the preset by passing it as the first parameter in the
+ * `$mdPanel.create` or `$mdPanel.open` methods.
  *
  * @usage
- * <hljs lang="html">
- *  <md-nav-bar md-selected-nav-item="currentNavItem">
- *    <md-nav-item md-nav-click="goto('page1')" name="page1">Page One</md-nav-item>
- *    <md-nav-item md-nav-sref="app.page2" name="page2">Page Two</md-nav-item>
- *    <md-nav-item md-nav-href="#page3" name="page3">Page Three</md-nav-item>
- *  </md-nav-bar>
- *</hljs>
  * <hljs lang="js">
- * (function() {
- *   ‘use strict’;
+ * (function(angular, undefined) {
+ *   'use strict';
  *
- *    $rootScope.$on('$routeChangeSuccess', function(event, current) {
- *      $scope.currentLink = getCurrentLinkFromRoute(current);
- *    });
- * });
+ *   angular
+ *       .module('demoApp', ['ngMaterial'])
+ *       .config(DemoConfig)
+ *       .controller('DemoCtrl', DemoCtrl)
+ *       .controller('DemoMenuCtrl', DemoMenuCtrl);
+ *
+ *   function DemoConfig($mdPanelProvider) {
+ *     $mdPanelProvider.definePreset('demoPreset', {
+ *       attachTo: angular.element(document.body),
+ *       controller: DemoMenuCtrl,
+ *       controllerAs: 'ctrl',
+ *       template: '' +
+ *           '<div class="menu-panel" md-whiteframe="4">' +
+ *           '  <div class="menu-content">' +
+ *           '    <div class="menu-item" ng-repeat="item in ctrl.items">' +
+ *           '      <button class="md-button">' +
+ *           '        <span>{{item}}</span>' +
+ *           '      </button>' +
+ *           '    </div>' +
+ *           '    <md-divider></md-divider>' +
+ *           '    <div class="menu-item">' +
+ *           '      <button class="md-button" ng-click="ctrl.closeMenu()">' +
+ *           '        <span>Close Menu</span>' +
+ *           '      </button>' +
+ *           '    </div>' +
+ *           '  </div>' +
+ *           '</div>',
+ *       panelClass: 'menu-panel-container',
+ *       focusOnOpen: false,
+ *       zIndex: 100,
+ *       propagateContainerEvents: true,
+ *       groupName: 'menus'
+ *     });
+ *   }
+ *
+ *   function PanelProviderCtrl($mdPanel) {
+ *     this.navigation = {
+ *       name: 'navigation',
+ *       items: [
+ *         'Home',
+ *         'About',
+ *         'Contact'
+ *       ]
+ *     };
+ *     this.favorites = {
+ *       name: 'favorites',
+ *       items: [
+ *         'Add to Favorites'
+ *       ]
+ *     };
+ *     this.more = {
+ *       name: 'more',
+ *       items: [
+ *         'Account',
+ *         'Sign Out'
+ *       ]
+ *     };
+ *
+ *     $mdPanel.newPanelGroup('menus', {
+ *       maxOpen: 2
+ *     });
+ *
+ *     this.showMenu = function($event, menu) {
+ *       $mdPanel.open('demoPreset', {
+ *         id: 'menu_' + menu.name,
+ *         position: $mdPanel.newPanelPosition()
+ *             .relativeTo($event.srcElement)
+ *             .addPanelPosition(
+ *               $mdPanel.xPosition.ALIGN_START,
+ *               $mdPanel.yPosition.BELOW
+ *             ),
+ *         locals: {
+ *           items: menu.items
+ *         },
+ *         openFrom: $event
+ *       });
+ *     };
+ *   }
+ *
+ *   function PanelMenuCtrl(mdPanelRef) {
+ *     this.closeMenu = function() {
+ *       mdPanelRef && mdPanelRef.close();
+ *     };
+ *   }
+ * })(angular);
  * </hljs>
  */
 
-/*****************************************************************************
- *                            mdNavItem
- *****************************************************************************/
 /**
- * @ngdoc directive
- * @name mdNavItem
- * @module material.components.navBar
- *
- * @restrict E
- *
+ * @ngdoc method
+ * @name $mdPanelProvider#definePreset
  * @description
- * `<md-nav-item>` describes a page navigation link within the `<md-nav-bar>`
- * component. It renders an md-button as the actual link.
+ * Takes the passed in preset name and preset configuration object and adds it
+ * to the `_presets` object of the provider. This `_presets` object is then
+ * passed along to the `$mdPanel` service.
  *
- * Exactly one of the mdNavClick, mdNavHref, mdNavSref attributes are required to be
- * specified.
- *
- * @param {Function=} mdNavClick Function which will be called when the
- * link is clicked to change the page. Renders as an `ng-click`.
- * @param {string=} mdNavHref url to transition to when this link is clicked.
- * Renders as an `ng-href`.
- * @param {string=} mdNavSref Ui-router state to transition to when this link is
- * clicked. Renders as a `ui-sref`.
- * @param {string=} name The name of this link. Used by the nav bar to know
- * which link is currently selected.
- *
- * @usage
- * See `<md-nav-bar>` for usage.
+ * @param {string} name Preset name.
+ * @param {!Object} preset Specific configuration object that can contain any
+ *     and all of the parameters avaialble within the `$mdPanel.create` method.
+ *     However, parameters that pertain to id, position, animation, and user
+ *     interaction are not allowed and will be removed from the preset
+ *     configuration.
  */
 
 
 /*****************************************************************************
- *                                IMPLEMENTATION                             *
+ *                               MdPanel Service                             *
  *****************************************************************************/
 
-function MdNavBar($mdAria, $mdTheming) {
-  return {
-    restrict: 'E',
-    transclude: true,
-    controller: MdNavBarController,
-    controllerAs: 'ctrl',
-    bindToController: true,
-    scope: {
-      'mdSelectedNavItem': '=?',
-      'navBarAriaLabel': '@?',
-    },
-    template:
-      '<div class="md-nav-bar">' +
-        '<nav role="navigation">' +
-          '<ul class="_md-nav-bar-list" ng-transclude role="listbox"' +
-            'tabindex="0"' +
-            'ng-focus="ctrl.onFocus()"' +
-            'ng-blur="ctrl.onBlur()"' +
-            'ng-keydown="ctrl.onKeydown($event)"' +
-            'aria-label="{{ctrl.navBarAriaLabel}}">' +
-          '</ul>' +
-        '</nav>' +
-        '<md-nav-ink-bar></md-nav-ink-bar>' +
-      '</div>',
-    link: function(scope, element, attrs, ctrl) {
-      $mdTheming(element);
-      if (!ctrl.navBarAriaLabel) {
-        $mdAria.expectAsync(element, 'aria-label', angular.noop);
-      }
-    },
-  };
-}
-
-/**
- * Controller for the nav-bar component.
- *
- * Accessibility functionality is implemented as a site navigator with a
- * listbox, according to
- * https://www.w3.org/TR/wai-aria-practices/#Site_Navigator_Tabbed_Style
- * @param {!angular.JQLite} $element
- * @param {!angular.Scope} $scope
- * @param {!angular.Timeout} $timeout
- * @param {!Object} $mdConstant
- * @constructor
- * @final
- * @ngInject
- */
-function MdNavBarController($element, $scope, $timeout, $mdConstant) {
-  // Injected variables
-  /** @private @const {!angular.Timeout} */
-  this._$timeout = $timeout;
-
-  /** @private @const {!angular.Scope} */
-  this._$scope = $scope;
-
-  /** @private @const {!Object} */
-  this._$mdConstant = $mdConstant;
-
-  // Data-bound variables.
-  /** @type {string} */
-  this.mdSelectedNavItem;
-
-  /** @type {string} */
-  this.navBarAriaLabel;
-
-  // State variables.
-
-  /** @type {?angular.JQLite} */
-  this._navBarEl = $element[0];
-
-  /** @type {?angular.JQLite} */
-  this._inkbar;
-
-  var self = this;
-  // need to wait for transcluded content to be available
-  var deregisterTabWatch = this._$scope.$watch(function() {
-    return self._navBarEl.querySelectorAll('._md-nav-button').length;
-  },
-  function(newLength) {
-    if (newLength > 0) {
-      self._initTabs();
-      deregisterTabWatch();
-    }
-  });
-}
-
-
-
-/**
- * Initializes the tab components once they exist.
- * @private
- */
-MdNavBarController.prototype._initTabs = function() {
-  this._inkbar = angular.element(this._navBarEl.getElementsByTagName('md-nav-ink-bar')[0]);
-
-  var self = this;
-  this._$timeout(function() {
-    self._updateTabs(self.mdSelectedNavItem, undefined);
-  });
-
-  this._$scope.$watch('ctrl.mdSelectedNavItem', function(newValue, oldValue) {
-    // Wait a digest before update tabs for products doing
-    // anything dynamic in the template.
-    self._$timeout(function() {
-      self._updateTabs(newValue, oldValue);
-    });
-  });
-};
-
-/**
- * Set the current tab to be selected.
- * @param {string|undefined} newValue New current tab name.
- * @param {string|undefined} oldValue Previous tab name.
- * @private
- */
-MdNavBarController.prototype._updateTabs = function(newValue, oldValue) {
-  var self = this;
-  var tabs = this._getTabs();
-  var oldIndex = -1;
-  var newIndex = -1;
-  var newTab = this._getTabByName(newValue);
-  var oldTab = this._getTabByName(oldValue);
-
-  if (oldTab) {
-    oldTab.setSelected(false);
-    oldIndex = tabs.indexOf(oldTab);
-  }
-
-  if (newTab) {
-    newTab.setSelected(true);
-    newIndex = tabs.indexOf(newTab);
-  }
-
-  this._$timeout(function() {
-    self._updateInkBarStyles(newTab, newIndex, oldIndex);
-  });
-};
-
-/**
- * Repositions the ink bar to the selected tab.
- * @private
- */
-MdNavBarController.prototype._updateInkBarStyles = function(tab, newIndex, oldIndex) {
-  this._inkbar.toggleClass('_md-left', newIndex < oldIndex)
-      .toggleClass('_md-right', newIndex > oldIndex);
-
-  this._inkbar.css({display: newIndex < 0 ? 'none' : ''});
-
-  if(tab){
-    var tabEl = tab.getButtonEl();
-    var left = tabEl.offsetLeft;
-
-    this._inkbar.css({left: left + 'px', width: tabEl.offsetWidth + 'px'});
-  }
-};
-
-/**
- * Returns an array of the current tabs.
- * @return {!Array<!NavItemController>}
- * @private
- */
-MdNavBarController.prototype._getTabs = function() {
-  var linkArray = Array.prototype.slice.call(
-      this._navBarEl.querySelectorAll('.md-nav-item'));
-  return linkArray.map(function(el) {
-    return angular.element(el).controller('mdNavItem')
-  });
-};
-
-/**
- * Returns the tab with the specified name.
- * @param {string} name The name of the tab, found in its name attribute.
- * @return {!NavItemController|undefined}
- * @private
- */
-MdNavBarController.prototype._getTabByName = function(name) {
-  return this._findTab(function(tab) {
-    return tab.getName() == name;
-  });
-};
-
-/**
- * Returns the selected tab.
- * @return {!NavItemController|undefined}
- * @private
- */
-MdNavBarController.prototype._getSelectedTab = function() {
-  return this._findTab(function(tab) {
-    return tab.isSelected()
-  });
-};
-
-/**
- * Returns the focused tab.
- * @return {!NavItemController|undefined}
- */
-MdNavBarController.prototype.getFocusedTab = function() {
-  return this._findTab(function(tab) {
-    return tab.hasFocus()
-  });
-};
-
-/**
- * Find a tab that matches the specified function.
- * @private
- */
-MdNavBarController.prototype._findTab = function(fn) {
-  var tabs = this._getTabs();
-  for (var i = 0; i < tabs.length; i++) {
-    if (fn(tabs[i])) {
-      return tabs[i];
-    }
-  }
-
-  return null;
-};
-
-/**
- * Direct focus to the selected tab when focus enters the nav bar.
- */
-MdNavBarController.prototype.onFocus = function() {
-  var tab = this._getSelectedTab();
-  if (tab) {
-    tab.setFocused(true);
-  }
-};
-
-/**
- * Clear tab focus when focus leaves the nav bar.
- */
-MdNavBarController.prototype.onBlur = function() {
-  var tab = this.getFocusedTab();
-  if (tab) {
-    tab.setFocused(false);
-  }
-};
-
-/**
- * Move focus from oldTab to newTab.
- * @param {!NavItemController} oldTab
- * @param {!NavItemController} newTab
- * @private
- */
-MdNavBarController.prototype._moveFocus = function(oldTab, newTab) {
-  oldTab.setFocused(false);
-  newTab.setFocused(true);
-};
-
-/**
- * Responds to keypress events.
- * @param {!Event} e
- */
-MdNavBarController.prototype.onKeydown = function(e) {
-  var keyCodes = this._$mdConstant.KEY_CODE;
-  var tabs = this._getTabs();
-  var focusedTab = this.getFocusedTab();
-  if (!focusedTab) return;
-
-  var focusedTabIndex = tabs.indexOf(focusedTab);
-
-  // use arrow keys to navigate between tabs
-  switch (e.keyCode) {
-    case keyCodes.UP_ARROW:
-    case keyCodes.LEFT_ARROW:
-      if (focusedTabIndex > 0) {
-        this._moveFocus(focusedTab, tabs[focusedTabIndex - 1]);
-      }
-      break;
-    case keyCodes.DOWN_ARROW:
-    case keyCodes.RIGHT_ARROW:
-      if (focusedTabIndex < tabs.length - 1) {
-        this._moveFocus(focusedTab, tabs[focusedTabIndex + 1]);
-      }
-      break;
-    case keyCodes.SPACE:
-    case keyCodes.ENTER:
-      // timeout to avoid a "digest already in progress" console error
-      this._$timeout(function() {
-        focusedTab.getButtonEl().click();
-      });
-      break;
-  }
-};
-
-/**
- * @ngInject
- */
-function MdNavItem($$rAF) {
-  return {
-    restrict: 'E',
-    require: ['mdNavItem', '^mdNavBar'],
-    controller: MdNavItemController,
-    bindToController: true,
-    controllerAs: 'ctrl',
-    replace: true,
-    transclude: true,
-    template:
-      '<li class="md-nav-item" role="option" aria-selected="{{ctrl.isSelected()}}">' +
-        '<md-button ng-if="ctrl.mdNavSref" class="_md-nav-button md-accent"' +
-          'ng-class="ctrl.getNgClassMap()"' +
-          'tabindex="-1"' +
-          'ui-sref="{{ctrl.mdNavSref}}">' +
-          '<span ng-transclude class="_md-nav-button-text"></span>' +
-        '</md-button>' +
-        '<md-button ng-if="ctrl.mdNavHref" class="_md-nav-button md-accent"' +
-          'ng-class="ctrl.getNgClassMap()"' +
-          'tabindex="-1"' +
-          'ng-href="{{ctrl.mdNavHref}}">' +
-          '<span ng-transclude class="_md-nav-button-text"></span>' +
-        '</md-button>' +
-        '<md-button ng-if="ctrl.mdNavClick" class="_md-nav-button md-accent"' +
-          'ng-class="ctrl.getNgClassMap()"' +
-          'tabindex="-1"' +
-          'ng-click="ctrl.mdNavClick()">' +
-          '<span ng-transclude class="_md-nav-button-text"></span>' +
-        '</md-button>' +
-      '</li>',
-    scope: {
-      'mdNavClick': '&?',
-      'mdNavHref': '@?',
-      'mdNavSref': '@?',
-      'name': '@',
-    },
-    link: function(scope, element, attrs, controllers) {
-      var mdNavItem = controllers[0];
-      var mdNavBar = controllers[1];
-
-      // When accessing the element's contents synchronously, they
-      // may not be defined yet because of transclusion. There is a higher chance
-      // that it will be accessible if we wait one frame.
-      $$rAF(function() {
-        if (!mdNavItem.name) {
-          mdNavItem.name = angular.element(element[0].querySelector('._md-nav-button-text'))
-            .text().trim();
-        }
-
-        var navButton = angular.element(element[0].querySelector('._md-nav-button'));
-        navButton.on('click', function() {
-          mdNavBar.mdSelectedNavItem = mdNavItem.name;
-          scope.$apply();
-        });
-      });
-    }
-  };
-}
-
-/**
- * Controller for the nav-item component.
- * @param {!angular.JQLite} $element
- * @constructor
- * @final
- * @ngInject
- */
-function MdNavItemController($element) {
-
-  /** @private @const {!angular.JQLite} */
-  this._$element = $element;
-
-  // Data-bound variables
-  /** @const {?Function} */
-  this.mdNavClick;
-  /** @const {?string} */
-  this.mdNavHref;
-  /** @const {?string} */
-  this.name;
-
-  // State variables
-  /** @private {boolean} */
-  this._selected = false;
-
-  /** @private {boolean} */
-  this._focused = false;
-
-  var hasNavClick = !!($element.attr('md-nav-click'));
-  var hasNavHref = !!($element.attr('md-nav-href'));
-  var hasNavSref = !!($element.attr('md-nav-sref'));
-
-  // Cannot specify more than one nav attribute
-  if ((hasNavClick ? 1:0) + (hasNavHref ? 1:0) + (hasNavSref ? 1:0) > 1) {
-    throw Error(
-        'Must specify exactly one of md-nav-click, md-nav-href, ' +
-        'md-nav-sref for nav-item directive');
-  }
-}
-
-/**
- * Returns a map of class names and values for use by ng-class.
- * @return {!Object<string,boolean>}
- */
-MdNavItemController.prototype.getNgClassMap = function() {
-  return {
-    'md-active': this._selected,
-    'md-primary': this._selected,
-    'md-unselected': !this._selected,
-    'md-focused': this._focused,
-  };
-};
-
-/**
- * Get the name attribute of the tab.
- * @return {string}
- */
-MdNavItemController.prototype.getName = function() {
-  return this.name;
-};
-
-/**
- * Get the button element associated with the tab.
- * @return {!Element}
- */
-MdNavItemController.prototype.getButtonEl = function() {
-  return this._$element[0].querySelector('._md-nav-button');
-};
-
-/**
- * Set the selected state of the tab.
- * @param {boolean} isSelected
- */
-MdNavItemController.prototype.setSelected = function(isSelected) {
-  this._selected = isSelected;
-};
-
-/**
- * @return {boolean}
- */
-MdNavItemController.prototype.isSelected = function() {
-  return this._selected;
-};
-
-/**
- * Set the focused state of the tab.
- * @param {boolean} isFocused
- */
-MdNavItemController.prototype.setFocused = function(isFocused) {
-  this._focused = isFocused;
-};
-
-/**
- * @return {boolean}
- */
-MdNavItemController.prototype.hasFocus = function() {
-  return this._focused;
-};
-
-})();
-(function(){
-"use strict";
-
-/**
- * @ngdoc module
- * @name material.components.panel
- */
-MdPanelService.$inject = ["$rootElement", "$rootScope", "$injector", "$window"];
-angular
-    .module('material.components.panel', [
-      'material.core',
-      'material.components.backdrop'
-    ])
-    .service('$mdPanel', MdPanelService);
-
-
-/*****************************************************************************
- *                            PUBLIC DOCUMENTATION                           *
- *****************************************************************************/
 
 /**
  * @ngdoc service
@@ -15691,7 +16119,7 @@ angular
  * @usage
  * <hljs lang="js">
  * (function(angular, undefined) {
- *   ‘use strict’;
+ *   'use strict';
  *
  *   angular
  *       .module('demoApp', ['ngMaterial'])
@@ -15729,11 +16157,9 @@ angular
  *         });
  *   }
  *
- *   function DialogController(MdPanelRef, toppings) {
- *     var toppings;
- *
+ *   function DialogController(MdPanelRef) {
  *     function closeDialog() {
- *       MdPanelRef && MdPanelRef.close();
+ *       if (MdPanelRef) MdPanelRef.close();
  *     }
  *   }
  * })(angular);
@@ -15760,6 +16186,8 @@ angular
  *     [$sce service](https://docs.angularjs.org/api/ng/service/$sce).
  *   - `templateUrl` - `{string=}`: The URL that will be used as the content of
  *     the panel.
+ *   - `contentElement` - `{(string|!angular.JQLite|!Element)=}`: Pre-compiled
+ *     element to be used as the panel's content.
  *   - `controller` - `{(function|string)=}`: The controller to associate with
  *     the panel. The controller can inject a reference to the returned
  *     panelRef, which allows the panel to be closed, hidden, and shown. Any
@@ -15793,6 +16221,12 @@ angular
  *     outside the panel to close it. Defaults to false.
  *   - `escapeToClose` - `{boolean=}`: Whether the user can press escape to
  *     close the panel. Defaults to false.
+ *   - `onCloseSuccess` - `{function(!panelRef, string)=}`: Function that is
+ *     called after the close successfully finishes. The first parameter passed
+ *     into this function is the current panelRef and the 2nd is an optional
+ *     string explaining the close reason. The currently supported closeReasons
+ *     can be found in the MdPanelRef.closeReasons enum. These are by default
+ *     passed along by the panel.
  *   - `trapFocus` - `{boolean=}`: Whether focus should be trapped within the
  *     panel. If `trapFocus` is true, the user will not be able to interact
  *     with the rest of the page until the panel is dismissed. Defaults to
@@ -15822,10 +16256,14 @@ angular
  *     on when the panel closes. This is commonly the element which triggered
  *     the opening of the panel. If you do not use `origin`, you need to control
  *     the focus manually.
+ *   - `groupName` - `{(string|!Array<string>)=}`: A group name or an array of
+ *     group names. The group name is used for creating a group of panels. The
+ *     group is used for configuring the number of open panels and identifying
+ *     specific behaviors for groups. For instance, all tooltips could be
+ *     identified using the same groupName.
  *
  * @returns {!MdPanelRef} panelRef
  */
-
 
 /**
  * @ngdoc method
@@ -15843,7 +16281,6 @@ angular
  *     to an instance of the panel.
  */
 
-
 /**
  * @ngdoc method
  * @name $mdPanel#newPanelPosition
@@ -15854,7 +16291,6 @@ angular
  * @returns {!MdPanelPosition} panelPosition
  */
 
-
 /**
  * @ngdoc method
  * @name $mdPanel#newPanelAnimation
@@ -15863,6 +16299,37 @@ angular
  * the animation config object.
  *
  * @returns {!MdPanelAnimation} panelAnimation
+ */
+
+/**
+ * @ngdoc method
+ * @name $mdPanel#newPanelGroup
+ * @description
+ * Creates a panel group and adds it to a tracked list of panel groups.
+ *
+ * @param {string} groupName Name of the group to create.
+ * @param {!Object=} config Specific configuration object that may contain the
+ *     following properties:
+ *
+ *   - `maxOpen` - `{number=}`: The maximum number of panels that are allowed to
+ *     be open within a defined panel group.
+ *
+ * @returns {!Object<string,
+ *     {panels: !Array<!MdPanelRef>,
+ *     openPanels: !Array<!MdPanelRef>,
+ *     maxOpen: number}>} panelGroup
+ */
+
+/**
+ * @ngdoc method
+ * @name $mdPanel#setGroupMaxOpen
+ * @description
+ * Sets the maximum number of panels in a group that can be opened at a given
+ * time.
+ *
+ * @param {string} groupName The name of the group to configure.
+ * @param {number} maxOpen The maximum number of panels that can be
+ *     opened. Infinity can be passed in to remove the maxOpen limit.
  */
 
 
@@ -16018,6 +16485,74 @@ angular
  * panel.
  *
  * @param {!MdPanelPosition} position
+ */
+
+/**
+ * @ngdoc method
+ * @name MdPanelRef#addToGroup
+ * @description
+ * Adds a panel to a group if the panel does not exist within the group already.
+ * A panel can only exist within a single group.
+ *
+ * @param {string} groupName The name of the group to add the panel to.
+ */
+
+/**
+ * @ngdoc method
+ * @name MdPanelRef#removeFromGroup
+ * @description
+ * Removes a panel from a group if the panel exists within that group. The group
+ * must be created ahead of time.
+ *
+ * @param {string} groupName The name of the group.
+ */
+
+/**
+ * @ngdoc method
+ * @name MdPanelRef#registerInterceptor
+ * @description
+ * Registers an interceptor with the panel. The callback should return a promise,
+ * which will allow the action to continue when it gets resolved, or will
+ * prevent an action if it is rejected. The interceptors are called sequentially
+ * and it reverse order. `type` must be one of the following
+ * values available on `$mdPanel.interceptorTypes`:
+ * * `CLOSE` - Gets called before the panel begins closing.
+ *
+ * @param {string} type Type of interceptor.
+ * @param {!angular.$q.Promise<any>} callback Callback to be registered.
+ * @returns {!MdPanelRef}
+ */
+
+/**
+ * @ngdoc method
+ * @name MdPanelRef#removeInterceptor
+ * @description
+ * Removes a registered interceptor.
+ *
+ * @param {string} type Type of interceptor to be removed.
+ * @param {function(): !angular.$q.Promise<any>} callback Interceptor to be removed.
+ * @returns {!MdPanelRef}
+ */
+
+/**
+ * @ngdoc method
+ * @name MdPanelRef#removeAllInterceptors
+ * @description
+ * Removes all interceptors. If a type is supplied, only the
+ * interceptors of that type will be cleared.
+ *
+ * @param {string=} type Type of interceptors to be removed.
+ * @returns {!MdPanelRef}
+ */
+
+/**
+ * @ngdoc method
+ * @name MdPanelRef#updateAnimation
+ * @description
+ * Updates the animation configuration for a panel. You can use this to change
+ * the panel's animation without having to re-create it.
+ *
+ * @param {!MdPanelAnimation} animation
  */
 
 
@@ -16193,8 +16728,10 @@ angular
  * xPosition must be one of the following values available on
  * $mdPanel.xPosition:
  *
+ *
  * CENTER | ALIGN_START | ALIGN_END | OFFSET_START | OFFSET_END
  *
+ * <pre>
  *    *************
  *    *           *
  *    *   PANEL   *
@@ -16207,12 +16744,14 @@ angular
  * C: CENTER
  * D: ALIGN_END (for LTR displays)
  * E: OFFSET_END (for LTR displays)
+ * </pre>
  *
  * yPosition must be one of the following values available on
  * $mdPanel.yPosition:
  *
  * CENTER | ALIGN_TOPS | ALIGN_BOTTOMS | ABOVE | BELOW
  *
+ * <pre>
  *   F
  *   G *************
  *     *           *
@@ -16226,6 +16765,7 @@ angular
  * H: CENTER
  * I: ALIGN_BOTTOMS
  * J: ABOVE
+ * </pre>
  *
  * @param {string} xPosition
  * @param {string} yPosition
@@ -16259,22 +16799,26 @@ angular
 
 
 /**
- * @ngdoc object
+ * @ngdoc type
  * @name MdPanelAnimation
+ * @module material.components.panel
  * @description
  * Animation configuration object. To use, create an MdPanelAnimation with the
  * desired properties, then pass the object as part of $mdPanel creation.
  *
- * Example:
+ * @usage
  *
+ * <hljs lang="js">
  * var panelAnimation = new MdPanelAnimation()
  *     .openFrom(myButtonEl)
+ *     .duration(1337)
  *     .closeTo('.my-button')
  *     .withAnimation($mdPanel.animation.SCALE);
  *
  * $mdPanel.create({
  *   animation: panelAnimation
  * });
+ * </hljs>
  */
 
 /**
@@ -16323,29 +16867,127 @@ angular
  * @returns {!MdPanelAnimation}
  */
 
+/**
+ * @ngdoc method
+ * @name MdPanelAnimation#duration
+ * @description
+ * Specifies the duration of the animation in milliseconds. The `duration`
+ * method accepts either a number or an object with separate open and close
+ * durations.
+ *
+ * @param {number|{open: number, close: number}} duration
+ * @returns {!MdPanelAnimation}
+ */
+
 
 /*****************************************************************************
- *                                IMPLEMENTATION                             *
+ *                            PUBLIC DOCUMENTATION                           *
  *****************************************************************************/
 
 
-// Default z-index for the panel.
-var defaultZIndex = 80;
+var MD_PANEL_Z_INDEX = 80;
 var MD_PANEL_HIDDEN = '_md-panel-hidden';
-
 var FOCUS_TRAP_TEMPLATE = angular.element(
     '<div class="_md-panel-focus-trap" tabindex="0"></div>');
+
+var _presets = {};
+
+
+/**
+ * A provider that is used for creating presets for the panel API.
+ * @final @constructor @ngInject
+ */
+function MdPanelProvider() {
+  return {
+    'definePreset': definePreset,
+    'getAllPresets': getAllPresets,
+    'clearPresets': clearPresets,
+    '$get': $getProvider()
+  };
+}
+
+
+/**
+ * Takes the passed in panel configuration object and adds it to the `_presets`
+ * object at the specified name.
+ * @param {string} name Name of the preset to set.
+ * @param {!Object} preset Specific configuration object that can contain any
+ *     and all of the parameters avaialble within the `$mdPanel.create` method.
+ *     However, parameters that pertain to id, position, animation, and user
+ *     interaction are not allowed and will be removed from the preset
+ *     configuration.
+ */
+function definePreset(name, preset) {
+  if (!name || !preset) {
+    throw new Error('mdPanelProvider: The panel preset definition is ' +
+        'malformed. The name and preset object are required.');
+  } else if (_presets.hasOwnProperty(name)) {
+    throw new Error('mdPanelProvider: The panel preset you have requested ' +
+        'has already been defined.');
+  }
+
+  // Delete any property on the preset that is not allowed.
+  delete preset.id;
+  delete preset.position;
+  delete preset.animation;
+
+  _presets[name] = preset;
+}
+
+
+/**
+ * Gets a clone of the `_presets`.
+ * @return {!Object}
+ */
+function getAllPresets() {
+  return angular.copy(_presets);
+}
+
+
+/**
+ * Clears all of the stored presets.
+ */
+function clearPresets() {
+  _presets = {};
+}
+
+
+/**
+ * Represents the `$get` method of the Angular provider. From here, a new
+ * reference to the MdPanelService is returned where the needed arguments are
+ * passed in including the MdPanelProvider `_presets`.
+ * @param {!Object} _presets
+ * @param {!angular.JQLite} $rootElement
+ * @param {!angular.Scope} $rootScope
+ * @param {!angular.$injector} $injector
+ * @param {!angular.$window} $window
+ */
+function $getProvider() {
+  return [
+    '$rootElement', '$rootScope', '$injector', '$window',
+    function($rootElement, $rootScope, $injector, $window) {
+      return new MdPanelService(_presets, $rootElement, $rootScope,
+          $injector, $window);
+    }
+  ];
+}
+
+
+/*****************************************************************************
+ *                               MdPanel Service                             *
+ *****************************************************************************/
 
 
 /**
  * A service that is used for controlling/displaying panels on the screen.
+ * @param {!Object} presets
  * @param {!angular.JQLite} $rootElement
  * @param {!angular.Scope} $rootScope
  * @param {!angular.$injector} $injector
  * @param {!angular.$window} $window
  * @final @constructor @ngInject
  */
-function MdPanelService($rootElement, $rootScope, $injector, $window) {
+function MdPanelService(presets, $rootElement, $rootScope, $injector, $window) {
   /**
    * Default config options for the panel.
    * Anything angular related needs to be done later. Therefore
@@ -16365,11 +17007,14 @@ function MdPanelService($rootElement, $rootScope, $injector, $window) {
     propagateContainerEvents: false,
     transformTemplate: angular.bind(this, this._wrapTemplate),
     trapFocus: false,
-    zIndex: defaultZIndex
+    zIndex: MD_PANEL_Z_INDEX
   };
 
   /** @private {!Object} */
   this._config = {};
+
+  /** @private {!Object} */
+  this._presets = presets;
 
   /** @private @const */
   this._$rootElement = $rootElement;
@@ -16383,8 +17028,19 @@ function MdPanelService($rootElement, $rootScope, $injector, $window) {
   /** @private @const */
   this._$window = $window;
 
+  /** @private @const */
+  this._$mdUtil = this._$injector.get('$mdUtil');
+
   /** @private {!Object<string, !MdPanelRef>} */
   this._trackedPanels = {};
+
+  /**
+   * @private {!Object<string,
+   *     {panels: !Array<!MdPanelRef>,
+   *     openPanels: !Array<!MdPanelRef>,
+   *     maxOpen: number}>}
+   */
+  this._groups = Object.create(null);
 
   /**
    * Default animations that can be used within the panel.
@@ -16405,33 +17061,79 @@ function MdPanelService($rootElement, $rootScope, $injector, $window) {
    * @type {enum}
    */
   this.yPosition = MdPanelPosition.yPosition;
+
+  /**
+   * Possible values for the interceptors that can be registered on a panel.
+   * @type {enum}
+   */
+  this.interceptorTypes = MdPanelRef.interceptorTypes;
+
+  /**
+   * Possible values for closing of a panel.
+   * @type {enum}
+   */
+  this.closeReasons = MdPanelRef.closeReasons;
+
+  /**
+   * Possible values of absolute position.
+   * @type {enum}
+   */
+  this.absPosition = MdPanelPosition.absPosition;
 }
 
 
 /**
  * Creates a panel with the specified options.
+ * @param {string=} preset Name of a preset configuration that can be used to
+ *     extend the panel configuration.
  * @param {!Object=} config Configuration object for the panel.
  * @returns {!MdPanelRef}
  */
-MdPanelService.prototype.create = function(config) {
+MdPanelService.prototype.create = function(preset, config) {
+  if (typeof preset === 'string') {
+    preset = this._getPresetByName(preset);
+  } else if (typeof preset === 'object' &&
+      (angular.isUndefined(config) || !config)) {
+    config = preset;
+    preset = {};
+  }
+
+  preset = preset || {};
   config = config || {};
 
   // If the passed-in config contains an ID and the ID is within _trackedPanels,
-  // return the tracked panel.
+  // return the tracked panel after updating its config with the passed-in
+  // config.
   if (angular.isDefined(config.id) && this._trackedPanels[config.id]) {
-    return this._trackedPanels[config.id];
+    var trackedPanel = this._trackedPanels[config.id];
+    angular.extend(trackedPanel.config, config);
+    return trackedPanel;
   }
 
-  // If no ID is set within the passed-in config, then create an arbitrary ID.
-  this._config = {
-    id: config.id || 'panel_' + this._$injector.get('$mdUtil').nextUid(),
+  // Combine the passed-in config, the _defaultConfigOptions, and the preset
+  // configuration into the `_config`.
+  this._config = angular.extend({
+    // If no ID is set within the passed-in config, then create an arbitrary ID.
+    id: config.id || 'panel_' + this._$mdUtil.nextUid(),
     scope: this._$rootScope.$new(true),
     attachTo: this._$rootElement
-  };
-  angular.extend(this._config, this._defaultConfigOptions, config);
+  }, this._defaultConfigOptions, config, preset);
 
+  // Create the panelRef and add it to the `_trackedPanels` object.
   var panelRef = new MdPanelRef(this._config, this._$injector);
   this._trackedPanels[config.id] = panelRef;
+
+  // Add the panel to each of its requested groups.
+  if (this._config.groupName) {
+    if (angular.isString(this._config.groupName)) {
+      this._config.groupName = [this._config.groupName];
+    }
+    angular.forEach(this._config.groupName, function(group) {
+      panelRef.addToGroup(group);
+    });
+  }
+
+  this._config.scope.$on('$destroy', angular.bind(panelRef, panelRef.detach));
 
   return panelRef;
 };
@@ -16439,14 +17141,31 @@ MdPanelService.prototype.create = function(config) {
 
 /**
  * Creates and opens a panel with the specified options.
+ * @param {string=} preset Name of a preset configuration that can be used to
+ *     extend the panel configuration.
  * @param {!Object=} config Configuration object for the panel.
  * @returns {!angular.$q.Promise<!MdPanelRef>} The panel created from create.
  */
-MdPanelService.prototype.open = function(config) {
-  var panelRef = this.create(config);
+MdPanelService.prototype.open = function(preset, config) {
+  var panelRef = this.create(preset, config);
   return panelRef.open().then(function() {
     return panelRef;
   });
+};
+
+
+/**
+ * Gets a specific preset configuration object saved within `_presets`.
+ * @param {string} preset Name of the preset to search for.
+ * @returns {!Object} The preset configuration object.
+ */
+MdPanelService.prototype._getPresetByName = function(preset) {
+  if (!this._presets[preset]) {
+    throw new Error('mdPanel: The panel preset configuration that you ' +
+        'requested does not exist. Use the $mdPanelProvider to create a ' +
+        'preset before requesting one.');
+  }
+  return this._presets[preset];
 };
 
 
@@ -16471,6 +17190,76 @@ MdPanelService.prototype.newPanelAnimation = function() {
 
 
 /**
+ * Creates a panel group and adds it to a tracked list of panel groups.
+ * @param groupName {string} Name of the group to create.
+ * @param config {!Object=} Specific configuration object that may contain the
+ *     following properties:
+ *
+ *   - `maxOpen` - `{number=}`: The maximum number of panels that are allowed
+ *     open within a defined panel group.
+ *
+ * @returns {!Object<string,
+ *     {panels: !Array<!MdPanelRef>,
+ *     openPanels: !Array<!MdPanelRef>,
+ *     maxOpen: number}>} panelGroup
+ */
+MdPanelService.prototype.newPanelGroup = function(groupName, config) {
+  if (!this._groups[groupName]) {
+    config = config || {};
+    var group = {
+      panels: [],
+      openPanels: [],
+      maxOpen: config.maxOpen > 0 ? config.maxOpen : Infinity
+    };
+    this._groups[groupName] = group;
+  }
+  return this._groups[groupName];
+};
+
+
+/**
+ * Sets the maximum number of panels in a group that can be opened at a given
+ * time.
+ * @param {string} groupName The name of the group to configure.
+ * @param {number} maxOpen The maximum number of panels that can be
+ *     opened. Infinity can be passed in to remove the maxOpen limit.
+ */
+MdPanelService.prototype.setGroupMaxOpen = function(groupName, maxOpen) {
+  if (this._groups[groupName]) {
+    this._groups[groupName].maxOpen = maxOpen;
+  } else {
+    throw new Error('mdPanel: Group does not exist yet. Call newPanelGroup().');
+  }
+};
+
+
+/**
+ * Determines if the current number of open panels within a group exceeds the
+ * limit of allowed open panels.
+ * @param {string} groupName The name of the group to check.
+ * @returns {boolean} true if open count does exceed maxOpen and false if not.
+ * @private
+ */
+MdPanelService.prototype._openCountExceedsMaxOpen = function(groupName) {
+  if (this._groups[groupName]) {
+    var group = this._groups[groupName];
+    return group.maxOpen > 0 && group.openPanels.length > group.maxOpen;
+  }
+  return false;
+};
+
+
+/**
+ * Closes the first open panel within a specific group.
+ * @param {string} groupName The name of the group.
+ * @private
+ */
+MdPanelService.prototype._closeFirstOpenedPanel = function(groupName) {
+  this._groups[groupName].openPanels[0].close();
+};
+
+
+/**
  * Wraps the users template in two elements, md-panel-outer-wrapper, which
  * covers the entire attachTo element, and md-panel, which contains only the
  * template. This allows the panel control over positioning, animations,
@@ -16488,6 +17277,24 @@ MdPanelService.prototype._wrapTemplate = function(origTemplate) {
       '<div class="md-panel-outer-wrapper">' +
       '  <div class="md-panel" style="left: -9999px;">' + template + '</div>' +
       '</div>';
+};
+
+
+/**
+ * Wraps a content element in a md-panel-outer wrapper and
+ * positions it off-screen. Allows for proper control over positoning
+ * and animations.
+ * @param {!angular.JQLite} contentElement Element to be wrapped.
+ * @return {!angular.JQLite} Wrapper element.
+ * @private
+ */
+MdPanelService.prototype._wrapContentElement = function(contentElement) {
+  var wrapper = angular.element('<div class="md-panel-outer-wrapper">');
+
+  contentElement.addClass('md-panel').css('left', '-9999px');
+  wrapper.append(contentElement);
+
+  return wrapper;
 };
 
 
@@ -16516,6 +17323,9 @@ function MdPanelRef(config, $injector) {
 
   /** @private @const {!angular.$mdUtil} */
   this._$mdUtil = $injector.get('$mdUtil');
+
+  /** @private @const {!angular.$mdTheming} */
+  this._$mdTheming = $injector.get('$mdTheming');
 
   /** @private @const {!angular.Scope} */
   this._$rootScope = $injector.get('$rootScope');
@@ -16574,7 +17384,35 @@ function MdPanelRef(config, $injector) {
 
   /** @private {Function?} */
   this._restoreScroll = null;
+
+  /**
+   * Keeps track of all the panel interceptors.
+   * @private {!Object}
+   */
+  this._interceptors = Object.create(null);
+
+  /**
+   * Cleanup function, provided by `$mdCompiler` and assigned after the element
+   * has been compiled. When `contentElement` is used, the function is used to
+   * restore the element to it's proper place in the DOM.
+   * @private {!Function}
+   */
+  this._compilerCleanup = null;
+
+  /**
+   * Cache for saving and restoring element inline styles, CSS classes etc.
+   * @type {{styles: string, classes: string}}
+   */
+  this._restoreCache = {
+    styles: '',
+    classes: ''
+  };
 }
+
+
+MdPanelRef.interceptorTypes = {
+  CLOSE: 'onClose'
+};
 
 
 /**
@@ -16588,9 +17426,19 @@ MdPanelRef.prototype.open = function() {
   return this._$q(function(resolve, reject) {
     var done = self._done(resolve, self);
     var show = self._simpleBind(self.show, self);
+    var checkGroupMaxOpen = function() {
+      if (self.config.groupName) {
+        angular.forEach(self.config.groupName, function(group) {
+          if (self._$mdPanel._openCountExceedsMaxOpen(group)) {
+            self._$mdPanel._closeFirstOpenedPanel(group);
+          }
+        });
+      }
+    };
 
     self.attach()
         .then(show)
+        .then(checkGroupMaxOpen)
         .then(done)
         .catch(reject);
   });
@@ -16599,20 +17447,26 @@ MdPanelRef.prototype.open = function() {
 
 /**
  * Closes the panel.
+ * @param {string} closeReason The event type that triggered the close.
  * @returns {!angular.$q.Promise<!MdPanelRef>} A promise that is resolved when
  *     the panel is closed and animations finish.
  */
-MdPanelRef.prototype.close = function() {
+MdPanelRef.prototype.close = function(closeReason) {
   var self = this;
 
   return this._$q(function(resolve, reject) {
-    var done = self._done(resolve, self);
-    var detach = self._simpleBind(self.detach, self);
+    self._callInterceptors(MdPanelRef.interceptorTypes.CLOSE).then(function() {
+      var done = self._done(resolve, self);
+      var detach = self._simpleBind(self.detach, self);
+      var onCloseSuccess = self.config['onCloseSuccess'] || angular.noop;
+      onCloseSuccess = angular.bind(self, onCloseSuccess, self, closeReason);
 
-    self.hide()
-        .then(detach)
-        .then(done)
-        .catch(reject);
+      self.hide()
+          .then(detach)
+          .then(done)
+          .then(onCloseSuccess)
+          .catch(reject);
+    }, reject);
   });
 };
 
@@ -16632,9 +17486,9 @@ MdPanelRef.prototype.attach = function() {
     var done = self._done(resolve, self);
     var onDomAdded = self.config['onDomAdded'] || angular.noop;
     var addListeners = function(response) {
-        self.isAttached = true;
-        self._addEventListeners();
-        return response;
+      self.isAttached = true;
+      self._addEventListeners();
+      return response;
     };
 
     self._$q.all([
@@ -16675,6 +17529,14 @@ MdPanelRef.prototype.detach = function() {
       self._bottomFocusTrap.parentNode.removeChild(self._bottomFocusTrap);
     }
 
+    if (self._restoreCache.classes) {
+      self.panelEl[0].className = self._restoreCache.classes;
+    }
+
+    // Either restore the saved styles or clear the ones set by mdPanel.
+    self.panelEl[0].style.cssText = self._restoreCache.styles || '';
+
+    self._compilerCleanup();
     self.panelContainer.remove();
     self.isAttached = false;
     return self._$q.when(self);
@@ -16702,8 +17564,15 @@ MdPanelRef.prototype.detach = function() {
  * Destroys the panel. The Panel cannot be opened again after this.
  */
 MdPanelRef.prototype.destroy = function() {
+  var self = this;
+  if (this.config.groupName) {
+    angular.forEach(this.config.groupName, function(group) {
+      self.removeFromGroup(group);
+    });
+  }
   this.config.scope.$destroy();
   this.config.locals = null;
+  this._interceptors = null;
 };
 
 
@@ -16715,7 +17584,7 @@ MdPanelRef.prototype.destroy = function() {
 MdPanelRef.prototype.show = function() {
   if (!this.panelContainer) {
     return this._$q(function(resolve, reject) {
-      reject('Panel does not exist yet. Call open() or attach().');
+      reject('mdPanel: Panel does not exist yet. Call open() or attach().');
     });
   }
 
@@ -16732,11 +17601,19 @@ MdPanelRef.prototype.show = function() {
   return this._$q(function(resolve, reject) {
     var done = self._done(resolve, self);
     var onOpenComplete = self.config['onOpenComplete'] || angular.noop;
+    var addToGroupOpen = function() {
+      if (self.config.groupName) {
+        angular.forEach(self.config.groupName, function(group) {
+          self._$mdPanel._groups[group].openPanels.push(self);
+        });
+      }
+    };
 
     self._$q.all([
       self._backdropRef ? self._backdropRef.show() : self,
       animatePromise().then(function() { self._focusOnOpen(); }, reject)
     ]).then(onOpenComplete)
+      .then(addToGroupOpen)
       .then(done)
       .catch(reject);
   });
@@ -16751,7 +17628,7 @@ MdPanelRef.prototype.show = function() {
 MdPanelRef.prototype.hide = function() {
   if (!this.panelContainer) {
     return this._$q(function(resolve, reject) {
-      reject('Panel does not exist yet. Call open() or attach().');
+      reject('mdPanel: Panel does not exist yet. Call open() or attach().');
     });
   }
 
@@ -16764,7 +17641,21 @@ MdPanelRef.prototype.hide = function() {
   return this._$q(function(resolve, reject) {
     var done = self._done(resolve, self);
     var onRemoving = self.config['onRemoving'] || angular.noop;
-
+    var hidePanel = function() {
+      self.panelContainer.addClass(MD_PANEL_HIDDEN);
+    };
+    var removeFromGroupOpen = function() {
+      if (self.config.groupName) {
+        var group, index;
+        angular.forEach(self.config.groupName, function(group) {
+          group = self._$mdPanel._groups[group];
+          index = group.openPanels.indexOf(self);
+          if (index > -1) {
+            group.openPanels.splice(index, 1);
+          }
+        });
+      }
+    };
     var focusOnOrigin = function() {
       var origin = self.config['origin'];
       if (origin) {
@@ -16772,15 +17663,12 @@ MdPanelRef.prototype.hide = function() {
       }
     };
 
-    var hidePanel = function() {
-      self.panelContainer.addClass(MD_PANEL_HIDDEN);
-    };
-
     self._$q.all([
       self._backdropRef ? self._backdropRef.hide() : self,
       self._animateClose()
           .then(onRemoving)
           .then(hidePanel)
+          .then(removeFromGroupOpen)
           .then(focusOnOrigin)
           .catch(reject)
     ]).then(done, reject);
@@ -16801,13 +17689,14 @@ MdPanelRef.prototype.hide = function() {
  */
 MdPanelRef.prototype.addClass = function(newClass, toElement) {
   this._$log.warn(
-      'The addClass method is in the process of being deprecated. ' +
+      'mdPanel: The addClass method is in the process of being deprecated. ' +
       'Full deprecation is scheduled for the Angular Material 1.2 release. ' +
       'To achieve the same results, use the panelContainer or panelEl ' +
       'JQLite elements that are referenced in MdPanelRef.');
 
   if (!this.panelContainer) {
-    throw new Error('Panel does not exist yet. Call open() or attach().');
+    throw new Error(
+        'mdPanel: Panel does not exist yet. Call open() or attach().');
   }
 
   if (!toElement && !this.panelContainer.hasClass(newClass)) {
@@ -16831,13 +17720,14 @@ MdPanelRef.prototype.addClass = function(newClass, toElement) {
  */
 MdPanelRef.prototype.removeClass = function(oldClass, fromElement) {
   this._$log.warn(
-      'The removeClass method is in the process of being deprecated. ' +
+      'mdPanel: The removeClass method is in the process of being deprecated. ' +
       'Full deprecation is scheduled for the Angular Material 1.2 release. ' +
       'To achieve the same results, use the panelContainer or panelEl ' +
       'JQLite elements that are referenced in MdPanelRef.');
 
   if (!this.panelContainer) {
-    throw new Error('Panel does not exist yet. Call open() or attach().');
+    throw new Error(
+        'mdPanel: Panel does not exist yet. Call open() or attach().');
   }
 
   if (!fromElement && this.panelContainer.hasClass(oldClass)) {
@@ -16861,13 +17751,14 @@ MdPanelRef.prototype.removeClass = function(oldClass, fromElement) {
  */
 MdPanelRef.prototype.toggleClass = function(toggleClass, onElement) {
   this._$log.warn(
-      'The toggleClass method is in the process of being deprecated. ' +
+      'mdPanel: The toggleClass method is in the process of being deprecated. ' +
       'Full deprecation is scheduled for the Angular Material 1.2 release. ' +
       'To achieve the same results, use the panelContainer or panelEl ' +
       'JQLite elements that are referenced in MdPanelRef.');
 
   if (!this.panelContainer) {
-    throw new Error('Panel does not exist yet. Call open() or attach().');
+    throw new Error(
+        'mdPanel: Panel does not exist yet. Call open() or attach().');
   }
 
   if (!onElement) {
@@ -16875,6 +17766,51 @@ MdPanelRef.prototype.toggleClass = function(toggleClass, onElement) {
   } else {
     this.panelEl.toggleClass(toggleClass);
   }
+};
+
+
+/**
+ * Compiles the panel, according to the passed in config and appends it to
+ * the DOM. Helps normalize differences in the compilation process between
+ * using a string template and a content element.
+ * @returns {!angular.$q.Promise<!MdPanelRef>} Promise that is resolved when
+ *     the element has been compiled and added to the DOM.
+ * @private
+ */
+MdPanelRef.prototype._compile = function() {
+  var self = this;
+
+  // Compile the element via $mdCompiler. Note that when using a
+  // contentElement, the element isn't actually being compiled, rather the
+  // compiler saves it's place in the DOM and provides a way of restoring it.
+  return self._$mdCompiler.compile(self.config).then(function(compileData) {
+    var config = self.config;
+
+    if (config.contentElement) {
+      var panelEl = compileData.element;
+
+      // Since mdPanel modifies the inline styles and CSS classes, we need
+      // to save them in order to be able to restore on close.
+      self._restoreCache.styles = panelEl[0].style.cssText;
+      self._restoreCache.classes = panelEl[0].className;
+
+      self.panelContainer = self._$mdPanel._wrapContentElement(panelEl);
+      self.panelEl = panelEl;
+    } else {
+      self.panelContainer = compileData.link(config['scope']);
+      self.panelEl = angular.element(
+        self.panelContainer[0].querySelector('.md-panel')
+      );
+    }
+
+    // Save a reference to the cleanup function from the compiler.
+    self._compilerCleanup = compileData.cleanup;
+
+    // Attach the panel to the proper place in the DOM.
+    getElement(self.config['attachTo']).append(self.panelContainer);
+
+    return self;
+  });
 };
 
 
@@ -16893,50 +17829,48 @@ MdPanelRef.prototype._createPanel = function() {
     }
 
     self.config.locals.mdPanelRef = self;
-    self._$mdCompiler.compile(self.config)
-        .then(function(compileData) {
-          self.panelContainer = compileData.link(self.config['scope']);
-          getElement(self.config['attachTo']).append(self.panelContainer);
 
-          if (self.config['disableParentScroll']) {
-            self._restoreScroll = self._$mdUtil.disableScrollAround(
-              null,
-              self.panelContainer,
-              { disableScrollMask: true }
-            );
-          }
+    self._compile().then(function() {
+      if (self.config['disableParentScroll']) {
+        self._restoreScroll = self._$mdUtil.disableScrollAround(
+          null,
+          self.panelContainer,
+          { disableScrollMask: true }
+        );
+      }
 
-          self.panelEl = angular.element(
-              self.panelContainer[0].querySelector('.md-panel'));
+      // Add a custom CSS class to the panel element.
+      if (self.config['panelClass']) {
+        self.panelEl.addClass(self.config['panelClass']);
+      }
 
-          // Add a custom CSS class to the panel element.
-          if (self.config['panelClass']) {
-            self.panelEl.addClass(self.config['panelClass']);
-          }
+      // Handle click and touch events for the panel container.
+      if (self.config['propagateContainerEvents']) {
+        self.panelContainer.css('pointer-events', 'none');
+      }
 
-          // Handle click and touch events for the panel container.
-          if (self.config['propagateContainerEvents']) {
-            self.panelContainer.css('pointer-events', 'none');
-          }
+      // Panel may be outside the $rootElement, tell ngAnimate to animate
+      // regardless.
+      if (self._$animate.pin) {
+        self._$animate.pin(
+          self.panelContainer,
+          getElement(self.config['attachTo'])
+        );
+      }
 
-          // Panel may be outside the $rootElement, tell ngAnimate to animate
-          // regardless.
-          if (self._$animate.pin) {
-            self._$animate.pin(self.panelContainer,
-                getElement(self.config['attachTo']));
-          }
+      self._configureTrapFocus();
+      self._addStyles().then(function() {
+        resolve(self);
+      }, reject);
+    }, reject);
 
-          self._configureTrapFocus();
-          self._addStyles().then(function() {
-            resolve(self);
-          }, reject);
-        }, reject);
   });
 };
 
 
 /**
- * Adds the styles for the panel, such as positioning and z-index.
+ * Adds the styles for the panel, such as positioning and z-index. Also,
+ * themes the panel element and panel container using `$mdTheming`.
  * @returns {!angular.$q.Promise<!MdPanelRef>}
  * @private
  */
@@ -16947,9 +17881,13 @@ MdPanelRef.prototype._addStyles = function() {
     self.panelEl.css('z-index', self.config['zIndex'] + 1);
 
     var hideAndResolve = function() {
+      // Theme the element and container.
+      self._setTheming();
+
       // Remove left: -9999px and add hidden class.
       self.panelEl.css('left', '');
       self.panelContainer.addClass(MD_PANEL_HIDDEN);
+
       resolve(self);
     };
 
@@ -16965,14 +17903,28 @@ MdPanelRef.prototype._addStyles = function() {
       return; // Don't setup positioning.
     }
 
-    // Wait for angular to finish processing the template, then position it
-    // correctly. This is necessary so that the panel will have a defined height
-    // and width.
+    // Wait for angular to finish processing the template
     self._$rootScope['$$postDigest'](function() {
+      // Position it correctly. This is necessary so that the panel will have a
+      // defined height and width.
       self._updatePosition(true);
+
+      // Theme the element and container.
+      self._setTheming();
+
       resolve(self);
     });
   });
+};
+
+
+/**
+ * Sets the `$mdTheming` classes on the `panelContainer` and `panelEl`.
+ * @private
+ */
+MdPanelRef.prototype._setTheming = function() {
+  this._$mdTheming(this.panelEl);
+  this._$mdTheming(this.panelContainer);
 };
 
 
@@ -16982,7 +17934,8 @@ MdPanelRef.prototype._addStyles = function() {
  */
 MdPanelRef.prototype.updatePosition = function(position) {
   if (!this.panelContainer) {
-    throw new Error('Panel does not exist yet. Call open() or attach().');
+    throw new Error(
+        'mdPanel: Panel does not exist yet. Call open() or attach().');
   }
 
   this.config['position'] = position;
@@ -17022,10 +17975,6 @@ MdPanelRef.prototype._updatePosition = function(init) {
       MdPanelPosition.absPosition.RIGHT,
       positionConfig.getRight()
     );
-
-    // Use the vendor prefixed version of transform.
-    var prefixedTransform = this._$mdConstant.CSS.TRANSFORM;
-    this.panelEl.css(prefixedTransform, positionConfig.getTransform());
   }
 };
 
@@ -17064,6 +18013,11 @@ MdPanelRef.prototype._createBackdrop = function() {
             open: '_md-opaque-enter',
             close: '_md-opaque-leave'
           });
+
+      if (this.config.animation) {
+        backdropAnimation.duration(this.config.animation._rawDuration);
+      }
+
       var backdropConfig = {
         animation: backdropAnimation,
         attachTo: this.config.attachTo,
@@ -17071,6 +18025,7 @@ MdPanelRef.prototype._createBackdrop = function() {
         panelClass: '_md-panel-backdrop',
         zIndex: this.config.zIndex - 1
       };
+
       this._backdropRef = this._$mdPanel.create(backdropConfig);
     }
     if (!this._backdropRef.isAttached) {
@@ -17117,7 +18072,7 @@ MdPanelRef.prototype._configureEscapeToClose = function() {
         ev.stopPropagation();
         ev.preventDefault();
 
-        self.close();
+        self.close(MdPanelRef.closeReasons.ESCAPE);
       }
     };
 
@@ -17140,15 +18095,17 @@ MdPanelRef.prototype._configureEscapeToClose = function() {
  */
 MdPanelRef.prototype._configureClickOutsideToClose = function() {
   if (this.config['clickOutsideToClose']) {
-    var target = this.panelContainer;
-    var sourceElem;
+    var target = this.config['propagateContainerEvents'] ?
+        angular.element(document.body) :
+        this.panelContainer;
+    var sourceEl;
 
     // Keep track of the element on which the mouse originally went down
     // so that we can only close the backdrop when the 'click' started on it.
-    // A simple 'click' handler does not work,
-    // it sets the target object as the element the mouse went down on.
+    // A simple 'click' handler does not work, it sets the target object as the
+    // element the mouse went down on.
     var mousedownHandler = function(ev) {
-      sourceElem = ev.target;
+      sourceEl = ev.target;
     };
 
     // We check if our original element and the target is the backdrop
@@ -17156,11 +18113,19 @@ MdPanelRef.prototype._configureClickOutsideToClose = function() {
     // panel we don't want to panel to close.
     var self = this;
     var mouseupHandler = function(ev) {
-      if (sourceElem === target[0] && ev.target === target[0]) {
+      if (self.config['propagateContainerEvents']) {
+
+        // We check if the sourceEl of the event is the panel element or one
+        // of it's children. If it is not, then close the panel.
+        if (sourceEl !== self.panelEl[0] && !self.panelEl[0].contains(sourceEl)) {
+          self.close();
+        }
+
+      } else if (sourceEl === target[0] && ev.target === target[0]) {
         ev.stopPropagation();
         ev.preventDefault();
 
-        self.close();
+        self.close(MdPanelRef.closeReasons.CLICK_OUTSIDE);
       }
     };
 
@@ -17182,23 +18147,24 @@ MdPanelRef.prototype._configureClickOutsideToClose = function() {
  * @private
 */
 MdPanelRef.prototype._configureScrollListener = function() {
-  var updatePosition = angular.bind(this, this._updatePosition);
-  var debouncedUpdatePosition = this._$$rAF.throttle(updatePosition);
-  var self = this;
+  // No need to bind the event if scrolling is disabled.
+  if (!this.config['disableParentScroll']) {
+    var updatePosition = angular.bind(this, this._updatePosition);
+    var debouncedUpdatePosition = this._$$rAF.throttle(updatePosition);
+    var self = this;
 
-  var onScroll = function() {
-    if (!self.config['disableParentScroll']) {
+    var onScroll = function() {
       debouncedUpdatePosition();
-    }
-  };
+    };
 
-  // Add listeners.
-  this._$window.addEventListener('scroll', onScroll, true);
+    // Add listeners.
+    this._$window.addEventListener('scroll', onScroll, true);
 
-  // Queue remove listeners function.
-  this._removeListeners.push(function() {
-    self._$window.removeEventListener('scroll', onScroll, true);
-  });
+    // Queue remove listeners function.
+    this._removeListeners.push(function() {
+      self._$window.removeEventListener('scroll', onScroll, true);
+    });
+  }
 };
 
 
@@ -17208,7 +18174,7 @@ MdPanelRef.prototype._configureScrollListener = function() {
  * @private
  */
 MdPanelRef.prototype._configureTrapFocus = function() {
-  // Focus doesn't remain instead of the panel without this.
+  // Focus doesn't remain inside of the panel without this.
   this.panelEl.attr('tabIndex', '-1');
   if (this.config['trapFocus']) {
     var element = this.panelEl;
@@ -17241,6 +18207,19 @@ MdPanelRef.prototype._configureTrapFocus = function() {
 
 
 /**
+ * Updates the animation of a panel.
+ * @param {!MdPanelAnimation} animation
+ */
+MdPanelRef.prototype.updateAnimation = function(animation) {
+  this.config['animation'] = animation;
+
+  if (this._backdropRef) {
+    this._backdropRef.config.animation.duration(animation._rawDuration);
+  }
+};
+
+
+/**
  * Animate the panel opening.
  * @returns {!angular.$q.Promise} A promise that is resolved when the panel has
  *     animated open.
@@ -17260,7 +18239,8 @@ MdPanelRef.prototype._animateOpen = function() {
     var done = self._done(resolve, self);
     var warnAndOpen = function() {
       self._$log.warn(
-          'MdPanel Animations failed. Showing panel without animating.');
+          'mdPanel: MdPanel Animations failed. ' +
+          'Showing panel without animating.');
       done();
     };
 
@@ -17292,13 +18272,116 @@ MdPanelRef.prototype._animateClose = function() {
     };
     var warnAndClose = function() {
       self._$log.warn(
-          'MdPanel Animations failed. Hiding panel without animating.');
+          'mdPanel: MdPanel Animations failed. ' +
+          'Hiding panel without animating.');
       done();
     };
 
     animationConfig.animateClose(self.panelEl)
         .then(done, warnAndClose);
   });
+};
+
+
+/**
+ * Registers a interceptor with the panel. The callback should return a promise,
+ * which will allow the action to continue when it gets resolved, or will
+ * prevent an action if it is rejected.
+ * @param {string} type Type of interceptor.
+ * @param {!angular.$q.Promise<!any>} callback Callback to be registered.
+ * @returns {!MdPanelRef}
+ */
+MdPanelRef.prototype.registerInterceptor = function(type, callback) {
+  var error = null;
+
+  if (!angular.isString(type)) {
+    error = 'Interceptor type must be a string, instead got ' + typeof type;
+  } else if (!angular.isFunction(callback)) {
+    error = 'Interceptor callback must be a function, instead got ' + typeof callback;
+  }
+
+  if (error) {
+    throw new Error('MdPanel: ' + error);
+  }
+
+  var interceptors = this._interceptors[type] = this._interceptors[type] || [];
+
+  if (interceptors.indexOf(callback) === -1) {
+    interceptors.push(callback);
+  }
+
+  return this;
+};
+
+
+/**
+ * Removes a registered interceptor.
+ * @param {string} type Type of interceptor to be removed.
+ * @param {Function} callback Interceptor to be removed.
+ * @returns {!MdPanelRef}
+ */
+MdPanelRef.prototype.removeInterceptor = function(type, callback) {
+  var index = this._interceptors[type] ?
+    this._interceptors[type].indexOf(callback) : -1;
+
+  if (index > -1) {
+    this._interceptors[type].splice(index, 1);
+  }
+
+  return this;
+};
+
+
+/**
+ * Removes all interceptors.
+ * @param {string=} type Type of interceptors to be removed.
+ *     If ommited, all interceptors types will be removed.
+ * @returns {!MdPanelRef}
+ */
+MdPanelRef.prototype.removeAllInterceptors = function(type) {
+  if (type) {
+    this._interceptors[type] = [];
+  } else {
+    this._interceptors = Object.create(null);
+  }
+
+  return this;
+};
+
+
+/**
+ * Invokes all the interceptors of a certain type sequantially in
+ *     reverse order. Works in a similar way to `$q.all`, except it
+ *     respects the order of the functions.
+ * @param {string} type Type of interceptors to be invoked.
+ * @returns {!angular.$q.Promise<!MdPanelRef>}
+ * @private
+ */
+MdPanelRef.prototype._callInterceptors = function(type) {
+  var self = this;
+  var $q = self._$q;
+  var interceptors = self._interceptors && self._interceptors[type] || [];
+
+  return interceptors.reduceRight(function(promise, interceptor) {
+    var isPromiseLike = interceptor && angular.isFunction(interceptor.then);
+    var response = isPromiseLike ? interceptor : null;
+
+    /**
+    * For interceptors to reject/cancel subsequent portions of the chain, simply
+    * return a `$q.reject(<value>)`
+    */
+    return promise.then(function() {
+      if (!response) {
+        try {
+          response = interceptor(self);
+        } catch(e) {
+          response = $q.reject(e);
+        }
+      }
+
+     return response;
+    });
+  }, $q.resolve(self));
 };
 
 
@@ -17325,6 +18408,54 @@ MdPanelRef.prototype._done = function(callback, self) {
   return function() {
     callback(self);
   };
+};
+
+
+/**
+ * Adds a panel to a group if the panel does not exist within the group already.
+ * A panel can only exist within a single group.
+ * @param {string} groupName The name of the group.
+ */
+MdPanelRef.prototype.addToGroup = function(groupName) {
+  if (!this._$mdPanel._groups[groupName]) {
+    this._$mdPanel.newPanelGroup(groupName);
+  }
+
+  var group = this._$mdPanel._groups[groupName];
+  var index = group.panels.indexOf(this);
+
+  if (index < 0) {
+    group.panels.push(this);
+  }
+};
+
+
+/**
+ * Removes a panel from a group if the panel exists within that group. The group
+ * must be created ahead of time.
+ * @param {string} groupName The name of the group.
+ */
+MdPanelRef.prototype.removeFromGroup = function(groupName) {
+  if (!this._$mdPanel._groups[groupName]) {
+    throw new Error('mdPanel: The group ' + groupName + ' does not exist.');
+  }
+
+  var group = this._$mdPanel._groups[groupName];
+  var index = group.panels.indexOf(this);
+
+  if (index > -1) {
+    group.panels.splice(index, 1);
+  }
+};
+
+
+/**
+ * Possible default closeReasons for the close function.
+ * @enum {string}
+ */
+MdPanelRef.closeReasons = {
+  CLICK_OUTSIDE: 'clickOutsideToClose',
+  ESCAPE: 'escapeToClose',
 };
 
 
@@ -17359,6 +18490,9 @@ function MdPanelPosition($injector) {
 
   /** @private {boolean} */
   this._isRTL = $injector.get('$mdUtil').bidi() === 'rtl';
+
+  /** @private @const {!angular.$mdConstant} */
+  this._$mdConstant = $injector.get('$mdConstant');
 
   /** @private {boolean} */
   this._absolute = false;
@@ -17429,6 +18563,12 @@ MdPanelPosition.absPosition = {
   LEFT: 'left'
 };
 
+/**
+ * Margin between the edges of a panel and the viewport.
+ * @const {number}
+ */
+MdPanelPosition.viewportMargin = 8;
+
 
 /**
  * Sets absolute positioning for the panel.
@@ -17438,6 +18578,7 @@ MdPanelPosition.prototype.absolute = function() {
   this._absolute = true;
   return this;
 };
+
 
 /**
  * Sets the value of a position for the panel. Clears any previously set
@@ -17459,7 +18600,7 @@ MdPanelPosition.prototype._setPosition = function(position, value) {
     var positions = Object.keys(MdPanelPosition.absPosition).join()
         .toLowerCase();
 
-    throw new Error('Position must be one of ' + positions + '.');
+    throw new Error('mdPanel: Position must be one of ' + positions + '.');
   }
 
   this['_' +  position] = angular.isString(value) ? value : '0';
@@ -17596,8 +18737,8 @@ MdPanelPosition.prototype.relativeTo = function(element) {
  */
 MdPanelPosition.prototype.addPanelPosition = function(xPosition, yPosition) {
   if (!this._relativeToEl) {
-    throw new Error('addPanelPosition can only be used with relative ' +
-        'positioning. Set relativeTo first.');
+    throw new Error('mdPanel: addPanelPosition can only be used with ' +
+        'relative positioning. Set relativeTo first.');
   }
 
   this._validateXPosition(xPosition);
@@ -17632,8 +18773,8 @@ MdPanelPosition.prototype._validateYPosition = function(yPosition) {
     }
   }
 
-  throw new Error('Panel y position only accepts the following values:\n' +
-    positionValues.join(' | '));
+  throw new Error('mdPanel: Panel y position only accepts the following ' +
+      'values:\n' + positionValues.join(' | '));
 };
 
 
@@ -17657,15 +18798,15 @@ MdPanelPosition.prototype._validateXPosition = function(xPosition) {
     }
   }
 
-  throw new Error('Panel x Position only accepts the following values:\n' +
-      positionValues.join(' | '));
+  throw new Error('mdPanel: Panel x Position only accepts the following ' +
+      'values:\n' + positionValues.join(' | '));
 };
 
 
 /**
  * Sets the value of the offset in the x-direction. This will add to any
  * previously set offsets.
- * @param {string} offsetX
+ * @param {string|function(MdPanelPosition): string} offsetX
  * @returns {!MdPanelPosition}
  */
 MdPanelPosition.prototype.withOffsetX = function(offsetX) {
@@ -17677,7 +18818,7 @@ MdPanelPosition.prototype.withOffsetX = function(offsetX) {
 /**
  * Sets the value of the offset in the y-direction. This will add to any
  * previously set offsets.
- * @param {string} offsetY
+ * @param {string|function(MdPanelPosition): string} offsetY
  * @returns {!MdPanelPosition}
  */
 MdPanelPosition.prototype.withOffsetY = function(offsetY) {
@@ -17735,20 +18876,38 @@ MdPanelPosition.prototype.getTransform = function() {
   return (translateX + ' ' + translateY).trim();
 };
 
+
+/**
+ * Sets the `transform` value for a panel element.
+ * @param {!angular.JQLite} panelEl
+ * @returns {!angular.JQLite}
+ * @private
+ */
+MdPanelPosition.prototype._setTransform = function(panelEl) {
+  return panelEl.css(this._$mdConstant.CSS.TRANSFORM, this.getTransform());
+};
+
+
 /**
  * True if the panel is completely on-screen with this positioning; false
  * otherwise.
  * @param {!angular.JQLite} panelEl
  * @return {boolean}
+ * @private
  */
 MdPanelPosition.prototype._isOnscreen = function(panelEl) {
   // this works because we always use fixed positioning for the panel,
   // which is relative to the viewport.
-  // TODO(gmoothart): take into account _translateX and _translateY to the
-  // extent feasible.
-
   var left = parseInt(this.getLeft());
   var top = parseInt(this.getTop());
+
+  if (this._translateX.length || this._translateY.length) {
+    var prefixedTransform = this._$mdConstant.CSS.TRANSFORM;
+    var offsets = getComputedTranslations(panelEl, prefixedTransform);
+    left += offsets.x;
+    top += offsets.y;
+  }
+
   var right = left + panelEl[0].offsetWidth;
   var bottom = top + panelEl[0].offsetHeight;
 
@@ -17779,8 +18938,11 @@ MdPanelPosition.prototype.getActualPosition = function() {
 MdPanelPosition.prototype._reduceTranslateValues =
     function(translateFn, values) {
       return values.map(function(translation) {
-        return translateFn + '(' + translation + ')';
-      }).join(' ');
+        // TODO(crisbeto): this should add the units after #9609 is merged.
+        var translationValue = angular.isFunction(translation) ?
+            translation(this) : translation;
+        return translateFn + '(' + translationValue + ')';
+      }, this).join(' ');
     };
 
 
@@ -17791,23 +18953,75 @@ MdPanelPosition.prototype._reduceTranslateValues =
  * @private
  */
 MdPanelPosition.prototype._setPanelPosition = function(panelEl) {
+  // Remove the "position adjusted" class in case it has been added before.
+  panelEl.removeClass('_md-panel-position-adjusted');
+
   // Only calculate the position if necessary.
   if (this._absolute) {
+    this._setTransform(panelEl);
     return;
   }
 
   if (this._actualPosition) {
     this._calculatePanelPosition(panelEl, this._actualPosition);
+    this._setTransform(panelEl);
+    this._constrainToViewport(panelEl);
     return;
   }
 
   for (var i = 0; i < this._positions.length; i++) {
     this._actualPosition = this._positions[i];
     this._calculatePanelPosition(panelEl, this._actualPosition);
+    this._setTransform(panelEl);
+
     if (this._isOnscreen(panelEl)) {
-      break;
+      return;
     }
   }
+
+  this._constrainToViewport(panelEl);
+};
+
+
+/**
+ * Constrains a panel's position to the viewport.
+ * @param {!angular.JQLite} panelEl
+ * @private
+ */
+MdPanelPosition.prototype._constrainToViewport = function(panelEl) {
+  var margin = MdPanelPosition.viewportMargin;
+  var initialTop = this._top;
+  var initialLeft = this._left;
+
+  if (this.getTop()) {
+    var top = parseInt(this.getTop());
+    var bottom = panelEl[0].offsetHeight + top;
+    var viewportHeight = this._$window.innerHeight;
+
+    if (top < margin) {
+      this._top = margin + 'px';
+    } else if (bottom > viewportHeight) {
+      this._top = top - (bottom - viewportHeight + margin) + 'px';
+    }
+  }
+
+  if (this.getLeft()) {
+    var left = parseInt(this.getLeft());
+    var right = panelEl[0].offsetWidth + left;
+    var viewportWidth = this._$window.innerWidth;
+
+    if (left < margin) {
+      this._left = margin + 'px';
+    } else if (right > viewportWidth) {
+      this._left = left - (right - viewportWidth + margin) + 'px';
+    }
+  }
+
+  // Class that can be used to re-style the panel if it was repositioned.
+  panelEl.toggleClass(
+    '_md-panel-position-adjusted',
+    this._top !== initialTop || this._left !== initialLeft
+  );
 };
 
 
@@ -17944,6 +19158,15 @@ function MdPanelAnimation($injector) {
 
   /** @private {string|{open: string, close: string}} */
   this._animationClass = '';
+
+  /** @private {number} */
+  this._openDuration;
+
+  /** @private {number} */
+  this._closeDuration;
+
+  /** @private {number|{open: number, close: number}} */
+  this._rawDuration;
 }
 
 
@@ -17989,6 +19212,32 @@ MdPanelAnimation.prototype.openFrom = function(openFrom) {
 MdPanelAnimation.prototype.closeTo = function(closeTo) {
   this._closeTo = this._getPanelAnimationTarget(closeTo);
   return this;
+};
+
+
+/**
+ * Specifies the duration of the animation in milliseconds.
+ * @param {number|{open: number, close: number}} duration
+ * @returns {!MdPanelAnimation}
+ */
+MdPanelAnimation.prototype.duration = function(duration) {
+  if (duration) {
+    if (angular.isNumber(duration)) {
+      this._openDuration = this._closeDuration = toSeconds(duration);
+    } else if (angular.isObject(duration)) {
+      this._openDuration = toSeconds(duration.open);
+      this._closeDuration = toSeconds(duration.close);
+    }
+  }
+
+  // Save the original value so it can be passed to the backdrop.
+  this._rawDuration = duration;
+
+  return this;
+
+  function toSeconds(value) {
+    if (angular.isNumber(value)) return value / 1000;
+  }
 };
 
 
@@ -18093,6 +19342,8 @@ MdPanelAnimation.prototype.animateOpen = function(panelEl) {
       }
   }
 
+  animationOptions.duration = this._openDuration;
+
   return animator
       .translate3d(panelEl, openFrom, openTo, animationOptions);
 };
@@ -18156,6 +19407,8 @@ MdPanelAnimation.prototype.animateClose = function(panelEl) {
       }
   }
 
+  reverseAnimationOptions.duration = this._closeDuration;
+
   return animator
       .translate3d(panelEl, closeFrom, closeTo, reverseAnimationOptions);
 };
@@ -18205,6 +19458,7 @@ MdPanelAnimation.prototype._getBoundingClientRect = function(element) {
  *                                Util Methods                               *
  *****************************************************************************/
 
+
 /**
  * Returns the angular element associated with a css selector or element.
  * @param el {string|!angular.JQLite|!Element}
@@ -18215,6 +19469,618 @@ function getElement(el) {
       document.querySelector(el) : el;
   return angular.element(queryResult);
 }
+
+
+/**
+ * Gets the computed values for an element's translateX and translateY in px.
+ * @param {!angular.JQLite|!Element} el
+ * @param {string} property
+ * @return {{x: number, y: number}}
+ */
+function getComputedTranslations(el, property) {
+  // The transform being returned by `getComputedStyle` is in the format:
+  // `matrix(a, b, c, d, translateX, translateY)` if defined and `none`
+  // if the element doesn't have a transform.
+  var transform = getComputedStyle(el[0] || el)[property];
+  var openIndex = transform.indexOf('(');
+  var closeIndex = transform.lastIndexOf(')');
+  var output = { x: 0, y: 0 };
+
+  if (openIndex > -1 && closeIndex > -1) {
+    var parsedValues = transform
+      .substring(openIndex + 1, closeIndex)
+      .split(', ')
+      .slice(-2);
+
+    output.x = parseInt(parsedValues[0]);
+    output.y = parseInt(parsedValues[1]);
+  }
+
+  return output;
+}
+
+})();
+(function(){
+"use strict";
+
+/**
+ * @ngdoc module
+ * @name material.components.navBar
+ */
+
+
+MdNavBarController.$inject = ["$element", "$scope", "$timeout", "$mdConstant"];
+MdNavItem.$inject = ["$mdAria", "$$rAF"];
+MdNavItemController.$inject = ["$element"];
+MdNavBar.$inject = ["$mdAria", "$mdTheming"];
+angular.module('material.components.navBar', ['material.core'])
+    .controller('MdNavBarController', MdNavBarController)
+    .directive('mdNavBar', MdNavBar)
+    .controller('MdNavItemController', MdNavItemController)
+    .directive('mdNavItem', MdNavItem);
+
+
+/*****************************************************************************
+ *                            PUBLIC DOCUMENTATION                           *
+ *****************************************************************************/
+/**
+ * @ngdoc directive
+ * @name mdNavBar
+ * @module material.components.navBar
+ *
+ * @restrict E
+ *
+ * @description
+ * The `<md-nav-bar>` directive renders a list of material tabs that can be used
+ * for top-level page navigation. Unlike `<md-tabs>`, it has no concept of a tab
+ * body and no bar pagination.
+ *
+ * Because it deals with page navigation, certain routing concepts are built-in.
+ * Route changes via via ng-href, ui-sref, or ng-click events are supported.
+ * Alternatively, the user could simply watch currentNavItem for changes.
+ *
+ * Accessibility functionality is implemented as a site navigator with a
+ * listbox, according to
+ * https://www.w3.org/TR/wai-aria-practices/#Site_Navigator_Tabbed_Style
+ *
+ * @param {string=} mdSelectedNavItem The name of the current tab; this must
+ *     match the name attribute of `<md-nav-item>`
+ * @param {boolean=} mdNoInkBar If set to true, the ink bar will be hidden.
+ * @param {string=} navBarAriaLabel An aria-label for the nav-bar
+ *
+ * @usage
+ * <hljs lang="html">
+ *  <md-nav-bar md-selected-nav-item="currentNavItem">
+ *    <md-nav-item md-nav-click="goto('page1')" name="page1">
+ *      Page One
+ *    </md-nav-item>
+ *    <md-nav-item md-nav-href="#page2" name="page3">Page Two</md-nav-item>
+ *    <md-nav-item md-nav-sref="page3" name="page2">Page Three</md-nav-item>
+ *    <md-nav-item
+ *      md-nav-sref="app.page4"
+ *      sref-opts="{reload: true, notify: true}"
+ *      name="page4">
+ *      Page Four
+ *    </md-nav-item>
+ *  </md-nav-bar>
+ *</hljs>
+ * <hljs lang="js">
+ * (function() {
+ *   'use strict';
+ *
+ *    $rootScope.$on('$routeChangeSuccess', function(event, current) {
+ *      $scope.currentLink = getCurrentLinkFromRoute(current);
+ *    });
+ * });
+ * </hljs>
+ */
+
+/*****************************************************************************
+ *                            mdNavItem
+ *****************************************************************************/
+/**
+ * @ngdoc directive
+ * @name mdNavItem
+ * @module material.components.navBar
+ *
+ * @restrict E
+ *
+ * @description
+ * `<md-nav-item>` describes a page navigation link within the `<md-nav-bar>`
+ * component. It renders an md-button as the actual link.
+ *
+ * Exactly one of the mdNavClick, mdNavHref, mdNavSref attributes are required
+ * to be specified.
+ *
+ * @param {Function=} mdNavClick Function which will be called when the
+ *     link is clicked to change the page. Renders as an `ng-click`.
+ * @param {string=} mdNavHref url to transition to when this link is clicked.
+ *     Renders as an `ng-href`.
+ * @param {string=} mdNavSref Ui-router state to transition to when this link is
+ *     clicked. Renders as a `ui-sref`.
+ * @param {!Object=} srefOpts Ui-router options that are passed to the
+ *     `$state.go()` function. See the [Ui-router documentation for details]
+ *     (https://ui-router.github.io/docs/latest/interfaces/transition.transitionoptions.html).
+ * @param {string=} name The name of this link. Used by the nav bar to know
+ *     which link is currently selected.
+ * @param {string=} aria-label Adds alternative text for accessibility
+ *
+ * @usage
+ * See `<md-nav-bar>` for usage.
+ */
+
+
+/*****************************************************************************
+ *                                IMPLEMENTATION                             *
+ *****************************************************************************/
+
+function MdNavBar($mdAria, $mdTheming) {
+  return {
+    restrict: 'E',
+    transclude: true,
+    controller: MdNavBarController,
+    controllerAs: 'ctrl',
+    bindToController: true,
+    scope: {
+      'mdSelectedNavItem': '=?',
+      'mdNoInkBar': '=?',
+      'navBarAriaLabel': '@?',
+    },
+    template:
+      '<div class="md-nav-bar">' +
+        '<nav role="navigation">' +
+          '<ul class="_md-nav-bar-list" ng-transclude role="listbox"' +
+            'tabindex="0"' +
+            'ng-focus="ctrl.onFocus()"' +
+            'ng-keydown="ctrl.onKeydown($event)"' +
+            'aria-label="{{ctrl.navBarAriaLabel}}">' +
+          '</ul>' +
+        '</nav>' +
+        '<md-nav-ink-bar ng-hide="ctrl.mdNoInkBar"></md-nav-ink-bar>' +
+      '</div>',
+    link: function(scope, element, attrs, ctrl) {
+      $mdTheming(element);
+      if (!ctrl.navBarAriaLabel) {
+        $mdAria.expectAsync(element, 'aria-label', angular.noop);
+      }
+    },
+  };
+}
+
+/**
+ * Controller for the nav-bar component.
+ *
+ * Accessibility functionality is implemented as a site navigator with a
+ * listbox, according to
+ * https://www.w3.org/TR/wai-aria-practices/#Site_Navigator_Tabbed_Style
+ * @param {!angular.JQLite} $element
+ * @param {!angular.Scope} $scope
+ * @param {!angular.Timeout} $timeout
+ * @param {!Object} $mdConstant
+ * @constructor
+ * @final
+ * @ngInject
+ */
+function MdNavBarController($element, $scope, $timeout, $mdConstant) {
+  // Injected variables
+  /** @private @const {!angular.Timeout} */
+  this._$timeout = $timeout;
+
+  /** @private @const {!angular.Scope} */
+  this._$scope = $scope;
+
+  /** @private @const {!Object} */
+  this._$mdConstant = $mdConstant;
+
+  // Data-bound variables.
+  /** @type {string} */
+  this.mdSelectedNavItem;
+
+  /** @type {string} */
+  this.navBarAriaLabel;
+
+  // State variables.
+
+  /** @type {?angular.JQLite} */
+  this._navBarEl = $element[0];
+
+  /** @type {?angular.JQLite} */
+  this._inkbar;
+
+  var self = this;
+  // need to wait for transcluded content to be available
+  var deregisterTabWatch = this._$scope.$watch(function() {
+    return self._navBarEl.querySelectorAll('._md-nav-button').length;
+  },
+  function(newLength) {
+    if (newLength > 0) {
+      self._initTabs();
+      deregisterTabWatch();
+    }
+  });
+}
+
+
+
+/**
+ * Initializes the tab components once they exist.
+ * @private
+ */
+MdNavBarController.prototype._initTabs = function() {
+  this._inkbar = angular.element(this._navBarEl.querySelector('md-nav-ink-bar'));
+
+  var self = this;
+  this._$timeout(function() {
+    self._updateTabs(self.mdSelectedNavItem, undefined);
+  });
+
+  this._$scope.$watch('ctrl.mdSelectedNavItem', function(newValue, oldValue) {
+    // Wait a digest before update tabs for products doing
+    // anything dynamic in the template.
+    self._$timeout(function() {
+      self._updateTabs(newValue, oldValue);
+    });
+  });
+};
+
+/**
+ * Set the current tab to be selected.
+ * @param {string|undefined} newValue New current tab name.
+ * @param {string|undefined} oldValue Previous tab name.
+ * @private
+ */
+MdNavBarController.prototype._updateTabs = function(newValue, oldValue) {
+  var self = this;
+  var tabs = this._getTabs();
+
+  // this._getTabs can return null if nav-bar has not yet been initialized
+  if(!tabs)
+    return;
+
+  var oldIndex = -1;
+  var newIndex = -1;
+  var newTab = this._getTabByName(newValue);
+  var oldTab = this._getTabByName(oldValue);
+
+  if (oldTab) {
+    oldTab.setSelected(false);
+    oldIndex = tabs.indexOf(oldTab);
+  }
+
+  if (newTab) {
+    newTab.setSelected(true);
+    newIndex = tabs.indexOf(newTab);
+  }
+
+  this._$timeout(function() {
+    self._updateInkBarStyles(newTab, newIndex, oldIndex);
+  });
+};
+
+/**
+ * Repositions the ink bar to the selected tab.
+ * @private
+ */
+MdNavBarController.prototype._updateInkBarStyles = function(tab, newIndex, oldIndex) {
+  this._inkbar.toggleClass('_md-left', newIndex < oldIndex)
+      .toggleClass('_md-right', newIndex > oldIndex);
+
+  this._inkbar.css({display: newIndex < 0 ? 'none' : ''});
+
+  if (tab) {
+    var tabEl = tab.getButtonEl();
+    var left = tabEl.offsetLeft;
+
+    this._inkbar.css({left: left + 'px', width: tabEl.offsetWidth + 'px'});
+  }
+};
+
+/**
+ * Returns an array of the current tabs.
+ * @return {!Array<!NavItemController>}
+ * @private
+ */
+MdNavBarController.prototype._getTabs = function() {
+  var controllers = Array.prototype.slice.call(
+    this._navBarEl.querySelectorAll('.md-nav-item'))
+    .map(function(el) {
+      return angular.element(el).controller('mdNavItem')
+    });
+  return controllers.indexOf(undefined) ? controllers : null;
+};
+
+/**
+ * Returns the tab with the specified name.
+ * @param {string} name The name of the tab, found in its name attribute.
+ * @return {!NavItemController|undefined}
+ * @private
+ */
+MdNavBarController.prototype._getTabByName = function(name) {
+  return this._findTab(function(tab) {
+    return tab.getName() == name;
+  });
+};
+
+/**
+ * Returns the selected tab.
+ * @return {!NavItemController|undefined}
+ * @private
+ */
+MdNavBarController.prototype._getSelectedTab = function() {
+  return this._findTab(function(tab) {
+    return tab.isSelected();
+  });
+};
+
+/**
+ * Returns the focused tab.
+ * @return {!NavItemController|undefined}
+ */
+MdNavBarController.prototype.getFocusedTab = function() {
+  return this._findTab(function(tab) {
+    return tab.hasFocus();
+  });
+};
+
+/**
+ * Find a tab that matches the specified function.
+ * @private
+ */
+MdNavBarController.prototype._findTab = function(fn) {
+  var tabs = this._getTabs();
+  for (var i = 0; i < tabs.length; i++) {
+    if (fn(tabs[i])) {
+      return tabs[i];
+    }
+  }
+
+  return null;
+};
+
+/**
+ * Direct focus to the selected tab when focus enters the nav bar.
+ */
+MdNavBarController.prototype.onFocus = function() {
+  var tab = this._getSelectedTab();
+  if (tab) {
+    tab.setFocused(true);
+  }
+};
+
+/**
+ * Move focus from oldTab to newTab.
+ * @param {!NavItemController} oldTab
+ * @param {!NavItemController} newTab
+ * @private
+ */
+MdNavBarController.prototype._moveFocus = function(oldTab, newTab) {
+  oldTab.setFocused(false);
+  newTab.setFocused(true);
+};
+
+/**
+ * Responds to keypress events.
+ * @param {!Event} e
+ */
+MdNavBarController.prototype.onKeydown = function(e) {
+  var keyCodes = this._$mdConstant.KEY_CODE;
+  var tabs = this._getTabs();
+  var focusedTab = this.getFocusedTab();
+  if (!focusedTab) return;
+
+  var focusedTabIndex = tabs.indexOf(focusedTab);
+
+  // use arrow keys to navigate between tabs
+  switch (e.keyCode) {
+    case keyCodes.UP_ARROW:
+    case keyCodes.LEFT_ARROW:
+      if (focusedTabIndex > 0) {
+        this._moveFocus(focusedTab, tabs[focusedTabIndex - 1]);
+      }
+      break;
+    case keyCodes.DOWN_ARROW:
+    case keyCodes.RIGHT_ARROW:
+      if (focusedTabIndex < tabs.length - 1) {
+        this._moveFocus(focusedTab, tabs[focusedTabIndex + 1]);
+      }
+      break;
+    case keyCodes.SPACE:
+    case keyCodes.ENTER:
+      // timeout to avoid a "digest already in progress" console error
+      this._$timeout(function() {
+        focusedTab.getButtonEl().click();
+      });
+      break;
+  }
+};
+
+/**
+ * @ngInject
+ */
+function MdNavItem($mdAria, $$rAF) {
+  return {
+    restrict: 'E',
+    require: ['mdNavItem', '^mdNavBar'],
+    controller: MdNavItemController,
+    bindToController: true,
+    controllerAs: 'ctrl',
+    replace: true,
+    transclude: true,
+    template: function(tElement, tAttrs) {
+      var hasNavClick = tAttrs.mdNavClick;
+      var hasNavHref = tAttrs.mdNavHref;
+      var hasNavSref = tAttrs.mdNavSref;
+      var hasSrefOpts = tAttrs.srefOpts;
+      var navigationAttribute;
+      var navigationOptions;
+      var buttonTemplate;
+
+      // Cannot specify more than one nav attribute
+      if ((hasNavClick ? 1:0) + (hasNavHref ? 1:0) + (hasNavSref ? 1:0) > 1) {
+        throw Error(
+          'Must not specify more than one of the md-nav-click, md-nav-href, ' +
+          'or md-nav-sref attributes per nav-item directive.'
+        );
+      }
+
+      if (hasNavClick) {
+        navigationAttribute = 'ng-click="ctrl.mdNavClick()"';
+      } else if (hasNavHref) {
+        navigationAttribute = 'ng-href="{{ctrl.mdNavHref}}"';
+      } else if (hasNavSref) {
+        navigationAttribute = 'ui-sref="{{ctrl.mdNavSref}}"';
+      }
+
+      navigationOptions = hasSrefOpts ? 'ui-sref-opts="{{ctrl.srefOpts}}" ' : '';
+
+      if (navigationAttribute) {
+        buttonTemplate = '' +
+          '<md-button class="_md-nav-button md-accent" ' +
+            'ng-class="ctrl.getNgClassMap()" ' +
+            'ng-blur="ctrl.setFocused(false)" ' +
+            'tabindex="-1" ' +
+            navigationOptions +
+            navigationAttribute + '>' +
+            '<span ng-transclude class="_md-nav-button-text"></span>' +
+          '</md-button>';
+      }
+
+      return '' +
+        '<li class="md-nav-item" ' +
+          'role="option" ' +
+          'aria-selected="{{ctrl.isSelected()}}">' +
+          (buttonTemplate || '') +
+        '</li>';
+    },
+    scope: {
+      'mdNavClick': '&?',
+      'mdNavHref': '@?',
+      'mdNavSref': '@?',
+      'srefOpts': '=?',
+      'name': '@',
+    },
+    link: function(scope, element, attrs, controllers) {
+      // When accessing the element's contents synchronously, they
+      // may not be defined yet because of transclusion. There is a higher
+      // chance that it will be accessible if we wait one frame.
+      $$rAF(function() {
+        var mdNavItem = controllers[0];
+        var mdNavBar = controllers[1];
+        var navButton = angular.element(element[0].querySelector('._md-nav-button'));
+
+        if (!mdNavItem.name) {
+          mdNavItem.name = angular.element(element[0]
+              .querySelector('._md-nav-button-text')).text().trim();
+        }
+
+        navButton.on('click', function() {
+          mdNavBar.mdSelectedNavItem = mdNavItem.name;
+          scope.$apply();
+        });
+
+        $mdAria.expectWithText(element, 'aria-label');
+      });
+    }
+  };
+}
+
+/**
+ * Controller for the nav-item component.
+ * @param {!angular.JQLite} $element
+ * @constructor
+ * @final
+ * @ngInject
+ */
+function MdNavItemController($element) {
+
+  /** @private @const {!angular.JQLite} */
+  this._$element = $element;
+
+  // Data-bound variables
+
+  /** @const {?Function} */
+  this.mdNavClick;
+
+  /** @const {?string} */
+  this.mdNavHref;
+
+  /** @const {?string} */
+  this.mdNavSref;
+  /** @const {?Object} */
+  this.srefOpts;
+  /** @const {?string} */
+  this.name;
+
+  // State variables
+  /** @private {boolean} */
+  this._selected = false;
+
+  /** @private {boolean} */
+  this._focused = false;
+}
+
+/**
+ * Returns a map of class names and values for use by ng-class.
+ * @return {!Object<string,boolean>}
+ */
+MdNavItemController.prototype.getNgClassMap = function() {
+  return {
+    'md-active': this._selected,
+    'md-primary': this._selected,
+    'md-unselected': !this._selected,
+    'md-focused': this._focused,
+  };
+};
+
+/**
+ * Get the name attribute of the tab.
+ * @return {string}
+ */
+MdNavItemController.prototype.getName = function() {
+  return this.name;
+};
+
+/**
+ * Get the button element associated with the tab.
+ * @return {!Element}
+ */
+MdNavItemController.prototype.getButtonEl = function() {
+  return this._$element[0].querySelector('._md-nav-button');
+};
+
+/**
+ * Set the selected state of the tab.
+ * @param {boolean} isSelected
+ */
+MdNavItemController.prototype.setSelected = function(isSelected) {
+  this._selected = isSelected;
+};
+
+/**
+ * @return {boolean}
+ */
+MdNavItemController.prototype.isSelected = function() {
+  return this._selected;
+};
+
+/**
+ * Set the focused state of the tab.
+ * @param {boolean} isFocused
+ */
+MdNavItemController.prototype.setFocused = function(isFocused) {
+  this._focused = isFocused;
+
+  if (isFocused) {
+    this.getButtonEl().focus();
+  }
+};
+
+/**
+ * @return {boolean}
+ */
+MdNavItemController.prototype.hasFocus = function() {
+  return this._focused;
+};
 
 })();
 (function(){
@@ -18506,7 +20372,7 @@ function mdRadioGroupDirective($mdUtil, $mdConstant, $mdTheming, $timeout) {
   function linkRadioGroup(scope, element, attr, ctrls) {
     element.addClass('_md');     // private md component indicator for styling
     $mdTheming(element);
-    
+
     var rgCtrl = ctrls[0];
     var ngModelCtrl = ctrls[1] || $mdUtil.fakeNgModel();
 
@@ -18649,8 +20515,6 @@ function mdRadioGroupDirective($mdUtil, $mdConstant, $mdTheming, $timeout) {
 
       // Activate radioButton's click listener (triggerHandler won't create a real click event)
       angular.element(target).triggerHandler('click');
-
-
     }
   }
 
@@ -18716,10 +20580,18 @@ function mdRadioButtonDirective($mdAria, $mdUtil, $mdTheming) {
     $mdTheming(element);
     configureAria(element, scope);
 
-    initialize();
+    // ngAria overwrites the aria-checked inside a $watch for ngValue.
+    // We should defer the initialization until all the watches have fired.
+    // This can also be fixed by removing the `lastChecked` check, but that'll
+    // cause more DOM manipulation on each digest.
+    if (attr.ngValue) {
+      $mdUtil.nextTick(initialize, false);
+    } else {
+      initialize();
+    }
 
     /**
-     *
+     * Initializes the component.
      */
     function initialize() {
       if (!rgCtrl) {
@@ -18737,7 +20609,7 @@ function mdRadioButtonDirective($mdAria, $mdUtil, $mdTheming) {
     }
 
     /**
-     *
+     * On click functionality.
      */
     function listener(ev) {
       if (element[0].hasAttribute('disabled') || rgCtrl.isDisabled()) return;
@@ -18752,58 +20624,37 @@ function mdRadioButtonDirective($mdAria, $mdUtil, $mdTheming) {
      *  Update the `aria-activedescendant` attribute.
      */
     function render() {
-      var checked = (rgCtrl.getViewValue() == attr.value);
-      if (checked === lastChecked) {
-        return;
+      var checked = rgCtrl.getViewValue() == attr.value;
+
+      if (checked === lastChecked) return;
+
+      if (element[0].parentNode.nodeName.toLowerCase() !== 'md-radio-group') {
+        // If the radioButton is inside a div, then add class so highlighting will work
+        element.parent().toggleClass(CHECKED_CSS, checked);
+      }
+
+      if (checked) {
+        rgCtrl.setActiveDescendant(element.attr('id'));
       }
 
       lastChecked = checked;
-      element.attr('aria-checked', checked);
 
-      if (checked) {
-        markParentAsChecked(true);
-        element.addClass(CHECKED_CSS);
-
-        rgCtrl.setActiveDescendant(element.attr('id'));
-
-      } else {
-        markParentAsChecked(false);
-        element.removeClass(CHECKED_CSS);
-      }
-
-      /**
-       * If the radioButton is inside a div, then add class so highlighting will work...
-       */
-      function markParentAsChecked(addClass ) {
-        if ( element.parent()[0].nodeName != "MD-RADIO-GROUP") {
-          element.parent()[ !!addClass ? 'addClass' : 'removeClass'](CHECKED_CSS);
-        }
-
-      }
+      element
+        .attr('aria-checked', checked)
+        .toggleClass(CHECKED_CSS, checked);
     }
 
     /**
      * Inject ARIA-specific attributes appropriate for each radio button
      */
-    function configureAria( element, scope ){
-      scope.ariaId = buildAriaID();
-
+    function configureAria(element, scope){
       element.attr({
-        'id' :  scope.ariaId,
-        'role' : 'radio',
-        'aria-checked' : 'false'
+        id: attr.id || 'radio_' + $mdUtil.nextUid(),
+        role: 'radio',
+        'aria-checked': 'false'
       });
 
       $mdAria.expectWithText(element, 'aria-label');
-
-      /**
-       * Build a unique ID for each radio button that will be used with aria-activedescendant.
-       * Preserve existing ID if already specified.
-       * @returns {*|string}
-       */
-      function buildAriaID() {
-        return attr.id || ( 'radio' + "_" + $mdUtil.nextUid() );
-      }
     }
   }
 }
@@ -18824,7 +20675,7 @@ function mdRadioButtonDirective($mdAria, $mdUtil, $mdTheming) {
 
  ***************************************************/
 
-SelectDirective.$inject = ["$mdSelect", "$mdUtil", "$mdConstant", "$mdTheming", "$mdAria", "$compile", "$parse"];
+SelectDirective.$inject = ["$mdSelect", "$mdUtil", "$mdConstant", "$mdTheming", "$mdAria", "$parse", "$sce", "$injector"];
 SelectMenuDirective.$inject = ["$parse", "$mdUtil", "$mdConstant", "$mdTheming"];
 OptionDirective.$inject = ["$mdButtonInkRipple", "$mdUtil"];
 SelectProvider.$inject = ["$$interimElementProvider"];
@@ -18888,12 +20739,17 @@ angular.module('material.components.select', [
  * `value="null"` will require the test `ng-if="myValue != 'null'"` rather than `ng-if="!myValue"`.
  *
  * @param {expression} ng-model The model!
- * @param {boolean=} multiple Whether it's multiple.
+ * @param {boolean=} multiple When set to true, allows for more than one option to be selected. The model is an array with the selected choices.
  * @param {expression=} md-on-close Expression to be evaluated when the select is closed.
  * @param {expression=} md-on-open Expression to be evaluated when opening the select.
  * Will hide the select options and show a spinner until the evaluated promise resolves.
  * @param {expression=} md-selected-text Expression to be evaluated that will return a string
- * to be displayed as a placeholder in the select input box when it is closed.
+ * to be displayed as a placeholder in the select input box when it is closed. The value
+ * will be treated as *text* (not html).
+ * @param {expression=} md-selected-html Expression to be evaluated that will return a string
+ * to be displayed as a placeholder in the select input box when it is closed. The value
+ * will be treated as *html*. The value must either be explicitly marked as trustedHtml or
+ * the ngSanitize module must be loaded.
  * @param {string=} placeholder Placeholder hint text.
  * @param md-no-asterisk {boolean=} When set to true, an asterisk will not be appended to the
  * floating label. **Note:** This attribute is only evaluated once; it is not watched.
@@ -18992,7 +20848,8 @@ angular.module('material.components.select', [
  * </div>
  * </hljs>
  */
-function SelectDirective($mdSelect, $mdUtil, $mdConstant, $mdTheming, $mdAria, $compile, $parse) {
+function SelectDirective($mdSelect, $mdUtil, $mdConstant, $mdTheming, $mdAria, $parse, $sce,
+    $injector) {
   var keyCodes = $mdConstant.KEY_CODE;
   var NAVIGATION_KEYS = [keyCodes.SPACE, keyCodes.ENTER, keyCodes.UP_ARROW, keyCodes.DOWN_ARROW];
 
@@ -19155,17 +21012,39 @@ function SelectDirective($mdSelect, $mdUtil, $mdConstant, $mdTheming, $mdAria, $
       mdSelectCtrl.setLabelText = function(text) {
         mdSelectCtrl.setIsPlaceholder(!text);
 
-        if (attr.mdSelectedText) {
-          text = $parse(attr.mdSelectedText)(scope);
-        } else {
+        // Whether the select label has been given via user content rather than the internal
+        // template of <md-option>
+        var isSelectLabelFromUser = false;
+
+        if (attr.mdSelectedText && attr.mdSelectedHtml) {
+          throw Error('md-select cannot have both `md-selected-text` and `md-selected-html`');
+        }
+
+        if (attr.mdSelectedText || attr.mdSelectedHtml) {
+          text = $parse(attr.mdSelectedText || attr.mdSelectedHtml)(scope);
+          isSelectLabelFromUser = true;
+        } else if (!text) {
           // Use placeholder attribute, otherwise fallback to the md-input-container label
           var tmpPlaceholder = attr.placeholder ||
               (containerCtrl && containerCtrl.label ? containerCtrl.label.text() : '');
-          text = text || tmpPlaceholder || '';
+
+          text = tmpPlaceholder || '';
+          isSelectLabelFromUser = true;
         }
 
         var target = valueEl.children().eq(0);
-        target.html(text);
+
+        if (attr.mdSelectedHtml) {
+            // Using getTrustedHtml will run the content through $sanitize if it is not already
+            // explicitly trusted. If the ngSanitize module is not loaded, this will
+            // *correctly* throw an sce error.
+            target.html($sce.getTrustedHtml(text));
+        } else if (isSelectLabelFromUser) {
+          target.text(text);
+        } else {
+          // If we've reached this point, the text is not user-provided.
+          target.html(text);
+        }
       };
 
       mdSelectCtrl.setIsPlaceholder = function(isPlaceholder) {
@@ -19226,7 +21105,7 @@ function SelectDirective($mdSelect, $mdUtil, $mdConstant, $mdTheming, $mdAria, $
       }
 
       scope.$watch(function() {
-          return selectMenuCtrl.selectedLabels();
+        return selectMenuCtrl.selectedLabels();
       }, syncLabelText);
 
       function syncLabelText() {
@@ -19553,9 +21432,11 @@ function SelectMenuDirective($parse, $mdUtil, $mdConstant, $mdTheming) {
 
       // Allow users to provide `ng-model="foo" ng-model-options="{trackBy: 'foo.id'}"` so
       // that we can properly compare objects set on the model to the available options
-      if (ngModel.$options && ngModel.$options.trackBy) {
+      var trackByOption = $mdUtil.getModelOption(ngModel, 'trackBy');
+
+      if (trackByOption) {
         var trackByLocals = {};
-        var trackByParsed = $parse(ngModel.$options.trackBy);
+        var trackByParsed = $parse(trackByOption);
         self.hashGetter = function(value, valueScope) {
           trackByLocals.$value = value;
           return trackByParsed(valueScope || $scope, trackByLocals);
@@ -19609,7 +21490,9 @@ function SelectMenuDirective($parse, $mdUtil, $mdConstant, $mdTheming) {
         } else if (mode == 'aria') {
           mapFn = function(el) { return el.hasAttribute('aria-label') ? el.getAttribute('aria-label') : el.textContent; };
         }
-        return selectedOptionEls.map(mapFn).join(', ');
+
+        // Ensure there are no duplicates; see https://github.com/angular/material/issues/9442
+        return $mdUtil.uniq(selectedOptionEls.map(mapFn)).join(', ');
       } else {
         return '';
       }
@@ -19671,12 +21554,12 @@ function SelectMenuDirective($parse, $mdUtil, $mdConstant, $mdTheming) {
           values.push(self.selected[hashKey]);
         }
       }
-      var usingTrackBy = self.ngModel.$options && self.ngModel.$options.trackBy;
+      var usingTrackBy = $mdUtil.getModelOption(self.ngModel, 'trackBy');
 
       var newVal = self.isMultiple ? values : values[0];
       var prevVal = self.ngModel.$modelValue;
 
-      if (usingTrackBy ? !angular.equals(prevVal, newVal) : prevVal != newVal) {
+      if (usingTrackBy ? !angular.equals(prevVal, newVal) : (prevVal + '') !== newVal) {
         self.ngModel.$setViewValue(newVal);
         self.ngModel.$render();
       }
@@ -20529,8 +22412,8 @@ function createDirective(name, targetValue) {
  * A Sidenav QP component.
  */
 SidenavService.$inject = ["$mdComponentRegistry", "$mdUtil", "$q", "$log"];
-SidenavDirective.$inject = ["$mdMedia", "$mdUtil", "$mdConstant", "$mdTheming", "$animate", "$compile", "$parse", "$log", "$q", "$document"];
-SidenavController.$inject = ["$scope", "$element", "$attrs", "$mdComponentRegistry", "$q"];
+SidenavDirective.$inject = ["$mdMedia", "$mdUtil", "$mdConstant", "$mdTheming", "$mdInteraction", "$animate", "$compile", "$parse", "$log", "$q", "$document", "$window", "$$rAF"];
+SidenavController.$inject = ["$scope", "$attrs", "$mdComponentRegistry", "$q", "$interpolate"];
 angular
   .module('material.components.sidenav', [
     'material.core',
@@ -20769,7 +22652,8 @@ function SidenavFocusDirective() {
  *   - `<md-sidenav md-is-locked-open="$mdMedia('min-width: 1000px')"></md-sidenav>`
  *   - `<md-sidenav md-is-locked-open="$mdMedia('sm')"></md-sidenav>` (locks open on small screens)
  */
-function SidenavDirective($mdMedia, $mdUtil, $mdConstant, $mdTheming, $animate, $compile, $parse, $log, $q, $document) {
+function SidenavDirective($mdMedia, $mdUtil, $mdConstant, $mdTheming, $mdInteraction, $animate,
+                          $compile, $parse, $log, $q, $document, $window, $$rAF) {
   return {
     restrict: 'E',
     scope: {
@@ -20777,8 +22661,7 @@ function SidenavDirective($mdMedia, $mdUtil, $mdConstant, $mdTheming, $animate, 
     },
     controller: '$mdSidenavController',
     compile: function(element) {
-      element.addClass('md-closed');
-      element.attr('tabIndex', '-1');
+      element.addClass('md-closed').attr('tabIndex', '-1');
       return postLink;
     }
   };
@@ -20790,10 +22673,12 @@ function SidenavDirective($mdMedia, $mdUtil, $mdConstant, $mdTheming, $animate, 
     var lastParentOverFlow;
     var backdrop;
     var disableScrollTarget = null;
+    var triggeringInteractionType;
     var triggeringElement = null;
     var previousContainerStyles;
     var promise = $q.when(true);
     var isLockedOpenParsed = $parse(attr.mdIsLockedOpen);
+    var ngWindow = angular.element($window);
     var isLocked = function() {
       return isLockedOpenParsed(scope.$parent, {
         $media: function(arg) {
@@ -20880,6 +22765,7 @@ function SidenavDirective($mdMedia, $mdUtil, $mdConstant, $mdTheming, $animate, 
       if ( isOpen ) {
         // Capture upon opening..
         triggeringElement = $document[0].activeElement;
+        triggeringInteractionType = $mdInteraction.getLastInteractionType();
       }
 
       disableParentScroll(isOpen);
@@ -20891,6 +22777,12 @@ function SidenavDirective($mdMedia, $mdUtil, $mdConstant, $mdTheming, $animate, 
       ]).then(function() {
         // Perform focus when animations are ALL done...
         if (scope.isOpen) {
+          $$rAF(function() {
+            // Notifies child components that the sidenav was opened. Should wait
+            // a frame in order to allow for the element height to be computed.
+            ngWindow.triggerHandler('resize');
+          });
+
           focusEl && focusEl.focus();
         }
 
@@ -20977,9 +22869,9 @@ function SidenavDirective($mdMedia, $mdUtil, $mdConstant, $mdTheming, $animate, 
             // When the current `updateIsOpen()` animation finishes
             promise.then(function(result) {
 
-              if ( !scope.isOpen ) {
+              if ( !scope.isOpen && triggeringElement && triggeringInteractionType === 'keyboard') {
                 // reset focus to originating element (if available) upon close
-                triggeringElement && triggeringElement.focus();
+                triggeringElement.focus();
                 triggeringElement = null;
               }
 
@@ -21020,9 +22912,8 @@ function SidenavDirective($mdMedia, $mdUtil, $mdConstant, $mdTheming, $animate, 
  * @ngdoc controller
  * @name SidenavController
  * @module material.components.sidenav
- *
  */
-function SidenavController($scope, $element, $attrs, $mdComponentRegistry, $q) {
+function SidenavController($scope, $attrs, $mdComponentRegistry, $q, $interpolate) {
 
   var self = this;
 
@@ -21044,7 +22935,23 @@ function SidenavController($scope, $element, $attrs, $mdComponentRegistry, $q) {
   self.toggle = function() { return self.$toggleOpen( !$scope.isOpen );  };
   self.$toggleOpen = function(value) { return $q.when($scope.isOpen = value); };
 
-  self.destroy = $mdComponentRegistry.register(self, $attrs.mdComponentId);
+  // Evaluate the component id.
+  var rawId = $attrs.mdComponentId;
+  var hasDataBinding = rawId && rawId.indexOf($interpolate.startSymbol()) > -1;
+  var componentId = hasDataBinding ? $interpolate(rawId)($scope.$parent) : rawId;
+
+  // Register the component.
+  self.destroy = $mdComponentRegistry.register(self, componentId);
+
+  // Watch and update the component, if the id has changed.
+  if (hasDataBinding) {
+    $attrs.$observe('mdComponentId', function(id) {
+      if (id && id !== self.$$mdHandle) {
+        self.destroy(); // `destroy` only deregisters the old component id so we can add the new one.
+        self.destroy = $mdComponentRegistry.register(self, id);
+      }
+    });
+  }
 }
 
 })();
@@ -22028,7 +23935,7 @@ function MdSticky($mdConstant, $$rAF, $mdUtil, $compile) {
  *  > To improve the visual grouping of content, use the system color for your subheaders.
  *
  */
-MdSubheaderDirective.$inject = ["$mdSticky", "$compile", "$mdTheming", "$mdUtil"];
+MdSubheaderDirective.$inject = ["$mdSticky", "$compile", "$mdTheming", "$mdUtil", "$mdAria"];
 angular
   .module('material.components.subheader', [
     'material.core',
@@ -22065,7 +23972,7 @@ angular
  * </hljs>
  */
 
-function MdSubheaderDirective($mdSticky, $compile, $mdTheming, $mdUtil) {
+function MdSubheaderDirective($mdSticky, $compile, $mdTheming, $mdUtil, $mdAria) {
   return {
     restrict: 'E',
     replace: true,
@@ -22091,6 +23998,12 @@ function MdSubheaderDirective($mdSticky, $compile, $mdTheming, $mdUtil) {
         return angular.element(el[0].querySelector('.md-subheader-content'));
       }
 
+      // Set the ARIA attributes on the original element since it keeps it's original place in
+      // the DOM, whereas the clones are in reverse order. Should be done after the outerHTML,
+      // in order to avoid having multiple element be marked as headers.
+      attr.$set('role', 'heading');
+      $mdAria.expect(element, 'aria-level', '2');
+
       // Transclude the user-given contents of the subheader
       // the conventional way.
       transclude(scope, function(clone) {
@@ -22105,7 +24018,7 @@ function MdSubheaderDirective($mdSticky, $compile, $mdTheming, $mdUtil) {
           // compiled clone below will only be a comment tag (since they replace their elements with
           // a comment) which cannot be properly passed to the $mdSticky; so we wrap it in our own
           // DIV to ensure we have something $mdSticky can use
-          var wrapper = $compile('<div class="md-subheader-wrapper">' + outerHTML + '</div>')(scope);
+          var wrapper = $compile('<div class="md-subheader-wrapper" aria-hidden="true">' + outerHTML + '</div>')(scope);
 
           // Delay initialization until after any `ng-if`/`ng-repeat`/etc has finished before
           // attempting to create the clone
@@ -22217,6 +24130,8 @@ function getDirective(name) {
   function DirectiveFactory($parse) {
       return { restrict: 'A', link: postLink };
       function postLink(scope, element, attr) {
+        element.css('touch-action', 'none');
+
         var fn = $parse(attr[directiveName]);
         element.on(eventName, function(ev) {
           scope.$applyAsync(function() { fn(scope, { $event: ev }); });
@@ -22263,6 +24178,7 @@ angular.module('material.components.switch', [
  * @param {expression=} ng-disabled En/Disable based on the expression.
  * @param {boolean=} md-no-ink Use of attribute indicates use of ripple ink effects.
  * @param {string=} aria-label Publish the button label used by screen-readers for accessibility. Defaults to the switch's text.
+ * @param {boolean=} md-invert When set to true, the switch will be inverted.
  *
  * @usage
  * <hljs lang="html">
@@ -22285,7 +24201,7 @@ function MdSwitch(mdCheckboxDirective, $mdUtil, $mdConstant, $parse, $$rAF, $mdG
 
   return {
     restrict: 'E',
-    priority: 210, // Run before ngAria
+    priority: $mdConstant.BEFORE_NG_ARIA,
     transclude: true,
     template:
       '<div class="md-container">' +
@@ -22295,7 +24211,7 @@ function MdSwitch(mdCheckboxDirective, $mdUtil, $mdConstant, $parse, $$rAF, $mdG
         '</div>'+
       '</div>' +
       '<div ng-transclude class="md-label"></div>',
-    require: '?ngModel',
+    require: ['^?mdInputContainer', '?ngModel', '?^form'],
     compile: mdSwitchCompile
   };
 
@@ -22304,8 +24220,10 @@ function MdSwitch(mdCheckboxDirective, $mdUtil, $mdConstant, $parse, $$rAF, $mdG
     // No transition on initial load.
     element.addClass('md-dragging');
 
-    return function (scope, element, attr, ngModel) {
-      ngModel = ngModel || $mdUtil.fakeNgModel();
+    return function (scope, element, attr, ctrls) {
+      var containerCtrl = ctrls[0];
+      var ngModel = ctrls[1] || $mdUtil.fakeNgModel();
+      var formCtrl = ctrls[2];
 
       var disabledGetter = null;
       if (attr.disabled != null) {
@@ -22316,19 +24234,29 @@ function MdSwitch(mdCheckboxDirective, $mdUtil, $mdConstant, $parse, $$rAF, $mdG
 
       var thumbContainer = angular.element(element[0].querySelector('.md-thumb-container'));
       var switchContainer = angular.element(element[0].querySelector('.md-container'));
+      var labelContainer = angular.element(element[0].querySelector('.md-label'));
 
       // no transition on initial load
       $$rAF(function() {
         element.removeClass('md-dragging');
       });
 
-      checkboxLink(scope, element, attr, ngModel);
+      checkboxLink(scope, element, attr, ctrls);
 
       if (disabledGetter) {
         scope.$watch(disabledGetter, function(isDisabled) {
           element.attr('tabindex', isDisabled ? -1 : 0);
         });
       }
+
+      attr.$observe('mdInvert', function(newValue) {
+        var isInverted = $mdUtil.parseAttributeBoolean(newValue);
+
+        isInverted ? element.prepend(labelContainer) : element.prepend(switchContainer);
+
+        // Toggle a CSS class to update the margin.
+        element.toggleClass('md-inverted', isInverted);
+      });
 
       // These events are triggered by setup drag
       $mdGesture.register(switchContainer, 'drag');
@@ -22397,38 +24325,6 @@ function MdSwitch(mdCheckboxDirective, $mdUtil, $mdConstant, $parse, $$rAF, $mdG
 
 
 }
-
-})();
-(function(){
-"use strict";
-
-/**
- * @ngdoc module
- * @name material.components.tabs
- * @description
- *
- *  Tabs, created with the `<md-tabs>` directive provide *tabbed* navigation with different styles.
- *  The Tabs component consists of clickable tabs that are aligned horizontally side-by-side.
- *
- *  Features include support for:
- *
- *  - static or dynamic tabs,
- *  - responsive designs,
- *  - accessibility support (ARIA),
- *  - tab pagination,
- *  - external or internal tab content,
- *  - focus indicators and arrow-key navigations,
- *  - programmatic lookup and access to tab controllers, and
- *  - dynamic transitions through different tab contents.
- *
- */
-/*
- * @see js folder for tabs implementation
- */
-angular.module('material.components.tabs', [
-  'material.core',
-  'material.components.icon'
-]);
 
 })();
 (function(){
@@ -22920,6 +24816,38 @@ function MdToastProvider($$interimElementProvider) {
 
 /**
  * @ngdoc module
+ * @name material.components.tabs
+ * @description
+ *
+ *  Tabs, created with the `<md-tabs>` directive provide *tabbed* navigation with different styles.
+ *  The Tabs component consists of clickable tabs that are aligned horizontally side-by-side.
+ *
+ *  Features include support for:
+ *
+ *  - static or dynamic tabs,
+ *  - responsive designs,
+ *  - accessibility support (ARIA),
+ *  - tab pagination,
+ *  - external or internal tab content,
+ *  - focus indicators and arrow-key navigations,
+ *  - programmatic lookup and access to tab controllers, and
+ *  - dynamic transitions through different tab contents.
+ *
+ */
+/*
+ * @see js folder for tabs implementation
+ */
+angular.module('material.components.tabs', [
+  'material.core',
+  'material.components.icon'
+]);
+
+})();
+(function(){
+"use strict";
+
+/**
+ * @ngdoc module
  * @name material.components.toolbar
  */
 mdToolbarDirective.$inject = ["$$rAF", "$mdConstant", "$mdUtil", "$mdTheming", "$animate"];
@@ -22949,10 +24877,7 @@ angular.module('material.components.toolbar', [
  *   <md-toolbar>
  *
  *     <div class="md-toolbar-tools">
- *       <span>My App's Title</span>
- *
- *       <!-- fill up the space between left and right area -->
- *       <span flex></span>
+ *       <h2 md-truncate flex>My App's Title</h2>
  *
  *       <md-button>
  *         Right Bar Button
@@ -22965,6 +24890,30 @@ angular.module('material.components.toolbar', [
  *   </md-content>
  * </div>
  * </hljs>
+ *
+ * <i><b>Note:</b> The code above shows usage with the `md-truncate` component which provides an
+ * ellipsis if the title is longer than the width of the Toolbar.</i>
+ *
+ * ## CSS & Styles
+ *
+ * The `<md-toolbar>` provides a few custom CSS classes that you may use to enhance the
+ * functionality of your toolbar.
+ *
+ * <div>
+ * <docs-css-api-table>
+ *
+ *   <docs-css-selector code="md-toolbar .md-toolbar-tools">
+ *     The `md-toolbar-tools` class provides quite a bit of automatic styling for your toolbar
+ *     buttons and text. When applied, it will center the buttons and text vertically for you.
+ *   </docs-css-selector>
+ *
+ * </docs-css-api-table>
+ * </div>
+ *
+ * ### Private Classes
+ *
+ * Currently, the only private class is the `md-toolbar-transitions` class. All other classes are
+ * considered public.
  *
  * @param {boolean=} md-scroll-shrink Whether the header should shrink away as
  * the user scrolls down, and reveal itself as the user scrolls up.
@@ -22979,6 +24928,7 @@ angular.module('material.components.toolbar', [
  * @param {number=} md-shrink-speed-factor How much to change the speed of the toolbar's
  * shrinking by. For example, if 0.25 is given then the toolbar will shrink
  * at one fourth the rate at which the user scrolls down. Default 0.5.
+ *
  */
 
 function mdToolbarDirective($$rAF, $mdConstant, $mdUtil, $mdTheming, $animate) {
@@ -23164,158 +25114,306 @@ function mdToolbarDirective($$rAF, $mdConstant, $mdUtil, $mdTheming, $animate) {
  * @ngdoc module
  * @name material.components.tooltip
  */
-MdTooltipDirective.$inject = ["$timeout", "$window", "$$rAF", "$document", "$mdUtil", "$mdTheming", "$rootElement", "$animate", "$q", "$interpolate"];
+MdTooltipDirective.$inject = ["$timeout", "$window", "$$rAF", "$document", "$interpolate", "$mdUtil", "$mdPanel", "$$mdTooltipRegistry"];
 angular
-    .module('material.components.tooltip', [ 'material.core' ])
-    .directive('mdTooltip', MdTooltipDirective);
+    .module('material.components.tooltip', [
+      'material.core',
+      'material.components.panel'
+    ])
+    .directive('mdTooltip', MdTooltipDirective)
+    .service('$$mdTooltipRegistry', MdTooltipRegistry);
+
 
 /**
  * @ngdoc directive
  * @name mdTooltip
  * @module material.components.tooltip
  * @description
- * Tooltips are used to describe elements that are interactive and primarily graphical (not textual).
+ * Tooltips are used to describe elements that are interactive and primarily
+ * graphical (not textual).
  *
  * Place a `<md-tooltip>` as a child of the element it describes.
  *
- * A tooltip will activate when the user focuses, hovers over, or touches the parent.
+ * A tooltip will activate when the user hovers over, focuses, or touches the
+ * parent element.
  *
  * @usage
  * <hljs lang="html">
- * <md-button class="md-fab md-accent" aria-label="Play">
- *   <md-tooltip>
- *     Play Music
- *   </md-tooltip>
- *   <md-icon icon="img/icons/ic_play_arrow_24px.svg"></md-icon>
- * </md-button>
+ *   <md-button class="md-fab md-accent" aria-label="Play">
+ *     <md-tooltip>Play Music</md-tooltip>
+ *     <md-icon md-svg-src="img/icons/ic_play_arrow_24px.svg"></md-icon>
+ *   </md-button>
  * </hljs>
  *
- * @param {expression=} md-visible Boolean bound to whether the tooltip is currently visible.
- * @param {number=} md-delay How many milliseconds to wait to show the tooltip after the user focuses, hovers, or touches the
- * parent. Defaults to 0ms on non-touch devices and 75ms on touch.
- * @param {boolean=} md-autohide If present or provided with a boolean value, the tooltip will hide on mouse leave, regardless of focus
- * @param {string=} md-direction Which direction would you like the tooltip to go?  Supports left, right, top, and bottom.  Defaults to bottom.
+ * @param {number=} md-z-index The visual level that the tooltip will appear
+ *     in comparison with the rest of the elements of the application.
+ * @param {expression=} md-visible Boolean bound to whether the tooltip is
+ *     currently visible.
+ * @param {number=} md-delay How many milliseconds to wait to show the tooltip
+ *     after the user hovers over, focuses, or touches the parent element.
+ *     Defaults to 0ms on non-touch devices and 75ms on touch.
+ * @param {boolean=} md-autohide If present or provided with a boolean value,
+ *     the tooltip will hide on mouse leave, regardless of focus.
+ * @param {string=} md-direction The direction that the tooltip is shown,
+ *     relative to the parent element. Supports top, right, bottom, and left.
+ *     Defaults to bottom.
  */
-function MdTooltipDirective($timeout, $window, $$rAF, $document, $mdUtil, $mdTheming, $rootElement,
-                            $animate, $q, $interpolate) {
+function MdTooltipDirective($timeout, $window, $$rAF, $document, $interpolate,
+    $mdUtil, $mdPanel, $$mdTooltipRegistry) {
 
   var ENTER_EVENTS = 'focus touchstart mouseenter';
   var LEAVE_EVENTS = 'blur touchcancel mouseleave';
-  var SHOW_CLASS = 'md-show';
-  var TOOLTIP_SHOW_DELAY = 0;
-  var TOOLTIP_WINDOW_EDGE_SPACE = 8;
+  var TOOLTIP_DEFAULT_Z_INDEX = 100;
+  var TOOLTIP_DEFAULT_SHOW_DELAY = 0;
+  var TOOLTIP_DEFAULT_DIRECTION = 'bottom';
+  var TOOLTIP_DIRECTIONS = {
+    top: { x: $mdPanel.xPosition.CENTER, y: $mdPanel.yPosition.ABOVE },
+    right: { x: $mdPanel.xPosition.OFFSET_END, y: $mdPanel.yPosition.CENTER },
+    bottom: { x: $mdPanel.xPosition.CENTER, y: $mdPanel.yPosition.BELOW },
+    left: { x: $mdPanel.xPosition.OFFSET_START, y: $mdPanel.yPosition.CENTER }
+  };
 
   return {
     restrict: 'E',
-    transclude: true,
     priority: 210, // Before ngAria
-    template: '<div class="md-content _md" ng-transclude></div>',
     scope: {
-      delay: '=?mdDelay',
-      visible: '=?mdVisible',
-      autohide: '=?mdAutohide',
-      direction: '@?mdDirection'    // only expect raw or interpolated string value; not expression
+      mdZIndex: '=?mdZIndex',
+      mdDelay: '=?mdDelay',
+      mdVisible: '=?mdVisible',
+      mdAutohide: '=?mdAutohide',
+      mdDirection: '@?mdDirection' // Do not expect expressions.
     },
-    compile: function(tElement, tAttr) {
-      if (!tAttr.mdDirection) {
-        tAttr.$set('mdDirection', 'bottom');
-      }
-
-      return postLink;
-    }
+    link: linkFunc
   };
 
-  function postLink(scope, element, attr) {
+  function linkFunc(scope, element, attr) {
+    // Set constants.
+    var parent = $mdUtil.getParentWithPointerEvents(element);
+    var debouncedOnResize = $$rAF.throttle(updatePosition);
+    var mouseActive = false;
+    var origin, position, panelPosition, panelRef, autohide, showTimeout,
+        elementFocusedOnWindowBlur = null;
 
-    $mdTheming(element);
-
-    var parent        = $mdUtil.getParentWithPointerEvents(element),
-        content       = angular.element(element[0].getElementsByClassName('md-content')[0]),
-        tooltipParent = angular.element(document.body),
-        showTimeout   = null,
-        debouncedOnResize = $$rAF.throttle(function () { updatePosition(); });
-
-    if ($animate.pin) $animate.pin(element, parent);
-
-    // Initialize element
-
+    // Set defaults
     setDefaults();
-    manipulateElement();
-    bindEvents();
 
-    // Default origin transform point is 'center top'
-    // positionTooltip() is always relative to center top
-    updateContentOrigin();
-
-    configureWatchers();
+    // Set parent aria-label.
     addAriaLabel();
 
+    // Remove the element from its current DOM position.
+    element.detach();
 
-    function setDefaults () {
-      scope.delay = scope.delay || TOOLTIP_SHOW_DELAY;
-    }
+    updatePosition();
+    bindEvents();
+    configureWatchers();
 
-    function updateContentOrigin() {
-      var origin = 'center top';
-      switch (scope.direction) {
-        case 'left'  : origin =  'right center';  break;
-        case 'right' : origin =  'left center';   break;
-        case 'top'   : origin =  'center bottom'; break;
-        case 'bottom': origin =  'center top';    break;
+    function setDefaults() {
+      scope.mdZIndex = scope.mdZIndex || TOOLTIP_DEFAULT_Z_INDEX;
+      scope.mdDelay = scope.mdDelay || TOOLTIP_DEFAULT_SHOW_DELAY;
+      if (!TOOLTIP_DIRECTIONS[scope.mdDirection]) {
+        scope.mdDirection = TOOLTIP_DEFAULT_DIRECTION;
       }
-      content.css('transform-origin', origin);
     }
 
-    function onVisibleChanged (isVisible) {
-      if (isVisible) showTooltip();
-      else hideTooltip();
+    function addAriaLabel(override) {
+      if (override || !parent.attr('aria-label')) {
+        // Only interpolate the text from the HTML element because otherwise the custom text
+        // could be interpolated twice and cause XSS violations.
+        var interpolatedText = override || $interpolate(element.text().trim())(scope.$parent);
+        parent.attr('aria-label', interpolatedText);
+      }
     }
 
-    function configureWatchers () {
-      if (element[0] && 'MutationObserver' in $window) {
+    function updatePosition() {
+      setDefaults();
+
+      // If the panel has already been created, remove the current origin
+      // class from the panel element.
+      if (panelRef && panelRef.panelEl) {
+        panelRef.panelEl.removeClass(origin);
+      }
+
+      // Set the panel element origin class based off of the current
+      // mdDirection.
+      origin = 'md-origin-' + scope.mdDirection;
+
+      // Create the position of the panel based off of the mdDirection.
+      position = TOOLTIP_DIRECTIONS[scope.mdDirection];
+
+      // Using the newly created position object, use the MdPanel
+      // panelPosition API to build the panel's position.
+      panelPosition = $mdPanel.newPanelPosition()
+          .relativeTo(parent)
+          .addPanelPosition(position.x, position.y);
+
+      // If the panel has already been created, add the new origin class to
+      // the panel element and update it's position with the panelPosition.
+      if (panelRef && panelRef.panelEl) {
+        panelRef.panelEl.addClass(origin);
+        panelRef.updatePosition(panelPosition);
+      }
+    }
+
+    function bindEvents() {
+      // Add a mutationObserver where there is support for it and the need
+      // for it in the form of viable host(parent[0]).
+      if (parent[0] && 'MutationObserver' in $window) {
+        // Use a mutationObserver to tackle #2602.
         var attributeObserver = new MutationObserver(function(mutations) {
-          mutations
-            .forEach(function (mutation) {
-              if (mutation.attributeName === 'md-visible') {
-                if (!scope.visibleWatcher)
-                  scope.visibleWatcher = scope.$watch('visible', onVisibleChanged );
-              }
-              if (mutation.attributeName === 'md-direction') {
-                updatePosition(scope.direction);
-              }
+          if (isDisabledMutation(mutations)) {
+            $mdUtil.nextTick(function() {
+              setVisible(false);
             });
+          }
         });
 
-        attributeObserver.observe(element[0], { attributes: true });
-
-        // build watcher only if mdVisible is being used
-        if (attr.hasOwnProperty('mdVisible')) {
-          scope.visibleWatcher = scope.$watch('visible', onVisibleChanged );
-        }
-      } else { // MutationObserver not supported
-        scope.visibleWatcher = scope.$watch('visible', onVisibleChanged );
-        scope.$watch('direction', updatePosition );
+        attributeObserver.observe(parent[0], {
+          attributes: true
+        });
       }
 
-      var onElementDestroy = function() {
-        scope.$destroy();
-      };
+      elementFocusedOnWindowBlur = false;
+
+      $$mdTooltipRegistry.register('scroll', windowScrollEventHandler, true);
+      $$mdTooltipRegistry.register('blur', windowBlurEventHandler);
+      $$mdTooltipRegistry.register('resize', debouncedOnResize);
+
+      scope.$on('$destroy', onDestroy);
+
+      // To avoid 'synthetic clicks', we listen to mousedown instead of
+      // 'click'.
+      parent.on('mousedown', mousedownEventHandler);
+      parent.on(ENTER_EVENTS, enterEventHandler);
+
+      function isDisabledMutation(mutations) {
+        mutations.some(function(mutation) {
+          return mutation.attributeName === 'disabled' && parent[0].disabled;
+        });
+        return false;
+      }
+
+      function windowScrollEventHandler() {
+        setVisible(false);
+      }
+
+      function windowBlurEventHandler() {
+        elementFocusedOnWindowBlur = document.activeElement === parent[0];
+      }
+
+      function enterEventHandler($event) {
+        // Prevent the tooltip from showing when the window is receiving
+        // focus.
+        if ($event.type === 'focus' && elementFocusedOnWindowBlur) {
+          elementFocusedOnWindowBlur = false;
+        } else if (!scope.mdVisible) {
+          parent.on(LEAVE_EVENTS, leaveEventHandler);
+          setVisible(true);
+
+          // If the user is on a touch device, we should bind the tap away
+          // after the 'touched' in order to prevent the tooltip being
+          // removed immediately.
+          if ($event.type === 'touchstart') {
+            parent.one('touchend', function() {
+              $mdUtil.nextTick(function() {
+                $document.one('touchend', leaveEventHandler);
+              }, false);
+            });
+          }
+        }
+      }
+
+      function leaveEventHandler() {
+        autohide = scope.hasOwnProperty('mdAutohide') ?
+            scope.mdAutohide :
+            attr.hasOwnProperty('mdAutohide');
+
+        if (autohide || mouseActive ||
+            $document[0].activeElement !== parent[0]) {
+          // When a show timeout is currently in progress, then we have
+          // to cancel it, otherwise the tooltip will remain showing
+          // without focus or hover.
+          if (showTimeout) {
+            $timeout.cancel(showTimeout);
+            setVisible.queued = false;
+            showTimeout = null;
+          }
+
+          parent.off(LEAVE_EVENTS, leaveEventHandler);
+          parent.triggerHandler('blur');
+          setVisible(false);
+        }
+        mouseActive = false;
+      }
+
+      function mousedownEventHandler() {
+        mouseActive = true;
+      }
+
+      function onDestroy() {
+        $$mdTooltipRegistry.deregister('scroll', windowScrollEventHandler, true);
+        $$mdTooltipRegistry.deregister('blur', windowBlurEventHandler);
+        $$mdTooltipRegistry.deregister('resize', debouncedOnResize);
+
+        parent
+            .off(ENTER_EVENTS, enterEventHandler)
+            .off(LEAVE_EVENTS, leaveEventHandler)
+            .off('mousedown', mousedownEventHandler);
+
+        // Trigger the handler in case any of the tooltips are
+        // still visible.
+        leaveEventHandler();
+        attributeObserver && attributeObserver.disconnect();
+      }
+    }
+
+    function configureWatchers() {
+      if (element[0] && 'MutationObserver' in $window) {
+        var attributeObserver = new MutationObserver(function(mutations) {
+          mutations.forEach(function(mutation) {
+            if (mutation.attributeName === 'md-visible' &&
+                !scope.visibleWatcher ) {
+              scope.visibleWatcher = scope.$watch('mdVisible',
+                  onVisibleChanged);
+            }
+          });
+        });
+
+        attributeObserver.observe(element[0], {
+          attributes: true
+        });
+
+        // Build watcher only if mdVisible is being used.
+        if (attr.hasOwnProperty('mdVisible')) {
+          scope.visibleWatcher = scope.$watch('mdVisible',
+              onVisibleChanged);
+        }
+      } else {
+        // MutationObserver not supported
+        scope.visibleWatcher = scope.$watch('mdVisible', onVisibleChanged);
+      }
+
+      // Direction watcher
+      scope.$watch('mdDirection', updatePosition);
 
       // Clean up if the element or parent was removed via jqLite's .remove.
       // A couple of notes:
-      // - In these cases the scope might not have been destroyed, which is why we
-      // destroy it manually. An example of this can be having `md-visible="false"` and
-      // adding tooltips while they're invisible. If `md-visible` becomes true, at some
-      // point, you'd usually get a lot of inputs.
-      // - We use `.one`, not `.on`, because this only needs to fire once. If we were
-      // using `.on`, it would get thrown into an infinite loop.
-      // - This kicks off the scope's `$destroy` event which finishes the cleanup.
+      //   - In these cases the scope might not have been destroyed, which
+      //     is why we destroy it manually. An example of this can be having
+      //     `md-visible="false"` and adding tooltips while they're
+      //     invisible. If `md-visible` becomes true, at some point, you'd
+      //     usually get a lot of tooltips.
+      //   - We use `.one`, not `.on`, because this only needs to fire once.
+      //     If we were using `.on`, it would get thrown into an infinite
+      //     loop.
+      //   - This kicks off the scope's `$destroy` event which finishes the
+      //     cleanup.
       element.one('$destroy', onElementDestroy);
       parent.one('$destroy', onElementDestroy);
       scope.$on('$destroy', function() {
         setVisible(false);
-        element.remove();
+        panelRef && panelRef.destroy();
         attributeObserver && attributeObserver.disconnect();
+        element.remove();
       });
 
       // Updates the aria-label when the element text changes. This watch
@@ -23326,228 +25424,252 @@ function MdTooltipDirective($timeout, $window, $$rAF, $document, $mdUtil, $mdThe
           return element.text().trim();
         }, addAriaLabel);
       }
-    }
 
-    function addAriaLabel (override) {
-      if ((override || !parent.attr('aria-label')) && !parent.text().trim()) {
-        var rawText = override || element.text().trim();
-        var interpolatedText = $interpolate(rawText)(parent.scope());
-        parent.attr('aria-label', interpolatedText);
+      function onElementDestroy() {
+        scope.$destroy();
       }
     }
 
-    function manipulateElement () {
-      element.detach();
-      element.attr('role', 'tooltip');
-    }
-
-    function bindEvents () {
-      var mouseActive = false;
-
-      // add an mutationObserver when there is support for it
-      // and the need for it in the form of viable host(parent[0])
-      if (parent[0] && 'MutationObserver' in $window) {
-        // use an mutationObserver to tackle #2602
-        var attributeObserver = new MutationObserver(function(mutations) {
-          if (mutations.some(function (mutation) {
-              return (mutation.attributeName === 'disabled' && parent[0].disabled);
-            })) {
-              $mdUtil.nextTick(function() {
-                setVisible(false);
-              });
-          }
-        });
-
-        attributeObserver.observe(parent[0], { attributes: true});
+    function setVisible(value) {
+      // Break if passed value is already in queue or there is no queue and
+      // passed value is current in the controller.
+      if (setVisible.queued && setVisible.value === !!value ||
+          !setVisible.queued && scope.mdVisible === !!value) {
+        return;
       }
-
-      // Store whether the element was focused when the window loses focus.
-      var windowBlurHandler = function() {
-        elementFocusedOnWindowBlur = document.activeElement === parent[0];
-      };
-      var elementFocusedOnWindowBlur = false;
-
-      function windowScrollHandler() {
-        setVisible(false);
-      }
-
-      angular.element($window)
-        .on('blur', windowBlurHandler)
-        .on('resize', debouncedOnResize);
-
-      document.addEventListener('scroll', windowScrollHandler, true);
-      scope.$on('$destroy', function() {
-        angular.element($window)
-          .off('blur', windowBlurHandler)
-          .off('resize', debouncedOnResize);
-
-        parent
-          .off(ENTER_EVENTS, enterHandler)
-          .off(LEAVE_EVENTS, leaveHandler)
-          .off('mousedown', mousedownHandler);
-
-        // Trigger the handler in case any the tooltip was still visible.
-        leaveHandler();
-        document.removeEventListener('scroll', windowScrollHandler, true);
-        attributeObserver && attributeObserver.disconnect();
-      });
-
-      var enterHandler = function(e) {
-        // Prevent the tooltip from showing when the window is receiving focus.
-        if (e.type === 'focus' && elementFocusedOnWindowBlur) {
-          elementFocusedOnWindowBlur = false;
-        } else if (!scope.visible) {
-          parent.on(LEAVE_EVENTS, leaveHandler);
-          setVisible(true);
-
-          // If the user is on a touch device, we should bind the tap away after
-          // the `touched` in order to prevent the tooltip being removed immediately.
-          if (e.type === 'touchstart') {
-            parent.one('touchend', function() {
-              $mdUtil.nextTick(function() {
-                $document.one('touchend', leaveHandler);
-              }, false);
-            });
-          }
-        }
-      };
-      var leaveHandler = function () {
-        var autohide = scope.hasOwnProperty('autohide') ? scope.autohide : attr.hasOwnProperty('mdAutohide');
-
-        if (autohide || mouseActive || $document[0].activeElement !== parent[0]) {
-          // When a show timeout is currently in progress, then we have to cancel it.
-          // Otherwise the tooltip will remain showing without focus or hover.
-          if (showTimeout) {
-            $timeout.cancel(showTimeout);
-            setVisible.queued = false;
-            showTimeout = null;
-          }
-
-          parent.off(LEAVE_EVENTS, leaveHandler);
-          parent.triggerHandler('blur');
-          setVisible(false);
-        }
-        mouseActive = false;
-      };
-      var mousedownHandler = function() {
-        mouseActive = true;
-      };
-
-      // to avoid `synthetic clicks` we listen to mousedown instead of `click`
-      parent.on('mousedown', mousedownHandler);
-      parent.on(ENTER_EVENTS, enterHandler);
-    }
-
-    function setVisible (value) {
-      // break if passed value is already in queue or there is no queue and passed value is current in the scope
-      if (setVisible.queued && setVisible.value === !!value || !setVisible.queued && scope.visible === !!value) return;
       setVisible.value = !!value;
 
       if (!setVisible.queued) {
         if (value) {
           setVisible.queued = true;
           showTimeout = $timeout(function() {
-            scope.visible = setVisible.value;
+            scope.mdVisible = setVisible.value;
             setVisible.queued = false;
             showTimeout = null;
-
             if (!scope.visibleWatcher) {
-              onVisibleChanged(scope.visible);
+              onVisibleChanged(scope.mdVisible);
             }
-          }, scope.delay);
+          }, scope.mdDelay);
         } else {
           $mdUtil.nextTick(function() {
-            scope.visible = false;
-            if (!scope.visibleWatcher)
+            scope.mdVisible = false;
+            if (!scope.visibleWatcher) {
               onVisibleChanged(false);
+            }
           });
         }
       }
     }
 
+    function onVisibleChanged(isVisible) {
+      isVisible ? showTooltip() : hideTooltip();
+    }
+
     function showTooltip() {
-      //  Do not show the tooltip if the text is empty.
-      if (!element[0].textContent.trim()) return;
-
-      // Insert the element and position at top left, so we can get the position
-      // and check if we should display it
-      element.css({top: 0, left: 0});
-      tooltipParent.append(element);
-
-      // Check if we should display it or not.
-      // This handles hide-* and show-* along with any user defined css
-      if ( $mdUtil.hasComputedStyle(element, 'display', 'none')) {
-        scope.visible = false;
-        element.detach();
-        return;
+      // Do not show the tooltip if the text is empty.
+      if (!element[0].textContent.trim()) {
+        throw new Error('Text for the tooltip has not been provided. ' +
+            'Please include text within the mdTooltip element.');
       }
 
-      updatePosition();
+      if (!panelRef) {
+        var id = 'tooltip-' + $mdUtil.nextUid();
+        var attachTo = angular.element(document.body);
+        var panelAnimation = $mdPanel.newPanelAnimation()
+            .openFrom(parent)
+            .closeTo(parent)
+            .withAnimation({
+              open: 'md-show',
+              close: 'md-hide'
+            });
 
-      $animate.addClass(content, SHOW_CLASS).then(function() {
-        element.addClass(SHOW_CLASS);
+        var panelConfig = {
+          id: id,
+          attachTo: attachTo,
+          contentElement: element,
+          propagateContainerEvents: true,
+          panelClass: 'md-tooltip ' + origin,
+          animation: panelAnimation,
+          position: panelPosition,
+          zIndex: scope.mdZIndex,
+          focusOnOpen: false
+        };
+
+        panelRef = $mdPanel.create(panelConfig);
+      }
+
+      panelRef.open().then(function() {
+        panelRef.panelEl.attr('role', 'tooltip');
       });
     }
 
     function hideTooltip() {
-      $animate.removeClass(content, SHOW_CLASS).then(function(){
-        element.removeClass(SHOW_CLASS);
-        if (!scope.visible) element.detach();
-      });
+      panelRef && panelRef.close();
     }
-
-    function updatePosition() {
-      if ( !scope.visible ) return;
-
-      updateContentOrigin();
-      positionTooltip();
-    }
-
-    function positionTooltip() {
-      var tipRect = $mdUtil.offsetRect(element, tooltipParent);
-      var parentRect = $mdUtil.offsetRect(parent, tooltipParent);
-      var newPosition = getPosition(scope.direction);
-      var offsetParent = element.prop('offsetParent');
-
-      // If the user provided a direction, just nudge the tooltip onto the screen
-      // Otherwise, recalculate based on 'top' since default is 'bottom'
-      if (scope.direction) {
-        newPosition = fitInParent(newPosition);
-      } else if (offsetParent && newPosition.top > offsetParent.scrollHeight - tipRect.height - TOOLTIP_WINDOW_EDGE_SPACE) {
-        newPosition = fitInParent(getPosition('top'));
-      }
-
-      element.css({
-        left: newPosition.left + 'px',
-        top: newPosition.top + 'px'
-      });
-
-      function fitInParent (pos) {
-        var newPosition = { left: pos.left, top: pos.top };
-        newPosition.left = Math.min( newPosition.left, tooltipParent.prop('scrollWidth') - tipRect.width - TOOLTIP_WINDOW_EDGE_SPACE );
-        newPosition.left = Math.max( newPosition.left, TOOLTIP_WINDOW_EDGE_SPACE );
-        newPosition.top  = Math.min( newPosition.top,  tooltipParent.prop('scrollHeight') - tipRect.height - TOOLTIP_WINDOW_EDGE_SPACE );
-        newPosition.top  = Math.max( newPosition.top,  TOOLTIP_WINDOW_EDGE_SPACE );
-        return newPosition;
-      }
-
-      function getPosition (dir) {
-        return dir === 'left'
-          ? { left: parentRect.left - tipRect.width - TOOLTIP_WINDOW_EDGE_SPACE,
-              top: parentRect.top + parentRect.height / 2 - tipRect.height / 2 }
-          : dir === 'right'
-          ? { left: parentRect.left + parentRect.width + TOOLTIP_WINDOW_EDGE_SPACE,
-              top: parentRect.top + parentRect.height / 2 - tipRect.height / 2 }
-          : dir === 'top'
-          ? { left: parentRect.left + parentRect.width / 2 - tipRect.width / 2,
-              top: parentRect.top - tipRect.height - TOOLTIP_WINDOW_EDGE_SPACE }
-          : { left: parentRect.left + parentRect.width / 2 - tipRect.width / 2,
-              top: parentRect.top + parentRect.height + TOOLTIP_WINDOW_EDGE_SPACE };
-      }
-    }
-
   }
 
+}
+
+
+/**
+ * Service that is used to reduce the amount of listeners that are being
+ * registered on the `window` by the tooltip component. Works by collecting
+ * the individual event handlers and dispatching them from a global handler.
+ *
+ * @ngInject
+ */
+function MdTooltipRegistry() {
+  var listeners = {};
+  var ngWindow = angular.element(window);
+
+  return {
+    register: register,
+    deregister: deregister
+  };
+
+  /**
+   * Global event handler that dispatches the registered handlers in the
+   * service.
+   * @param {!Event} event Event object passed in by the browser
+   */
+  function globalEventHandler(event) {
+    if (listeners[event.type]) {
+      listeners[event.type].forEach(function(currentHandler) {
+        currentHandler.call(this, event);
+      }, this);
+    }
+  }
+
+  /**
+   * Registers a new handler with the service.
+   * @param {string} type Type of event to be registered.
+   * @param {!Function} handler Event handler.
+   * @param {boolean} useCapture Whether to use event capturing.
+   */
+  function register(type, handler, useCapture) {
+    var handlers = listeners[type] = listeners[type] || [];
+
+    if (!handlers.length) {
+      useCapture ? window.addEventListener(type, globalEventHandler, true) :
+          ngWindow.on(type, globalEventHandler);
+    }
+
+    if (handlers.indexOf(handler) === -1) {
+      handlers.push(handler);
+    }
+  }
+
+  /**
+   * Removes an event handler from the service.
+   * @param {string} type Type of event handler.
+   * @param {!Function} handler The event handler itself.
+   * @param {boolean} useCapture Whether the event handler used event capturing.
+   */
+  function deregister(type, handler, useCapture) {
+    var handlers = listeners[type];
+    var index = handlers ? handlers.indexOf(handler) : -1;
+
+    if (index > -1) {
+      handlers.splice(index, 1);
+
+      if (handlers.length === 0) {
+        useCapture ? window.removeEventListener(type, globalEventHandler, true) :
+            ngWindow.off(type, globalEventHandler);
+      }
+    }
+  }
+}
+
+})();
+(function(){
+"use strict";
+
+/**
+ * @ngdoc module
+ * @name material.components.truncate
+ */
+MdTruncateController.$inject = ["$element"];
+angular.module('material.components.truncate', ['material.core'])
+  .directive('mdTruncate', MdTruncateDirective);
+
+/**
+ * @ngdoc directive
+ * @name mdTruncate
+ * @module material.components.truncate
+ * @restrict AE
+ * @description
+ *
+ * The `md-truncate` component displays a label that will automatically clip text which is wider
+ * than the component. By default, it displays an ellipsis, but you may apply the `md-clip` CSS
+ * class to override this default and use a standard "clipping" approach.
+ *
+ * <i><b>Note:</b> The `md-truncate` component does not automatically adjust it's width. You must
+ * provide the `flex` attribute, or some other CSS-based width management. See the
+ * <a ng-href="./demo/truncate">demos</a> for examples.</i>
+ *
+ * @usage
+ *
+ * ### As an Element
+ *
+ * <hljs lang="html">
+ *   <div layout="row">
+ *     <md-button>Back</md-button>
+ *
+ *     <md-truncate flex>Chapter 1 - The Way of the Old West</md-truncate>
+ *
+ *     <md-button>Forward</md-button>
+ *   </div>
+ * </hljs>
+ *
+ * ### As an Attribute
+ *
+ * <hljs lang="html">
+ *   <h2 md-truncate style="max-width: 100px;">Some Title With a Lot of Text</h2>
+ * </hljs>
+ *
+ * ## CSS & Styles
+ *
+ * `<md-truncate>` provides two CSS classes that you may use to control the type of clipping.
+ *
+ * <i><b>Note:</b> The `md-truncate` also applies a setting of `width: 0;` when used with the `flex`
+ * attribute to fix an issue with the flex element not shrinking properly.</i>
+ *
+ * <div>
+ * <docs-css-api-table>
+ *
+ *   <docs-css-selector code=".md-ellipsis">
+ *     Assigns the "ellipsis" behavior (default) which will cut off mid-word and append an ellipsis
+ *     (&hellip;) to the end of the text.
+ *   </docs-css-selector>
+ *
+ *   <docs-css-selector code=".md-clip">
+ *     Assigns the "clipping" behavior which will simply chop off the text. This may happen
+ *     mid-word or even mid-character.
+ *   </docs-css-selector>
+ *
+ * </docs-css-api-table>
+ * </div>
+ */
+function MdTruncateDirective() {
+  return {
+    restrict: 'AE',
+
+    controller: MdTruncateController,
+    controllerAs: '$ctrl',
+    bindToController: true
+  }
+}
+
+/**
+ * Controller for the <md-truncate> component.
+ *
+ * @param $element The md-truncate element.
+ *
+ * @constructor
+ * @ngInject
+ */
+function MdTruncateController($element) {
+  $element.addClass('md-truncate');
 }
 
 })();
@@ -23558,7 +25680,7 @@ function MdTooltipDirective($timeout, $window, $$rAF, $document, $mdUtil, $mdThe
  * @ngdoc module
  * @name material.components.virtualRepeat
  */
-VirtualRepeatContainerController.$inject = ["$$rAF", "$mdUtil", "$parse", "$rootScope", "$window", "$scope", "$element", "$attrs"];
+VirtualRepeatContainerController.$inject = ["$$rAF", "$mdUtil", "$mdConstant", "$parse", "$rootScope", "$window", "$scope", "$element", "$attrs"];
 VirtualRepeatController.$inject = ["$scope", "$element", "$attrs", "$browser", "$document", "$rootScope", "$$rAF", "$mdUtil"];
 VirtualRepeatDirective.$inject = ["$parse"];
 angular.module('material.components.virtualRepeat', [
@@ -23585,8 +25707,13 @@ angular.module('material.components.virtualRepeat', [
  *
  * ### Common Issues
  *
- * > When having one-time bindings inside of the view template, the VirtualRepeat will not properly
- * > update the bindings for new items, since the view will be recycled.
+ * - When having one-time bindings inside of the view template, the VirtualRepeat will not properly
+ *   update the bindings for new items, since the view will be recycled.
+ *
+ * - Directives inside of a VirtualRepeat will be only compiled (linked) once, because those
+ *   are will be recycled items and used for other items.
+ *   The VirtualRepeat just updates the scope bindings.
+ *
  *
  * ### Notes
  *
@@ -23640,15 +25767,6 @@ function virtualRepeatContainerTemplate($element) {
 }
 
 /**
- * Maximum size, in pixels, that can be explicitly set to an element. The actual value varies
- * between browsers, but IE11 has the very lowest size at a mere 1,533,917px. Ideally we could
- * *compute* this value, but Firefox always reports an element to have a size of zero if it
- * goes over the max, meaning that we'd have to binary search for the value.
- * @const {number}
- */
-var MAX_ELEMENT_SIZE = 1533917;
-
-/**
  * Number of additional elements to render above and below the visible area inside
  * of the virtual repeat container. A higher number results in less flicker when scrolling
  * very quickly in Safari, but comes with a higher rendering and dirty-checking cost.
@@ -23657,8 +25775,8 @@ var MAX_ELEMENT_SIZE = 1533917;
 var NUM_EXTRA = 3;
 
 /** @ngInject */
-function VirtualRepeatContainerController(
-    $$rAF, $mdUtil, $parse, $rootScope, $window, $scope, $element, $attrs) {
+function VirtualRepeatContainerController($$rAF, $mdUtil, $mdConstant, $parse, $rootScope, $window, $scope,
+                                          $element, $attrs) {
   this.$rootScope = $rootScope;
   this.$scope = $scope;
   this.$element = $element;
@@ -23684,6 +25802,8 @@ function VirtualRepeatContainerController(
   this.offsetSize = parseInt(this.$attrs.mdOffsetSize, 10) || 0;
   /** @type {?string} height or width element style on the container prior to auto-shrinking. */
   this.oldElementSize = null;
+  /** @type {!number} Maximum amount of pixels allowed for a single DOM element */
+  this.maxElementPixels = $mdConstant.ELEMENT_MAX_PIXELS;
 
   if (this.$attrs.mdTopIndex) {
     /** @type {function(angular.Scope): number} Binds to topIndex on Angular scope */
@@ -23821,18 +25941,18 @@ VirtualRepeatContainerController.prototype.sizeScroller_ = function(size) {
   // If the size falls within the browser's maximum explicit size for a single element, we can
   // set the size and be done. Otherwise, we have to create children that add up the the desired
   // size.
-  if (size < MAX_ELEMENT_SIZE) {
+  if (size < this.maxElementPixels) {
     this.sizer.style[dimension] = size + 'px';
   } else {
     this.sizer.style[dimension] = 'auto';
     this.sizer.style[crossDimension] = 'auto';
 
     // Divide the total size we have to render into N max-size pieces.
-    var numChildren = Math.floor(size / MAX_ELEMENT_SIZE);
+    var numChildren = Math.floor(size / this.maxElementPixels);
 
     // Element template to clone for each max-size piece.
     var sizerChild = document.createElement('div');
-    sizerChild.style[dimension] = MAX_ELEMENT_SIZE + 'px';
+    sizerChild.style[dimension] = this.maxElementPixels + 'px';
     sizerChild.style[crossDimension] = '1px';
 
     for (var i = 0; i < numChildren; i++) {
@@ -23840,7 +25960,7 @@ VirtualRepeatContainerController.prototype.sizeScroller_ = function(size) {
     }
 
     // Re-use the element template for the remainder.
-    sizerChild.style[dimension] = (size - (numChildren * MAX_ELEMENT_SIZE)) + 'px';
+    sizerChild.style[dimension] = (size - (numChildren * this.maxElementPixels)) + 'px';
     this.sizer.appendChild(sizerChild);
   }
 };
@@ -23937,8 +26057,7 @@ VirtualRepeatContainerController.prototype.resetScroll = function() {
 
 
 VirtualRepeatContainerController.prototype.handleScroll_ = function() {
-  var doc = angular.element(document)[0];
-  var ltr = doc.dir != 'rtl' && doc.body.dir != 'rtl';
+  var ltr = document.dir != 'rtl' && document.body.dir != 'rtl';
   if(!ltr && !this.maxSize) {
     this.scroller.scrollLeft = this.scrollSize;
     this.maxSize = this.scroller.scrollLeft;
@@ -23983,9 +26102,43 @@ VirtualRepeatContainerController.prototype.handleScroll_ = function() {
  * `md-virtual-repeat` specifies an element to repeat using virtual scrolling.
  *
  * Virtual repeat is a limited substitute for ng-repeat that renders only
- * enough dom nodes to fill the container and recycling them as the user scrolls.
+ * enough DOM nodes to fill the container and recycling them as the user scrolls.
+ *
  * Arrays, but not objects are supported for iteration.
  * Track by, as alias, and (key, value) syntax are not supported.
+ *
+ * ### On-Demand Async Item Loading
+ *
+ * When using the `md-on-demand` attribute and loading some asynchronous data, the `getItemAtIndex` function will
+ * mostly return nothing.
+ *
+ * <hljs lang="js">
+ *   DynamicItems.prototype.getItemAtIndex = function(index) {
+ *     if (this.pages[index]) {
+ *       return this.pages[index];
+ *     } else {
+ *       // This is an asynchronous action and does not return any value.
+ *       this.loadPage(index);
+ *     }
+ *   };
+ * </hljs>
+ *
+ * This means that the VirtualRepeat will not have any value for the given index.<br/>
+ * After the data loading completed, the user expects the VirtualRepeat to recognize the change.
+ *
+ * To make sure that the VirtualRepeat properly detects any change, you need to run the operation
+ * in another digest.
+ *
+ * <hljs lang="js">
+ *   DynamicItems.prototype.loadPage = function(index) {
+ *     var self = this;
+ *
+ *     // Trigger a new digest by using $timeout
+ *     $timeout(function() {
+ *       self.pages[index] = Data;
+ *     });
+ *   };
+ * </hljs>
  *
  * > <b>Note:</b> Please also review the
  *   <a ng-href="api/directive/mdVirtualRepeatContainer">VirtualRepeatContainer</a> documentation
@@ -24512,11 +26665,6 @@ VirtualRepeatModelArrayLike.prototype.$$includeIndexes = function(start, end) {
   this.length = this.model.getLength();
 };
 
-
-function abstractMethod() {
-  throw Error('Non-overridden abstract method called.');
-}
-
 })();
 (function(){
 "use strict";
@@ -24598,17 +26746,17 @@ function MdWhiteframeDirective($log) {
 "use strict";
 
 
-MdAutocompleteCtrl.$inject = ["$scope", "$element", "$mdUtil", "$mdConstant", "$mdTheming", "$window", "$animate", "$rootElement", "$attrs", "$q", "$log"];angular
+MdAutocompleteCtrl.$inject = ["$scope", "$element", "$mdUtil", "$mdConstant", "$mdTheming", "$window", "$animate", "$rootElement", "$attrs", "$q", "$log", "$mdLiveAnnouncer"];angular
     .module('material.components.autocomplete')
     .controller('MdAutocompleteCtrl', MdAutocompleteCtrl);
 
-var ITEM_HEIGHT   = 41,
-    MAX_HEIGHT    = 5.5 * ITEM_HEIGHT,
+var ITEM_HEIGHT   = 48,
+    MAX_ITEMS     = 5,
     MENU_PADDING  = 8,
     INPUT_PADDING = 2; // Padding provided by `md-input-container`
 
 function MdAutocompleteCtrl ($scope, $element, $mdUtil, $mdConstant, $mdTheming, $window,
-                             $animate, $rootElement, $attrs, $q, $log) {
+                             $animate, $rootElement, $attrs, $q, $log, $mdLiveAnnouncer) {
 
   // Internal Variables.
   var ctrl                 = this,
@@ -24619,10 +26767,10 @@ function MdAutocompleteCtrl ($scope, $element, $mdUtil, $mdConstant, $mdTheming,
       noBlur               = false,
       selectedItemWatchers = [],
       hasFocus             = false,
-      lastCount            = 0,
       fetchesInProgress    = 0,
       enableWrapScroll     = null,
-      inputModelCtrl       = null;
+      inputModelCtrl       = null,
+      debouncedOnResize    = $mdUtil.debounce(onWindowResize);
 
   // Public Exported Variables with handlers
   defineProperty('hidden', handleHiddenChange, true);
@@ -24635,7 +26783,6 @@ function MdAutocompleteCtrl ($scope, $element, $mdUtil, $mdConstant, $mdTheming,
   ctrl.loading    = false;
   ctrl.hidden     = true;
   ctrl.index      = null;
-  ctrl.messages   = [];
   ctrl.id         = $mdUtil.nextUid();
   ctrl.isDisabled = null;
   ctrl.isRequired = null;
@@ -24658,6 +26805,15 @@ function MdAutocompleteCtrl ($scope, $element, $mdUtil, $mdConstant, $mdTheming,
   ctrl.loadingIsVisible              = loadingIsVisible;
   ctrl.positionDropdown              = positionDropdown;
 
+  /**
+   * Report types to be used for the $mdLiveAnnouncer
+   * @enum {number} Unique flag id.
+   */
+  var ReportType = {
+    Count: 1,
+    Selected: 2
+  };
+
   return init();
 
   //-- initialization methods
@@ -24666,7 +26822,13 @@ function MdAutocompleteCtrl ($scope, $element, $mdUtil, $mdConstant, $mdTheming,
    * Initialize the controller, setup watchers, gather elements
    */
   function init () {
-    $mdUtil.initOptionalProperties($scope, $attrs, { searchText: '', selectedItem: null });
+
+    $mdUtil.initOptionalProperties($scope, $attrs, {
+      searchText: '',
+      selectedItem: null,
+      clearButton: false
+    });
+
     $mdTheming($element);
     configureWatchers();
     $mdUtil.nextTick(function () {
@@ -24684,7 +26846,7 @@ function MdAutocompleteCtrl ($scope, $element, $mdUtil, $mdConstant, $mdTheming,
   function updateModelValidators() {
     if (!$scope.requireMatch || !inputModelCtrl) return;
 
-    inputModelCtrl.$setValidity('md-require-match', !!$scope.selectedItem);
+    inputModelCtrl.$setValidity('md-require-match', !!$scope.selectedItem || !$scope.searchText);
   }
 
   /**
@@ -24692,7 +26854,12 @@ function MdAutocompleteCtrl ($scope, $element, $mdUtil, $mdConstant, $mdTheming,
    * @returns {*}
    */
   function positionDropdown () {
-    if (!elements) return $mdUtil.nextTick(positionDropdown, false, $scope);
+    if (!elements) {
+      return $mdUtil.nextTick(positionDropdown, false, $scope);
+    }
+
+    var dropdownHeight = ($scope.dropdownItems || MAX_ITEMS) * ITEM_HEIGHT;
+
     var hrect  = elements.wrap.getBoundingClientRect(),
         vrect  = elements.snap.getBoundingClientRect(),
         root   = elements.root.getBoundingClientRect(),
@@ -24701,7 +26868,13 @@ function MdAutocompleteCtrl ($scope, $element, $mdUtil, $mdConstant, $mdTheming,
         left   = hrect.left - root.left,
         width  = hrect.width,
         offset = getVerticalOffset(),
+        position = $scope.dropdownPosition,
         styles;
+
+    // Automatically determine dropdown placement based on available space in viewport.
+    if (!position) {
+      position = (top > bot && root.height - hrect.bottom - MENU_PADDING < dropdownHeight) ? 'top' : 'bottom';
+    }
     // Adjust the width to account for the padding provided by `md-input-container`
     if ($attrs.mdFloatingLabel) {
       left += INPUT_PADDING;
@@ -24712,14 +26885,17 @@ function MdAutocompleteCtrl ($scope, $element, $mdUtil, $mdConstant, $mdTheming,
       minWidth: width + 'px',
       maxWidth: Math.max(hrect.right - root.left, root.right - hrect.left) - MENU_PADDING + 'px'
     };
-    if (top > bot && root.height - hrect.bottom - MENU_PADDING < MAX_HEIGHT) {
+
+    if (position === 'top') {
       styles.top       = 'auto';
       styles.bottom    = bot + 'px';
-      styles.maxHeight = Math.min(MAX_HEIGHT, hrect.top - root.top - MENU_PADDING) + 'px';
+      styles.maxHeight = Math.min(dropdownHeight, hrect.top - root.top - MENU_PADDING) + 'px';
     } else {
+      var bottomSpace = root.bottom - hrect.bottom - MENU_PADDING + $mdUtil.getViewportTop();
+
       styles.top       = (top - offset) + 'px';
       styles.bottom    = 'auto';
-      styles.maxHeight = Math.min(MAX_HEIGHT, root.bottom + $mdUtil.scrollTop() - hrect.bottom - MENU_PADDING) + 'px';
+      styles.maxHeight = Math.min(dropdownHeight, bottomSpace) + 'px';
     }
 
     elements.$.scrollContainer.css(styles);
@@ -24779,12 +26955,16 @@ function MdAutocompleteCtrl ($scope, $element, $mdUtil, $mdConstant, $mdTheming,
    */
   function configureWatchers () {
     var wait = parseInt($scope.delay, 10) || 0;
+
     $attrs.$observe('disabled', function (value) { ctrl.isDisabled = $mdUtil.parseAttributeBoolean(value, false); });
     $attrs.$observe('required', function (value) { ctrl.isRequired = $mdUtil.parseAttributeBoolean(value, false); });
     $attrs.$observe('readonly', function (value) { ctrl.isReadonly = $mdUtil.parseAttributeBoolean(value, false); });
+
     $scope.$watch('searchText', wait ? $mdUtil.debounce(handleSearchText, wait) : handleSearchText);
     $scope.$watch('selectedItem', selectedItemChange);
-    angular.element($window).on('resize', positionDropdown);
+
+    angular.element($window).on('resize', debouncedOnResize);
+
     $scope.$on('$destroy', cleanup);
   }
 
@@ -24796,7 +26976,8 @@ function MdAutocompleteCtrl ($scope, $element, $mdUtil, $mdConstant, $mdTheming,
       $mdUtil.enableScrolling();
     }
 
-    angular.element($window).off('resize', positionDropdown);
+    angular.element($window).off('resize', debouncedOnResize);
+
     if ( elements ){
       var items = ['ul', 'scroller', 'scrollContainer', 'input'];
       angular.forEach(items, function(key){
@@ -24806,35 +26987,62 @@ function MdAutocompleteCtrl ($scope, $element, $mdUtil, $mdConstant, $mdTheming,
   }
 
   /**
+   * Event handler to be called whenever the window resizes.
+   */
+  function onWindowResize() {
+    if (!ctrl.hidden) {
+      positionDropdown();
+    }
+  }
+
+  /**
    * Gathers all of the elements needed for this controller
    */
   function gatherElements () {
+
+    var snapWrap = gatherSnapWrap();
+
     elements = {
       main:  $element[0],
       scrollContainer: $element[0].querySelector('.md-virtual-repeat-container'),
       scroller: $element[0].querySelector('.md-virtual-repeat-scroller'),
       ul:    $element.find('ul')[0],
       input: $element.find('input')[0],
-      wrap:  $element.find('md-autocomplete-wrap')[0],
+      wrap:  snapWrap.wrap,
+      snap:  snapWrap.snap,
       root:  document.body
     };
 
     elements.li   = elements.ul.getElementsByTagName('li');
-    elements.snap = getSnapTarget();
     elements.$    = getAngularElements(elements);
 
     inputModelCtrl = elements.$.input.controller('ngModel');
   }
 
   /**
-   * Finds the element that the menu will base its position on
-   * @returns {*}
+   * Gathers the snap and wrap elements
+   *
    */
-  function getSnapTarget () {
-    for (var element = $element; element.length; element = element.parent()) {
-      if (angular.isDefined(element.attr('md-autocomplete-snap'))) return element[ 0 ];
+  function gatherSnapWrap() {
+    var element;
+    var value;
+    for (element = $element; element.length; element = element.parent()) {
+      value = element.attr('md-autocomplete-snap');
+      if (angular.isDefined(value)) break;
     }
-    return elements.wrap;
+
+    if (element.length) {
+      return {
+        snap: element[0],
+        wrap: (value.toLowerCase() === 'width') ? element[0] : $element.find('md-autocomplete-wrap')[0]
+      };
+    }
+
+    var wrap = $element.find('md-autocomplete-wrap')[0];
+    return {
+      snap: wrap,
+      wrap: wrap
+    };
   }
 
   /**
@@ -24860,6 +27068,10 @@ function MdAutocompleteCtrl ($scope, $element, $mdUtil, $mdConstant, $mdTheming,
   function handleHiddenChange (hidden, oldHidden) {
     if (!hidden && oldHidden) {
       positionDropdown();
+
+      // Report in polite mode, because the screenreader should finish the default description of
+      // the input. element.
+      reportMessages(true, ReportType.Count | ReportType.Selected);
 
       if (elements) {
         $mdUtil.disableScrollAround(elements.ul);
@@ -24935,7 +27147,8 @@ function MdAutocompleteCtrl ($scope, $element, $mdUtil, $mdConstant, $mdTheming,
         // Clear the searchText, when the selectedItem is set to null.
         // Do not clear the searchText, when the searchText isn't matching with the previous
         // selected item.
-        if (displayValue.toString().toLowerCase() === $scope.searchText.toLowerCase()) {
+        if (angular.isString($scope.searchText)
+          && displayValue.toString().toLowerCase() === $scope.searchText.toLowerCase()) {
           $scope.searchText = '';
         }
       });
@@ -25007,14 +27220,17 @@ function MdAutocompleteCtrl ($scope, $element, $mdUtil, $mdConstant, $mdTheming,
       if (searchText !== val) {
         $scope.selectedItem = null;
 
+
         // trigger change event if available
         if (searchText !== previousSearchText) announceTextChange();
 
         // cancel results if search text is not long enough
         if (!isMinLengthMet()) {
           ctrl.matches = [];
+
           setLoading(false);
-          updateMessages();
+          reportMessages(false, ReportType.Count);
+
         } else {
           handleQuery();
         }
@@ -25074,7 +27290,7 @@ function MdAutocompleteCtrl ($scope, $element, $mdUtil, $mdConstant, $mdTheming,
         event.preventDefault();
         ctrl.index   = Math.min(ctrl.index + 1, ctrl.matches.length - 1);
         updateScroll();
-        updateMessages();
+        reportMessages(false, ReportType.Selected);
         break;
       case $mdConstant.KEY_CODE.UP_ARROW:
         if (ctrl.loading) return;
@@ -25082,7 +27298,7 @@ function MdAutocompleteCtrl ($scope, $element, $mdUtil, $mdConstant, $mdTheming,
         event.preventDefault();
         ctrl.index   = ctrl.index < 0 ? ctrl.matches.length - 1 : Math.max(0, ctrl.index - 1);
         updateScroll();
-        updateMessages();
+        reportMessages(false, ReportType.Selected);
         break;
       case $mdConstant.KEY_CODE.TAB:
         // If we hit tab, assume that we've left the list so it will close
@@ -25399,13 +27615,29 @@ function MdAutocompleteCtrl ($scope, $element, $mdUtil, $mdConstant, $mdTheming,
     }
   }
 
+
   /**
-   * Updates the ARIA messages
+   * Reports given message types to supported screenreaders.
+   * @param {boolean} isPolite Whether the announcement should be polite.
+   * @param {!number} types Message flags to be reported to the screenreader.
    */
-  function updateMessages () {
-    getCurrentDisplayValue().then(function (msg) {
-      ctrl.messages = [ getCountMessage(), msg ];
+  function reportMessages(isPolite, types) {
+
+    var politeness = isPolite ? 'polite' : 'assertive';
+    var messages = [];
+
+    if (types & ReportType.Selected && ctrl.index !== -1) {
+      messages.push(getCurrentDisplayValue());
+    }
+
+    if (types & ReportType.Count) {
+      messages.push($q.resolve(getCountMessage()));
+    }
+
+    $q.all(messages).then(function(data) {
+      $mdLiveAnnouncer.announce(data.join(' '), politeness);
     });
+
   }
 
   /**
@@ -25413,8 +27645,6 @@ function MdAutocompleteCtrl ($scope, $element, $mdUtil, $mdConstant, $mdTheming,
    * @returns {*}
    */
   function getCountMessage () {
-    if (lastCount === ctrl.matches.length) return '';
-    lastCount = ctrl.matches.length;
     switch (ctrl.matches.length) {
       case 0:
         return 'There are no matches available.';
@@ -25489,8 +27719,8 @@ function MdAutocompleteCtrl ($scope, $element, $mdUtil, $mdConstant, $mdTheming,
 
     if ($scope.selectOnMatch) selectItemOnMatch();
 
-    updateMessages();
     positionDropdown();
+    reportMessages(true, ReportType.Count);
   }
 
   /**
@@ -25566,15 +27796,51 @@ MdAutocomplete.$inject = ["$$mdSvgRegistry"];angular
  *
  * There is an example below of how this should look.
  *
+ * ### Snapping Drop-Down
+ *
+ * You can cause the autocomplete drop-down to snap to an ancestor element by applying the
+ *     `md-autocomplete-snap` attribute to that element. You can also snap to the width of
+ *     the `md-autocomplete-snap` element by setting the attribute's value to `width`
+ *     (ie. `md-autocomplete-snap="width"`).
+ *
  * ### Notes
+ *
+ * **Autocomplete Dropdown Items Rendering**
+ *
  * The `md-autocomplete` uses the the <a ng-href="api/directive/mdVirtualRepeatContainer">VirtualRepeat</a>
  * directive for displaying the results inside of the dropdown.<br/>
+ *
  * > When encountering issues regarding the item template please take a look at the
  *   <a ng-href="api/directive/mdVirtualRepeatContainer">VirtualRepeatContainer</a> documentation.
  *
+ * **Autocomplete inside of a Virtual Repeat**
  *
- * @param {expression} md-items An expression in the format of `item in items` to iterate over
- *     matches for your search.
+ * When using the `md-autocomplete` directive inside of a
+ * <a ng-href="api/directive/mdVirtualRepeatContainer">VirtualRepeatContainer</a> the dropdown items might
+ * not update properly, because caching of the results is enabled by default.
+ *
+ * The autocomplete will then show invalid dropdown items, because the VirtualRepeat only updates the
+ * scope bindings, rather than re-creating the `md-autocomplete` and the previous cached results will be used.
+ *
+ * > To avoid such problems ensure that the autocomplete does not cache any results.
+ *
+ * <hljs lang="html">
+ *   <md-autocomplete
+ *       md-no-cache="true"
+ *       md-selected-item="selectedItem"
+ *       md-items="item in items"
+ *       md-search-text="searchText"
+ *       md-item-text="item.display">
+ *     <span>{{ item.display }}</span>
+ *   </md-autocomplete>
+ * </hljs>
+ *
+ *
+ *
+ * @param {expression} md-items An expression in the format of `item in results` to iterate over
+ *     matches for your search.<br/><br/>
+ *     The `results` expression can be also a function, which returns the results synchronously
+ *     or asynchronously (per Promise)
  * @param {expression=} md-selected-item-change An expression to be run each time a new item is
  *     selected
  * @param {expression=} md-search-text-change An expression to be run each time the search text
@@ -25591,6 +27857,7 @@ MdAutocomplete.$inject = ["$$mdSvgRegistry"];angular
  *     make suggestions
  * @param {number=} md-delay Specifies the amount of time (in milliseconds) to wait before looking
  *     for results
+ * @param {boolean=} md-clear-button Whether the clear button for the autocomplete input should show up or not.
  * @param {boolean=} md-autofocus If true, the autocomplete will be automatically focused when a `$mdDialog`,
  *     `$mdBottomsheet` or `$mdSidenav`, which contains the autocomplete, is opening. <br/><br/>
  *     Also the autocomplete will immediately focus the input element.
@@ -25614,6 +27881,15 @@ MdAutocomplete.$inject = ["$$mdSvgRegistry"];angular
  *     will select on case-insensitive match
  * @param {string=} md-escape-options Override escape key logic. Default is `blur clear`.<br/>
  *     Options: `blur | clear`, `none`
+ * @param {string=} md-dropdown-items Specifies the maximum amount of items to be shown in
+ *     the dropdown.<br/><br/>
+ *     When the dropdown doesn't fit into the viewport, the dropdown will shrink
+ *     as less as possible.
+ * @param {string=} md-dropdown-position Overrides the default dropdown position. Options: `top`, `bottom`.
+ * @param {string=} ng-trim If set to false, the search text will be not trimmed automatically.
+ *     Defaults to true.
+ * @param {string=} ng-pattern Adds the pattern validator to the ngModel of the search text.
+ *     [ngPattern Directive](https://docs.angularjs.org/api/ng/directive/ngPattern)
  *
  * @usage
  * ### Basic Example
@@ -25646,6 +27922,17 @@ MdAutocomplete.$inject = ["$$mdSvgRegistry"];angular
  * In this example, our code utilizes `md-item-template` and `md-not-found` to specify the
  *     different parts that make up our component.
  *
+ * ### Clear button for the input
+ * By default, for floating label autocomplete's the clear button is not showing up
+ * ([See specs](https://material.google.com/components/text-fields.html#text-fields-auto-complete-text-field))
+ *
+ * Nevertheless, developers are able to explicitly toggle the clear button for all types of autocomplete's.
+ *
+ * <hljs lang="html">
+ *   <md-autocomplete ... md-clear-button="true"></md-autocomplete>
+ *   <md-autocomplete ... md-clear-button="false"></md-autocomplete>
+ * </hljs>
+ *
  * ### Example with validation
  * <hljs lang="html">
  * <form name="autocompleteForm">
@@ -25668,6 +27955,34 @@ MdAutocomplete.$inject = ["$$mdSvgRegistry"];angular
  *
  * In this example, our code utilizes `md-item-template` and `ng-messages` to specify
  *     input validation for the field.
+ *
+ * ### Asynchronous Results
+ * The autocomplete items expression also supports promises, which will resolve with the query results.
+ *
+ * <hljs lang="js">
+ *   function AppController($scope, $http) {
+ *     $scope.query = function(searchText) {
+ *       return $http
+ *         .get(BACKEND_URL + '/items/' + searchText)
+ *         .then(function(data) {
+ *           // Map the response object to the data object.
+ *           return data;
+ *         });
+ *     };
+ *   }
+ * </hljs>
+ *
+ * <hljs lang="html">
+ *   <md-autocomplete
+ *       md-selected-item="selectedItem"
+ *       md-search-text="searchText"
+ *       md-items="item in query(searchText)">
+ *     <md-item-template>
+ *       <span md-highlight-text="searchText">{{item}}</span>
+ *     </md-item-template>
+ * </md-autocomplete>
+ * </hljs>
+ *
  */
 
 function MdAutocomplete ($$mdSvgRegistry) {
@@ -25697,12 +28012,33 @@ function MdAutocomplete ($$mdSvgRegistry) {
       autoselect:       '=?mdAutoselect',
       menuClass:        '@?mdMenuClass',
       inputId:          '@?mdInputId',
-      escapeOptions:    '@?mdEscapeOptions'
+      escapeOptions:    '@?mdEscapeOptions',
+      dropdownItems:    '=?mdDropdownItems',
+      dropdownPosition: '@?mdDropdownPosition',
+      clearButton:      '=?mdClearButton'
     },
-    link: function(scope, element, attrs, controller) {
-      // Retrieve the state of using a md-not-found template by using our attribute, which will
-      // be added to the element in the template function.
-      controller.hasNotFound = !!element.attr('md-has-not-found');
+    compile: function(tElement, tAttrs) {
+      var attributes = ['md-select-on-focus', 'md-no-asterisk', 'ng-trim', 'ng-pattern'];
+      var input = tElement.find('input');
+
+      attributes.forEach(function(attribute) {
+        var attrValue = tAttrs[tAttrs.$normalize(attribute)];
+
+        if (attrValue !== null) {
+          input.attr(attribute, attrValue);
+        }
+      });
+
+      return function(scope, element, attrs, ctrl) {
+        // Retrieve the state of using a md-not-found template by using our attribute, which will
+        // be added to the element in the template function.
+        ctrl.hasNotFound = !!element.attr('md-has-not-found');
+
+        // By default the inset autocomplete should show the clear button when not explicitly overwritten.
+        if (!angular.isDefined(attrs.mdClearButton) && !scope.floatingLabel) {
+          scope.clearButton = true;
+        }
+      }
     },
     template:     function (element, attr) {
       var noItemsTemplate = getNoItemsTemplate(),
@@ -25721,8 +28057,11 @@ function MdAutocomplete ($$mdSvgRegistry) {
 
       return '\
         <md-autocomplete-wrap\
-            ng-class="{ \'md-whiteframe-z1\': !floatingLabel, \'md-menu-showing\': !$mdAutocompleteCtrl.hidden }">\
+            ng-class="{ \'md-whiteframe-z1\': !floatingLabel, \
+                        \'md-menu-showing\': !$mdAutocompleteCtrl.hidden, \
+                        \'md-show-clear-button\': !!clearButton }">\
           ' + getInputElement() + '\
+          ' + getClearButton() + '\
           <md-progress-linear\
               class="' + (attr.mdFloatingLabel ? 'md-inline' : '') + '"\
               ng-if="$mdAutocompleteCtrl.loadingIsVisible()"\
@@ -25748,13 +28087,7 @@ function MdAutocomplete ($$mdSvgRegistry) {
                   </li>' + noItemsTemplate + '\
             </ul>\
           </md-virtual-repeat-container>\
-        </md-autocomplete-wrap>\
-        <aria-status\
-            class="md-visually-hidden"\
-            role="status"\
-            aria-live="assertive">\
-          <p ng-repeat="message in $mdAutocompleteCtrl.messages track by $index" ng-if="message">{{message}}</p>\
-        </aria-status>';
+        </md-autocomplete-wrap>';
 
       function getItemTemplate() {
         var templateTag = element.find('md-item-template').detach(),
@@ -25794,8 +28127,6 @@ function MdAutocomplete ($$mdSvgRegistry) {
                   ng-blur="$mdAutocompleteCtrl.blur($event)"\
                   ng-focus="$mdAutocompleteCtrl.focus($event)"\
                   aria-owns="ul-{{$mdAutocompleteCtrl.id}}"\
-                  ' + (attr.mdNoAsterisk != null ? 'md-no-asterisk="' + attr.mdNoAsterisk + '"' : '') + '\
-                  ' + (attr.mdSelectOnFocus != null ? 'md-select-on-focus=""' : '') + '\
                   aria-label="{{floatingLabel}}"\
                   aria-autocomplete="list"\
                   role="combobox"\
@@ -25815,30 +28146,34 @@ function MdAutocomplete ($$mdSvgRegistry) {
                 ng-required="$mdAutocompleteCtrl.isRequired"\
                 ng-disabled="$mdAutocompleteCtrl.isDisabled"\
                 ng-readonly="$mdAutocompleteCtrl.isReadonly"\
+                ng-minlength="inputMinlength"\
+                ng-maxlength="inputMaxlength"\
                 ng-model="$mdAutocompleteCtrl.scope.searchText"\
                 ng-keydown="$mdAutocompleteCtrl.keydown($event)"\
                 ng-blur="$mdAutocompleteCtrl.blur($event)"\
                 ng-focus="$mdAutocompleteCtrl.focus($event)"\
                 placeholder="{{placeholder}}"\
                 aria-owns="ul-{{$mdAutocompleteCtrl.id}}"\
-                ' + (attr.mdSelectOnFocus != null ? 'md-select-on-focus=""' : '') + '\
                 aria-label="{{placeholder}}"\
                 aria-autocomplete="list"\
                 role="combobox"\
                 aria-haspopup="true"\
                 aria-activedescendant=""\
-                aria-expanded="{{!$mdAutocompleteCtrl.hidden}}"/>\
-            <button\
-                type="button"\
-                tabindex="-1"\
-                ng-if="$mdAutocompleteCtrl.scope.searchText && !$mdAutocompleteCtrl.isDisabled"\
-                ng-click="$mdAutocompleteCtrl.clear($event)">\
-              <md-icon md-svg-src="' + $$mdSvgRegistry.mdClose + '"></md-icon>\
-              <span class="md-visually-hidden">Clear</span>\
-            </button>\
-                ';
+                aria-expanded="{{!$mdAutocompleteCtrl.hidden}}"/>';
         }
       }
+
+      function getClearButton() {
+        return '' +
+          '<button ' +
+              'type="button" ' +
+              'aria-label="Clear Input" ' +
+              'tabindex="-1" ' +
+              'ng-if="clearButton && $mdAutocompleteCtrl.scope.searchText && !$mdAutocompleteCtrl.isDisabled" ' +
+              'ng-click="$mdAutocompleteCtrl.clear($event)">' +
+            '<md-icon md-svg-src="' + $$mdSvgRegistry.mdClose + '"></md-icon>' +
+          '</button>';
+        }
     }
   };
 }
@@ -26303,9 +28638,9 @@ MdChipCtrl.prototype.chipMouseDown = function() {
 "use strict";
 
 
-MdChip.$inject = ["$mdTheming", "$mdUtil"];angular
-    .module('material.components.chips')
-    .directive('mdChip', MdChip);
+MdChip.$inject = ["$mdTheming", "$mdUtil", "$compile", "$timeout"];angular
+  .module('material.components.chips')
+  .directive('mdChip', MdChip);
 
 /**
  * @ngdoc directive
@@ -26338,37 +28673,47 @@ var DELETE_HINT_TEMPLATE = '\
  * @param $mdUtil
  * @ngInject
  */
-function MdChip($mdTheming, $mdUtil) {
-  var hintTemplate = $mdUtil.processTemplate(DELETE_HINT_TEMPLATE);
+function MdChip($mdTheming, $mdUtil, $compile, $timeout) {
+  var deleteHintTemplate = $mdUtil.processTemplate(DELETE_HINT_TEMPLATE);
 
   return {
     restrict: 'E',
     require: ['^?mdChips', 'mdChip'],
-    compile:  compile,
+    link: postLink,
     controller: 'MdChipCtrl'
   };
 
-  function compile(element, attr) {
-    // Append the delete template
-    element.append($mdUtil.processTemplate(hintTemplate));
+  function postLink(scope, element, attr, ctrls) {
+    var chipsController = ctrls.shift();
+    var chipController = ctrls.shift();
+    var chipContentElement = angular.element(element[0].querySelector('.md-chip-content'));
 
-    return function postLink(scope, element, attr, ctrls) {
-      var chipsController = ctrls.shift();
-      var chipController  = ctrls.shift();
-      $mdTheming(element);
+    $mdTheming(element);
 
-      if (chipsController) {
-        chipController.init(chipsController);
+    if (chipsController) {
+      chipController.init(chipsController);
 
-        angular
-          .element(element[0]
-          .querySelector('.md-chip-content'))
-          .on('blur', function () {
-            chipsController.resetSelectedChip();
-            chipsController.$scope.$applyAsync();
-          });
+      // Append our delete hint to the div.md-chip-content (which does not exist at compile time)
+      chipContentElement.append($compile(deleteHintTemplate)(scope));
+
+      // When a chip is blurred, make sure to unset (or reset) the selected chip so that tabbing
+      // through elements works properly
+      chipContentElement.on('blur', function() {
+        chipsController.resetSelectedChip();
+        chipsController.$scope.$applyAsync();
+      });
+    }
+
+    // Use $timeout to ensure we run AFTER the element has been added to the DOM so we can focus it.
+    $timeout(function() {
+      if (!chipsController) {
+        return;
       }
-    };
+
+      if (chipsController.shouldFocusLastChip) {
+        chipsController.focusLastChipThenInput();
+      }
+    });
   }
 }
 
@@ -26471,8 +28816,15 @@ function MdChipTransclude ($compile) {
 (function(){
 "use strict";
 
+/**
+ * The default chip append delay.
+ *
+ * @type {number}
+ */
+MdChipsCtrl.$inject = ["$scope", "$attrs", "$mdConstant", "$log", "$element", "$timeout", "$mdUtil"];
+var DEFAULT_CHIP_APPEND_DELAY = 300;
 
-MdChipsCtrl.$inject = ["$scope", "$attrs", "$mdConstant", "$log", "$element", "$timeout", "$mdUtil"];angular
+angular
     .module('material.components.chips')
     .controller('MdChipsCtrl', MdChipsCtrl);
 
@@ -26503,11 +28855,17 @@ function MdChipsCtrl ($scope, $attrs, $mdConstant, $log, $element, $timeout, $md
   /** @type {angular.$scope} */
   this.parent = $scope.$parent;
 
+  /** @type {$mdUtil} */
+  this.$mdUtil = $mdUtil;
+
   /** @type {$log} */
   this.$log = $log;
 
   /** @type {$element} */
   this.$element = $element;
+
+  /** @type {$attrs} */
+  this.$attrs = $attrs;
 
   /** @type {angular.NgModelController} */
   this.ngModelCtrl = null;
@@ -26532,6 +28890,20 @@ function MdChipsCtrl ($scope, $attrs, $mdConstant, $log, $element, $timeout, $md
 
   /** @type {string} */
   this.addOnBlur = $mdUtil.parseAttributeBoolean($attrs.mdAddOnBlur);
+
+  /**
+   * The text to be used as the aria-label for the input.
+   * @type {string}
+   */
+  this.inputAriaLabel = 'Chips input.';
+
+  /**
+   * Hidden hint text to describe the chips container. Used to give context to screen readers when
+   * the chips are readonly and the input cannot be selected.
+   *
+   * @type {string}
+   */
+  this.containerHint = 'Chips container. Use arrow keys to select chips.';
 
   /**
    * Hidden hint text for how to delete a chip. Used to give context to screen readers.
@@ -26571,11 +28943,106 @@ function MdChipsCtrl ($scope, $attrs, $mdConstant, $log, $element, $timeout, $md
   this.useOnRemove = false;
 
   /**
-   * Whether to use the onSelect expression to notify the component's user
-   * after selecting a chip from the list.
-   * @type {boolean}
+   * The ID of the chips wrapper which is used to build unique IDs for the chips and the aria-owns
+   * attribute.
+   *
+   * Defaults to '_md-chips-wrapper-' plus a unique number.
+   *
+   * @type {string}
    */
+  this.wrapperId = '';
+
+  /**
+   * Array of unique numbers which will be auto-generated any time the items change, and is used to
+   * create unique IDs for the aria-owns attribute.
+   *
+   * @type {Array}
+   */
+  this.contentIds = [];
+
+  /**
+   * The index of the chip that should have it's tabindex property set to 0 so it is selectable
+   * via the keyboard.
+   *
+   * @type {int}
+   */
+  this.ariaTabIndex = null;
+
+  /**
+   * After appending a chip, the chip will be focused for this number of milliseconds before the
+   * input is refocused.
+   *
+   * **Note:** This is **required** for compatibility with certain screen readers in order for
+   * them to properly allow keyboard access.
+   *
+   * @type {number}
+   */
+  this.chipAppendDelay = DEFAULT_CHIP_APPEND_DELAY;
+
+  this.init();
 }
+
+/**
+ * Initializes variables and sets up watchers
+ */
+MdChipsCtrl.prototype.init = function() {
+  var ctrl = this;
+
+  // Set the wrapper ID
+  ctrl.wrapperId = '_md-chips-wrapper-' + ctrl.$mdUtil.nextUid();
+
+  // Setup a watcher which manages the role and aria-owns attributes
+  ctrl.$scope.$watchCollection('$mdChipsCtrl.items', function() {
+    // Make sure our input and wrapper have the correct ARIA attributes
+    ctrl.setupInputAria();
+    ctrl.setupWrapperAria();
+  });
+
+  ctrl.$attrs.$observe('mdChipAppendDelay', function(newValue) {
+    ctrl.chipAppendDelay = parseInt(newValue) || DEFAULT_CHIP_APPEND_DELAY;
+  });
+};
+
+/**
+ * If we have an input, ensure it has the appropriate ARIA attributes.
+ */
+MdChipsCtrl.prototype.setupInputAria = function() {
+  var input = this.$element.find('input');
+
+  // If we have no input, just return
+  if (!input) {
+    return;
+  }
+
+  input.attr('role', 'textbox');
+  input.attr('aria-multiline', true);
+};
+
+/**
+ * Ensure our wrapper has the appropriate ARIA attributes.
+ */
+MdChipsCtrl.prototype.setupWrapperAria = function() {
+  var ctrl = this,
+      wrapper = this.$element.find('md-chips-wrap');
+
+  if (this.items && this.items.length) {
+    // Dynamically add the listbox role on every change because it must be removed when there are
+    // no items.
+    wrapper.attr('role', 'listbox');
+
+    // Generate some random (but unique) IDs for each chip
+    this.contentIds = this.items.map(function() {
+      return ctrl.wrapperId + '-chip-' + ctrl.$mdUtil.nextUid();
+    });
+
+    // Use the contentIDs above to generate the aria-owns attribute
+    wrapper.attr('aria-owns', this.contentIds.join(' '));
+  } else {
+    // If we have no items, then the role and aria-owns attributes MUST be removed
+    wrapper.removeAttr('role');
+    wrapper.removeAttr('aria-owns');
+  }
+};
 
 /**
  * Handles the keydown event on the input element: by default <enter> appends
@@ -26623,6 +29090,8 @@ MdChipsCtrl.prototype.inputKeydown = function(event) {
 
     this.appendChip(chipBuffer.trim());
     this.resetChipBuffer();
+
+    return false;
   }
 };
 
@@ -26667,7 +29136,7 @@ MdChipsCtrl.prototype.updateChipContents = function(chipIndex, chipContents){
  * @return {boolean}
  */
 MdChipsCtrl.prototype.isEditingChip = function() {
-  return !!this.$element[0].getElementsByClassName('_md-chip-editing').length;
+  return !!this.$element[0].querySelector('._md-chip-editing');
 };
 
 
@@ -26689,7 +29158,7 @@ MdChipsCtrl.prototype.isRemovable = function() {
 MdChipsCtrl.prototype.chipKeydown = function (event) {
   if (this.getChipBuffer()) return;
   if (this.isEditingChip()) return;
-  
+
   switch (event.keyCode) {
     case this.$mdConstant.KEY_CODE.BACKSPACE:
     case this.$mdConstant.KEY_CODE.DELETE:
@@ -26701,7 +29170,11 @@ MdChipsCtrl.prototype.chipKeydown = function (event) {
       break;
     case this.$mdConstant.KEY_CODE.LEFT_ARROW:
       event.preventDefault();
-      if (this.selectedChip < 0) this.selectedChip = this.items.length;
+      // By default, allow selection of -1 which will focus the input; if we're readonly, don't go
+      // below 0
+      if (this.selectedChip < 0 || (this.readonly && this.selectedChip == 0)) {
+        this.selectedChip = this.items.length;
+      }
       if (this.items.length) this.selectAndFocusChipSafe(this.selectedChip - 1);
       break;
     case this.$mdConstant.KEY_CODE.RIGHT_ARROW:
@@ -26734,11 +29207,22 @@ MdChipsCtrl.prototype.getPlaceholder = function() {
  * @param index
  */
 MdChipsCtrl.prototype.removeAndSelectAdjacentChip = function(index) {
-  var selIndex = this.getAdjacentChipIndex(index);
-  this.removeChip(index);
-  this.$timeout(angular.bind(this, function () {
-      this.selectAndFocusChipSafe(selIndex);
-  }));
+  var self = this;
+  var selIndex = self.getAdjacentChipIndex(index);
+  var wrap = this.$element[0].querySelector('md-chips-wrap');
+  var chip = this.$element[0].querySelector('md-chip[index="' + index + '"]');
+
+  self.removeChip(index);
+
+  // The dobule-timeout is currently necessary to ensure that the DOM has finalized and the select()
+  // will find the proper chip since the selection is index-based.
+  //
+  // TODO: Investigate calling from within chip $scope.$on('$destroy') to reduce/remove timeouts
+  self.$timeout(function() {
+    self.$timeout(function() {
+      self.selectAndFocusChipSafe(selIndex);
+    });
+  });
 };
 
 /**
@@ -26746,6 +29230,7 @@ MdChipsCtrl.prototype.removeAndSelectAdjacentChip = function(index) {
  */
 MdChipsCtrl.prototype.resetSelectedChip = function() {
   this.selectedChip = -1;
+  this.ariaTabIndex = null;
 };
 
 /**
@@ -26770,6 +29255,7 @@ MdChipsCtrl.prototype.getAdjacentChipIndex = function(index) {
  * @param newChip
  */
 MdChipsCtrl.prototype.appendChip = function(newChip) {
+  this.shouldFocusLastChip = true;
   if (this.useTransformChip && this.transformChip) {
     var transformedChip = this.transformChip({'$chip': newChip});
 
@@ -26792,7 +29278,8 @@ MdChipsCtrl.prototype.appendChip = function(newChip) {
   if (newChip == null || this.items.indexOf(newChip) + 1) return;
 
   // Append the new chip onto our list
-  var index = this.items.push(newChip);
+  var length = this.items.push(newChip);
+  var index = length - 1;
 
   // Update model validation
   this.ngModelCtrl.$setDirty();
@@ -26854,12 +29341,15 @@ MdChipsCtrl.prototype.useOnSelectExpression = function() {
  * model of an {@code md-autocomplete}, or, through some magic, the model
  * bound to any inpput or text area element found within a
  * {@code md-input-container} element.
- * @return {Object|string}
+ * @return {string}
  */
 MdChipsCtrl.prototype.getChipBuffer = function() {
-  return !this.userInputElement ? this.chipBuffer :
-      this.userInputNgModelCtrl ? this.userInputNgModelCtrl.$viewValue :
-          this.userInputElement[0].value;
+  var chipBuffer =  !this.userInputElement ? this.chipBuffer :
+                     this.userInputNgModelCtrl ? this.userInputNgModelCtrl.$viewValue :
+                     this.userInputElement[0].value;
+
+  // Ensure that the chip buffer is always a string. For example, the input element buffer might be falsy.
+  return angular.isString(chipBuffer) ? chipBuffer : '';
 };
 
 /**
@@ -26926,16 +29416,44 @@ MdChipsCtrl.prototype.removeChipAndFocusInput = function (index) {
  * @param index
  */
 MdChipsCtrl.prototype.selectAndFocusChipSafe = function(index) {
-  if (!this.items.length) {
-    this.selectChip(-1);
-    this.onFocus();
-    return;
+  // If we have no chips, or are asked to select a chip before the first, just focus the input
+  if (!this.items.length || index === -1) {
+    return this.focusInput();
   }
-  if (index === this.items.length) return this.onFocus();
+
+  // If we are asked to select a chip greater than the number of chips...
+  if (index >= this.items.length) {
+    if (this.readonly) {
+      // If we are readonly, jump back to the start (because we have no input)
+      index = 0;
+    } else {
+      // If we are not readonly, we should attempt to focus the input
+      return this.onFocus();
+    }
+  }
+
   index = Math.max(index, 0);
   index = Math.min(index, this.items.length - 1);
+
   this.selectChip(index);
   this.focusChip(index);
+};
+
+MdChipsCtrl.prototype.focusLastChipThenInput = function() {
+  var ctrl = this;
+
+  ctrl.shouldFocusLastChip = false;
+
+  ctrl.focusChip(this.items.length - 1);
+
+  ctrl.$timeout(function() {
+    ctrl.focusInput();
+  }, ctrl.chipAppendDelay);
+};
+
+MdChipsCtrl.prototype.focusInput = function() {
+  this.selectChip(-1);
+  this.onFocus();
 };
 
 /**
@@ -26948,7 +29466,7 @@ MdChipsCtrl.prototype.selectChip = function(index) {
 
     // Fire the onSelect if provided
     if (this.useOnSelect && this.onSelect) {
-      this.onSelect({'$chip': this.items[this.selectedChip] });
+      this.onSelect({'$chip': this.items[index] });
     }
   } else {
     this.$log.warn('Selected Chip index out of bounds; ignoring.');
@@ -26970,7 +29488,11 @@ MdChipsCtrl.prototype.selectAndFocusChip = function(index) {
  * Call `focus()` on the chip at `index`
  */
 MdChipsCtrl.prototype.focusChip = function(index) {
-  this.$element[0].querySelector('md-chip[index="' + index + '"] .md-chip-content').focus();
+  var chipContent = this.$element[0].querySelector('md-chip[index="' + index + '"] .md-chip-content');
+
+  this.ariaTabIndex = index;
+
+  chipContent.focus();
 };
 
 /**
@@ -26996,26 +29518,19 @@ MdChipsCtrl.prototype.onFocus = function () {
 
 MdChipsCtrl.prototype.onInputFocus = function () {
   this.inputHasFocus = true;
+
+  // Make sure we have the appropriate ARIA attributes
+  this.setupInputAria();
+
+  // Make sure we don't have any chips selected
   this.resetSelectedChip();
 };
 
 MdChipsCtrl.prototype.onInputBlur = function () {
   this.inputHasFocus = false;
 
-  var chipBuffer = this.getChipBuffer().trim();
-
-  // Update the custom chip validators.
-  this.validateModel();
-
-  var isModelValid = this.ngModelCtrl.$valid;
-
-  if (this.userInputNgModelCtrl) {
-    isModelValid &= this.userInputNgModelCtrl.$valid;
-  }
-
-  // Only append the chip and reset the chip buffer if the chips and input ngModel is valid.
-  if (this.addOnBlur && chipBuffer && isModelValid) {
-    this.appendChip(chipBuffer);
+  if (this.shouldAddOnBlur()) {
+    this.appendChip(this.getChipBuffer().trim());
     this.resetChipBuffer();
   }
 };
@@ -27070,8 +29585,32 @@ MdChipsCtrl.prototype.configureAutocomplete = function(ctrl) {
   }
 };
 
+/**
+ * Whether the current chip buffer should be added on input blur or not.
+ * @returns {boolean}
+ */
+MdChipsCtrl.prototype.shouldAddOnBlur = function() {
+
+  // Update the custom ngModel validators from the chips component.
+  this.validateModel();
+
+  var chipBuffer = this.getChipBuffer().trim();
+  var isModelValid = this.ngModelCtrl.$valid;
+  var isAutocompleteShowing = this.autocompleteCtrl && !this.autocompleteCtrl.hidden;
+
+  if (this.userInputNgModelCtrl) {
+    isModelValid = isModelValid && this.userInputNgModelCtrl.$valid;
+  }
+
+  return this.addOnBlur && !this.requireMatch && chipBuffer && isModelValid && !isAutocompleteShowing;
+};
+
 MdChipsCtrl.prototype.hasFocus = function () {
   return this.inputHasFocus || this.selectedChip >= 0;
+};
+
+MdChipsCtrl.prototype.contentIdFor = function(index) {
+  return this.contentIds[index];
 };
 
 })();
@@ -27107,6 +29646,9 @@ MdChipsCtrl.prototype.hasFocus = function () {
    * is also placed as a sibling to the chip content (on which there are also click listeners) to
    * avoid a nested ng-click situation.
    *
+   * <!-- Note: We no longer want to include this in the site docs; but it should remain here for
+   * future developers and those looking at the documentation.
+   *
    * <h3> Pending Features </h3>
    * <ul style="padding-left:20px;">
    *
@@ -27137,10 +29679,7 @@ MdChipsCtrl.prototype.hasFocus = function () {
    *   </ul>
    * </ul>
    *
-   * <span style="font-size:.8em;text-align:center">
-   *   Warning: This component is a WORK IN PROGRESS. If you use it now,
-   *   it will probably break on you in the future.
-   * </span>
+   * //-->
    *
    * Sometimes developers want to limit the amount of possible chips.<br/>
    * You can specify the maximum amount of chips by using the following markup.
@@ -27163,7 +29702,21 @@ MdChipsCtrl.prototype.hasFocus = function () {
    *   </md-chips>
    * </hljs>
    *
-   * @param {string=|object=} ng-model A model to bind the list of items to
+   * ### Accessibility
+   *
+   * The `md-chips` component supports keyboard and screen reader users since Version 1.1.2. In
+   * order to achieve this, we modified the chips behavior to select newly appended chips for
+   * `300ms` before re-focusing the input and allowing the user to type.
+   *
+   * For most users, this delay is small enough that it will not be noticeable but allows certain
+   * screen readers to function properly (JAWS and NVDA in particular).
+   *
+   * We introduced a new `md-chip-append-delay` option to allow developers to better control this
+   * behavior.
+   *
+   * Please refer to the documentation of this option (below) for more information.
+   *
+   * @param {string=|object=} ng-model A model to which the list of items will be bound.
    * @param {string=} placeholder Placeholder text that will be forwarded to the input.
    * @param {string=} secondary-placeholder Placeholder text that will be forwarded to the input,
    *    displayed when there is at least one item in the list
@@ -27193,11 +29746,28 @@ MdChipsCtrl.prototype.hasFocus = function () {
    * @param {expression=} md-on-select An expression which will be called when a chip is selected.
    * @param {boolean} md-require-match If true, and the chips template contains an autocomplete,
    *    only allow selection of pre-defined chips (i.e. you cannot add new ones).
+   * @param {string=} input-aria-label A string read by screen readers to identify the input.
+   * @param {string=} container-hint A string read by screen readers informing users of how to
+   *    navigate the chips. Used in readonly mode.
    * @param {string=} delete-hint A string read by screen readers instructing users that pressing
    *    the delete key will remove the chip.
    * @param {string=} delete-button-label A label for the delete button. Also hidden and read by
    *    screen readers.
    * @param {expression=} md-separator-keys An array of key codes used to separate chips.
+   * @param {string=} md-chip-append-delay The number of milliseconds that the component will select
+   *    a newly appended chip before allowing a user to type into the input. This is **necessary**
+   *    for keyboard accessibility for screen readers. It defaults to 300ms and any number less than
+   *    300 can cause issues with screen readers (particularly JAWS and sometimes NVDA).
+   *
+   *    _Available since Version 1.1.2._
+   *
+   *    **Note:** You can safely set this to `0` in one of the following two instances:
+   *
+   *    1. You are targeting an iOS or Safari-only application (where users would use VoiceOver) or
+   *    only ChromeVox users.
+   *
+   *    2. If you have utilized the `md-separator-keys` to disable the `enter` keystroke in
+   *    favor of another one (such as `,` or `;`).
    *
    * @usage
    * <hljs lang="html">
@@ -27227,25 +29797,34 @@ MdChipsCtrl.prototype.hasFocus = function () {
    *
    */
 
-
   var MD_CHIPS_TEMPLATE = '\
       <md-chips-wrap\
+          id="{{$mdChipsCtrl.wrapperId}}"\
+          tabindex="{{$mdChipsCtrl.readonly ? 0 : -1}}"\
           ng-keydown="$mdChipsCtrl.chipKeydown($event)"\
           ng-class="{ \'md-focused\': $mdChipsCtrl.hasFocus(), \
                       \'md-readonly\': !$mdChipsCtrl.ngModelCtrl || $mdChipsCtrl.readonly,\
                       \'md-removable\': $mdChipsCtrl.isRemovable() }"\
+          aria-setsize="{{$mdChipsCtrl.items.length}}"\
           class="md-chips">\
+        <span ng-if="$mdChipsCtrl.readonly" class="md-visually-hidden">\
+          {{$mdChipsCtrl.containerHint}}\
+        </span>\
         <md-chip ng-repeat="$chip in $mdChipsCtrl.items"\
             index="{{$index}}"\
             ng-class="{\'md-focused\': $mdChipsCtrl.selectedChip == $index, \'md-readonly\': !$mdChipsCtrl.ngModelCtrl || $mdChipsCtrl.readonly}">\
           <div class="md-chip-content"\
-              tabindex="-1"\
-              aria-hidden="true"\
+              tabindex="{{$mdChipsCtrl.ariaTabIndex == $index ? 0 : -1}}"\
+              id="{{$mdChipsCtrl.contentIdFor($index)}}"\
+              role="option"\
+              aria-selected="{{$mdChipsCtrl.selectedChip == $index}}" \
+              aria-posinset="{{$index}}"\
               ng-click="!$mdChipsCtrl.readonly && $mdChipsCtrl.focusChip($index)"\
               ng-focus="!$mdChipsCtrl.readonly && $mdChipsCtrl.selectChip($index)"\
               md-chip-transclude="$mdChipsCtrl.chipContentsTemplate"></div>\
           <div ng-if="$mdChipsCtrl.isRemovable()"\
                class="md-chip-remove-container"\
+               tabindex="-1"\
                md-chip-transclude="$mdChipsCtrl.chipRemoveTemplate"></div>\
         </md-chip>\
         <div class="md-chip-input-container" ng-if="!$mdChipsCtrl.readonly && $mdChipsCtrl.ngModelCtrl">\
@@ -27257,8 +29836,8 @@ MdChipsCtrl.prototype.hasFocus = function () {
         <input\
             class="md-input"\
             tabindex="0"\
+            aria-label="{{$mdChipsCtrl.inputAriaLabel}}" \
             placeholder="{{$mdChipsCtrl.getPlaceholder()}}"\
-            aria-label="{{$mdChipsCtrl.getPlaceholder()}}"\
             ng-model="$mdChipsCtrl.chipBuffer"\
             ng-focus="$mdChipsCtrl.onInputFocus()"\
             ng-blur="$mdChipsCtrl.onInputBlur()"\
@@ -27273,7 +29852,6 @@ MdChipsCtrl.prototype.hasFocus = function () {
           ng-if="$mdChipsCtrl.isRemovable()"\
           ng-click="$mdChipsCtrl.removeChipAndFocusInput($$replacedScope.$index)"\
           type="button"\
-          aria-hidden="true"\
           tabindex="-1">\
         <md-icon md-svg-src="{{ $mdChipsCtrl.mdCloseIcon }}"></md-icon>\
         <span class="md-visually-hidden">\
@@ -27314,10 +29892,13 @@ MdChipsCtrl.prototype.hasFocus = function () {
         onAdd: '&mdOnAdd',
         onRemove: '&mdOnRemove',
         onSelect: '&mdOnSelect',
+        inputAriaLabel: '@',
+        containerHint: '@',
         deleteHint: '@',
         deleteButtonLabel: '@',
         separatorKeys: '=?mdSeparatorKeys',
-        requireMatch: '=?mdRequireMatch'
+        requireMatch: '=?mdRequireMatch',
+        chipAppendDelayString: '@?mdChipAppendDelay'
       }
     };
 
@@ -27404,7 +29985,7 @@ MdChipsCtrl.prototype.hasFocus = function () {
         mdChipsCtrl.mdCloseIcon = $$mdSvgRegistry.mdClose;
 
         element
-            .attr({ 'aria-hidden': true, tabindex: -1 })
+            .attr({ tabindex: -1 })
             .on('focus', function () { mdChipsCtrl.onFocus(); });
 
         if (attr.ngModel) {
@@ -27506,19 +30087,12 @@ function MdContactChipsCtrl () {
 
 
 MdContactChipsCtrl.prototype.queryContact = function(searchText) {
-  var results = this.contactQuery({'$query': searchText});
-  return this.filterSelected ?
-      results.filter(angular.bind(this, this.filterSelectedContacts)) : results;
+  return this.contactQuery({'$query': searchText});
 };
 
 
 MdContactChipsCtrl.prototype.itemName = function(item) {
   return item[this.contactName];
-};
-
-
-MdContactChipsCtrl.prototype.filterSelectedContacts = function(contact) {
-  return this.contacts.indexOf(contact) == -1;
 };
 
 })();
@@ -27557,10 +30131,13 @@ MdContactChips.$inject = ["$mdTheming", "$mdUtil"];angular
  *    contact's email address.
  * @param {string} md-contact-image The field name of the contact object representing the
  *    contact's image.
- *
+ * @param {number=} md-min-length Specifies the minimum length of text before autocomplete will
+ *    make suggestions
  *
  * @param {expression=} filter-selected Whether to filter selected contacts from the list of
- *    suggestions shown in the autocomplete. This attribute has been removed but may come back.
+ *    suggestions shown in the autocomplete.
+ *
+ *    ***Note:** This attribute has been removed but may come back.*
  *
  *
  *
@@ -27583,6 +30160,7 @@ var MD_CONTACT_CHIPS_TEMPLATE = '\
       <md-chips class="md-contact-chips"\
           ng-model="$mdContactChipsCtrl.contacts"\
           md-require-match="$mdContactChipsCtrl.requireMatch"\
+          md-chip-append-delay="{{$mdContactChipsCtrl.chipAppendDelay}}" \
           md-autocomplete-snap>\
           <md-autocomplete\
               md-menu-class="md-contact-chips-suggestions"\
@@ -27591,6 +30169,7 @@ var MD_CONTACT_CHIPS_TEMPLATE = '\
               md-items="item in $mdContactChipsCtrl.queryContact($mdContactChipsCtrl.searchText)"\
               md-item-text="$mdContactChipsCtrl.itemName(item)"\
               md-no-cache="true"\
+              md-min-length="$mdContactChipsCtrl.minLength"\
               md-autoselect\
               placeholder="{{$mdContactChipsCtrl.contacts.length == 0 ?\
                   $mdContactChipsCtrl.placeholder : $mdContactChipsCtrl.secondaryPlaceholder}}">\
@@ -27646,17 +30225,24 @@ function MdContactChips($mdTheming, $mdUtil) {
       contactEmail: '@mdContactEmail',
       contacts: '=ngModel',
       requireMatch: '=?mdRequireMatch',
-      highlightFlags: '@?mdHighlightFlags'
+      minLength: '=?mdMinLength',
+      highlightFlags: '@?mdHighlightFlags',
+      chipAppendDelay: '@?mdChipAppendDelay'
     }
   };
 
   function compile(element, attr) {
     return function postLink(scope, element, attrs, controllers) {
+      var contactChipsController = controllers;
 
       $mdUtil.initOptionalProperties(scope, attr);
       $mdTheming(element);
 
       element.attr('tabindex', '-1');
+
+      attrs.$observe('mdChipAppendDelay', function(newValue) {
+        contactChipsController.chipAppendDelay = newValue;
+      });
     };
   }
 }
@@ -27779,19 +30365,14 @@ function MdContactChips($mdTheming, $mdUtil) {
     /** @final */
     this.$$rAF = $$rAF;
 
+    /** @final */
+    this.$mdDateLocale = $mdDateLocale;
+
     /** @final {Date} */
     this.today = this.dateUtil.createDateAtMidnight();
 
     /** @type {!angular.NgModelController} */
     this.ngModelCtrl = null;
-
-    /**
-     * The currently visible calendar view. Note the prefix on the scope value,
-     * which is necessary, because the datepicker seems to reset the real one value if the
-     * calendar is open, but the value on the datepicker's scope is empty.
-     * @type {String}
-     */
-    this.currentView = this._currentView || 'month';
 
     /** @type {String} Class applied to the selected date cell. */
     this.SELECTED_DATE_CLASS = 'md-calendar-selected-date';
@@ -27865,26 +30446,64 @@ function MdContactChips($mdTheming, $mdUtil) {
 
     var boundKeyHandler = angular.bind(this, this.handleKeyEvent);
 
+
+
+    // If use the md-calendar directly in the body without datepicker,
+    // handleKeyEvent will disable other inputs on the page.
+    // So only apply the handleKeyEvent on the body when the md-calendar inside datepicker,
+    // otherwise apply on the calendar element only.
+
+    var handleKeyElement;
+    if ($element.parent().hasClass('md-datepicker-calendar')) {
+      handleKeyElement = angular.element(document.body);
+    } else {
+      handleKeyElement = $element;
+    }
+
     // Bind the keydown handler to the body, in order to handle cases where the focused
     // element gets removed from the DOM and stops propagating click events.
-    angular.element(document.body).on('keydown', boundKeyHandler);
+    handleKeyElement.on('keydown', boundKeyHandler);
 
     $scope.$on('$destroy', function() {
-      angular.element(document.body).off('keydown', boundKeyHandler);
+      handleKeyElement.off('keydown', boundKeyHandler);
     });
 
-    if (this.minDate && this.minDate > $mdDateLocale.firstRenderableDate) {
-      this.firstRenderableDate = this.minDate;
-    } else {
-      this.firstRenderableDate = $mdDateLocale.firstRenderableDate;
+    // For Angular 1.4 and older, where there are no lifecycle hooks but bindings are pre-assigned,
+    // manually call the $onInit hook.
+    if (angular.version.major === 1 && angular.version.minor <= 4) {
+      this.$onInit();
     }
 
-    if (this.maxDate && this.maxDate < $mdDateLocale.lastRenderableDate) {
+  }
+
+  /**
+   * Angular Lifecycle hook for newer Angular versions.
+   * Bindings are not guaranteed to have been assigned in the controller, but they are in the $onInit hook.
+   */
+  CalendarCtrl.prototype.$onInit = function() {
+
+    /**
+     * The currently visible calendar view. Note the prefix on the scope value,
+     * which is necessary, because the datepicker seems to reset the real one value if the
+     * calendar is open, but the value on the datepicker's scope is empty.
+     * @type {String}
+     */
+    this.currentView = this._currentView || 'month';
+
+    var dateLocale = this.$mdDateLocale;
+
+    if (this.minDate && this.minDate > dateLocale.firstRenderableDate) {
+      this.firstRenderableDate = this.minDate;
+    } else {
+      this.firstRenderableDate = dateLocale.firstRenderableDate;
+    }
+
+    if (this.maxDate && this.maxDate < dateLocale.lastRenderableDate) {
       this.lastRenderableDate = this.maxDate;
     } else {
-      this.lastRenderableDate = $mdDateLocale.lastRenderableDate;
+      this.lastRenderableDate = dateLocale.lastRenderableDate;
     }
-  }
+  };
 
   /**
    * Sets up the controller's reference to ngModelController.
@@ -28154,7 +30773,13 @@ function MdContactChips($mdTheming, $mdUtil) {
                   'md-month-offset="$index" ' +
                   'class="md-calendar-month" ' +
                   'md-start-index="monthCtrl.getSelectedMonthIndex()" ' +
-                  'md-item-size="' + TBODY_HEIGHT + '"></tbody>' +
+                  'md-item-size="' + TBODY_HEIGHT + '">' +
+
+                // The <tr> ensures that the <tbody> will always have the
+                // proper height, even if it's empty. If it's content is
+                // compiled, the <tr> will be overwritten.
+                '<tr aria-hidden="true" style="height:' + TBODY_HEIGHT + 'px;"></tr>' +
+              '</tbody>' +
             '</table>' +
           '</md-virtual-repeat-container>' +
         '</div>',
@@ -28465,8 +31090,8 @@ function MdContactChips($mdTheming, $mdUtil) {
         // of repeated items that are linked, and then those elements have their bindings updated.
         // Since the months are not generated by bindings, we simply regenerate the entire thing
         // when the binding (offset) changes.
-        scope.$watch(function() { return monthBodyCtrl.offset; }, function(offset, oldOffset) {
-          if (offset !== oldOffset) {
+        scope.$watch(function() { return monthBodyCtrl.offset; }, function(offset) {
+          if (angular.isNumber(offset)) {
             monthBodyCtrl.generateContent();
           }
         });
@@ -28761,7 +31386,11 @@ function MdContactChips($mdTheming, $mdUtil) {
                   'md-virtual-repeat="i in yearCtrl.items" ' +
                   'md-year-offset="$index" class="md-calendar-year" ' +
                   'md-start-index="yearCtrl.getFocusedYearIndex()" ' +
-                  'md-item-size="' + TBODY_HEIGHT + '"></tbody>' +
+                  'md-item-size="' + TBODY_HEIGHT + '">' +
+                // The <tr> ensures that the <tbody> will have the proper
+                // height, even though it may be empty.
+                '<tr aria-hidden="true" style="height:' + TBODY_HEIGHT + 'px;"></tr>' +
+              '</tbody>' +
             '</table>' +
           '</md-virtual-repeat-container>' +
         '</div>',
@@ -28976,8 +31605,8 @@ function MdContactChips($mdTheming, $mdUtil) {
         yearBodyCtrl.calendarCtrl = calendarCtrl;
         yearBodyCtrl.yearCtrl = yearCtrl;
 
-        scope.$watch(function() { return yearBodyCtrl.offset; }, function(offset, oldOffset) {
-          if (offset !== oldOffset) {
+        scope.$watch(function() { return yearBodyCtrl.offset; }, function(offset) {
+          if (angular.isNumber(offset)) {
             yearBodyCtrl.generateContent();
           }
         });
@@ -29160,7 +31789,8 @@ function MdContactChips($mdTheming, $mdUtil) {
    * @property {(Array<string>)=} firstDayOfWeek The first day of the week. Sunday = 0, Monday = 1,
    *    etc.
    * @property {(function(string): Date)=} parseDate Function to parse a date object from a string.
-   * @property {(function(Date): string)=} formatDate Function to format a date object to a string.
+   * @property {(function(Date, string): string)=} formatDate Function to format a date object to a
+   *     string. The datepicker directive also provides the time zone, if it was specified.
    * @property {(function(Date): string)=} monthHeaderFormatter Function that returns the label for
    *     a month given a date.
    * @property {(function(Date): string)=} monthFormatter Function that returns the full name of a month
@@ -29300,9 +31930,10 @@ function MdContactChips($mdTheming, $mdUtil) {
       /**
        * Default date-to-string formatting function.
        * @param {!Date} date
+       * @param {string=} timezone
        * @returns {string}
        */
-      function defaultFormatDate(date) {
+      function defaultFormatDate(date, timezone) {
         if (!date) {
           return '';
         }
@@ -29314,12 +31945,12 @@ function MdContactChips($mdTheming, $mdUtil) {
         // d.toLocaleString(); // == "10/7/1992, 11:00:00 PM"
         var localeTime = date.toLocaleTimeString();
         var formatDate = date;
-        if (date.getHours() == 0 &&
+        if (date.getHours() === 0 &&
             (localeTime.indexOf('11:') !== -1 || localeTime.indexOf('23:') !== -1)) {
           formatDate = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 1, 0, 0);
         }
 
-        return $filter('date')(formatDate, 'M/d/yyyy');
+        return $filter('date')(formatDate, 'M/d/yyyy', timezone);
       }
 
       /**
@@ -29637,7 +32268,7 @@ function MdContactChips($mdTheming, $mdUtil) {
      * @return {boolean} Whether the date is a valid Date.
      */
     function isValidDate(date) {
-      return date != null && date.getTime && !isNaN(date.getTime());
+      return date && date.getTime && !isNaN(date.getTime());
     }
 
     /**
@@ -29771,7 +32402,7 @@ function MdContactChips($mdTheming, $mdUtil) {
   // TODO(jelbourn): input behavior (masking? auto-complete?)
 
 
-  DatePickerCtrl.$inject = ["$scope", "$element", "$attrs", "$window", "$mdConstant", "$mdTheming", "$mdUtil", "$mdDateLocale", "$$mdDateUtil", "$$rAF", "$mdGesture", "$filter"];
+  DatePickerCtrl.$inject = ["$scope", "$element", "$attrs", "$window", "$mdConstant", "$mdTheming", "$mdUtil", "$mdDateLocale", "$$mdDateUtil", "$$rAF", "$filter"];
   datePickerDirective.$inject = ["$$mdSvgRegistry", "$mdUtil", "$mdAria", "inputDirective"];
   angular.module('material.components.datepicker')
       .directive('mdDatepicker', datePickerDirective);
@@ -29787,6 +32418,8 @@ function MdContactChips($mdTheming, $mdUtil) {
    * @param {expression=} ng-change Expression evaluated when the model value changes.
    * @param {expression=} ng-focus Expression evaluated when the input is focused or the calendar is opened.
    * @param {expression=} ng-blur Expression evaluated when focus is removed from the input or the calendar is closed.
+   * @param {boolean=} ng-disabled Whether the datepicker is disabled.
+   * @param {boolean=} ng-required Whether a value is required for the datepicker.
    * @param {Date=} md-min-date Expression representing a min date (inclusive).
    * @param {Date=} md-max-date Expression representing a max date (inclusive).
    * @param {(function(Date): boolean)=} md-date-filter Function expecting a date and returning a boolean whether it can be selected or not.
@@ -29799,8 +32432,9 @@ function MdContactChips($mdTheming, $mdUtil) {
    * * `"all"` - Hides all icons.
    * * `"calendar"` - Only hides the calendar icon.
    * * `"triangle"` - Only hides the triangle icon.
-   * @param {boolean=} ng-disabled Whether the datepicker is disabled.
-   * @param {boolean=} ng-required Whether a value is required for the datepicker.
+   * @param {Object=} md-date-locale Allows for the values from the `$mdDateLocaleProvider` to be
+   * ovewritten on a per-element basis (e.g. `msgOpenCalendar` can be overwritten with
+   * `md-date-locale="{ msgOpenCalendar: 'Open a special calendar' }"`).
    *
    * @description
    * `<md-datepicker>` is a component used to select a single date.
@@ -29838,13 +32472,19 @@ function MdContactChips($mdTheming, $mdUtil) {
                      'md-svg-src="' + $$mdSvgRegistry.mdCalendar + '"></md-icon>' +
           '</md-button>';
 
-        var triangleButton = (hiddenIcons === 'all' || hiddenIcons === 'triangle') ? '' :
-          '<md-button type="button" md-no-ink ' +
+        var triangleButton = '';
+
+        if (hiddenIcons !== 'all' && hiddenIcons !== 'triangle') {
+          triangleButton = '' +
+            '<md-button type="button" md-no-ink ' +
               'class="md-datepicker-triangle-button md-icon-button" ' +
               'ng-click="ctrl.openCalendarPane($event)" ' +
-              'aria-label="{{::ctrl.dateLocale.msgOpenCalendar}}">' +
+              'aria-label="{{::ctrl.locale.msgOpenCalendar}}">' +
             '<div class="md-datepicker-expand-triangle"></div>' +
           '</md-button>';
+
+          tElement.addClass(HAS_TRIANGLE_ICON_CLASS);
+        }
 
         return calendarButton +
         '<div class="md-datepicker-input-container" ng-class="{\'md-datepicker-focused\': ctrl.isFocused}">' +
@@ -29852,18 +32492,19 @@ function MdContactChips($mdTheming, $mdUtil) {
             (ariaLabelValue ? 'aria-label="' + ariaLabelValue + '" ' : '') +
             'class="md-datepicker-input" ' +
             'aria-haspopup="true" ' +
+            'aria-expanded="{{ctrl.isCalendarOpen}}" ' +
             'ng-focus="ctrl.setFocused(true)" ' +
             'ng-blur="ctrl.setFocused(false)"> ' +
             triangleButton +
         '</div>' +
 
         // This pane will be detached from here and re-attached to the document body.
-        '<div class="md-datepicker-calendar-pane md-whiteframe-z1">' +
+        '<div class="md-datepicker-calendar-pane md-whiteframe-z1" id="{{::ctrl.calendarPaneId}}">' +
           '<div class="md-datepicker-input-mask">' +
             '<div class="md-datepicker-input-mask-opaque"></div>' +
           '</div>' +
           '<div class="md-datepicker-calendar">' +
-            '<md-calendar role="dialog" aria-label="{{::ctrl.dateLocale.msgCalendar}}" ' +
+            '<md-calendar role="dialog" aria-label="{{::ctrl.locale.msgCalendar}}" ' +
                 'md-current-view="{{::ctrl.currentView}}"' +
                 'md-min-date="ctrl.minDate"' +
                 'md-max-date="ctrl.maxDate"' +
@@ -29881,7 +32522,8 @@ function MdContactChips($mdTheming, $mdUtil) {
         currentView: '@mdCurrentView',
         dateFilter: '=mdDateFilter',
         isOpen: '=?mdIsOpen',
-        debounceInterval: '=mdDebounceInterval'
+        debounceInterval: '=mdDebounceInterval',
+        dateLocale: '=mdDateLocale'
       },
       controller: DatePickerCtrl,
       controllerAs: 'ctrl',
@@ -29913,7 +32555,7 @@ function MdContactChips($mdTheming, $mdUtil) {
           mdInputContainer.input = element;
           mdInputContainer.element
             .addClass(INPUT_CONTAINER_CLASS)
-            .toggleClass(HAS_ICON_CLASS, attr.mdHideIcons !== 'calendar' && attr.mdHideIcons !== 'all');
+            .toggleClass(HAS_CALENDAR_ICON_CLASS, attr.mdHideIcons !== 'calendar' && attr.mdHideIcons !== 'all');
 
           if (!mdInputContainer.label) {
             $mdAria.expect(element, 'aria-label', attr.mdPlaceholder);
@@ -29954,7 +32596,10 @@ function MdContactChips($mdTheming, $mdUtil) {
   var INPUT_CONTAINER_CLASS = '_md-datepicker-floating-label';
 
   /** Class to be applied when the calendar icon is enabled. */
-  var HAS_ICON_CLASS = '_md-datepicker-has-calendar-icon';
+  var HAS_CALENDAR_ICON_CLASS = '_md-datepicker-has-calendar-icon';
+
+  /** Class to be applied when the triangle icon is enabled. */
+  var HAS_TRIANGLE_ICON_CLASS = '_md-datepicker-has-triangle-icon';
 
   /** Default time in ms to debounce input event by. */
   var DEFAULT_DEBOUNCE_INTERVAL = 500;
@@ -29979,19 +32624,19 @@ function MdContactChips($mdTheming, $mdUtil) {
    */
   var CALENDAR_PANE_WIDTH = 360;
 
+  /** Used for checking whether the current user agent is on iOS or Android. */
+  var IS_MOBILE_REGEX = /ipad|iphone|ipod|android/i;
+
   /**
    * Controller for md-datepicker.
    *
    * @ngInject @constructor
    */
   function DatePickerCtrl($scope, $element, $attrs, $window, $mdConstant,
-    $mdTheming, $mdUtil, $mdDateLocale, $$mdDateUtil, $$rAF, $mdGesture, $filter) {
+    $mdTheming, $mdUtil, $mdDateLocale, $$mdDateUtil, $$rAF, $filter) {
 
     /** @final */
     this.$window = $window;
-
-    /** @final */
-    this.dateLocale = $mdDateLocale;
 
     /** @final */
     this.dateUtil = $$mdDateUtil;
@@ -30004,6 +32649,9 @@ function MdContactChips($mdTheming, $mdUtil) {
 
     /** @final */
     this.$$rAF = $$rAF;
+
+    /** @final */
+    this.$mdDateLocale = $mdDateLocale;
 
     /**
      * The root document element. This is used for attaching a top-level click handler to
@@ -30074,7 +32722,7 @@ function MdContactChips($mdTheming, $mdUtil) {
     this.calendarPaneOpenedFrom = null;
 
     /** @type {String} Unique id for the calendar pane. */
-    this.calendarPane.id = 'md-date-pane' + $mdUtil.nextUid();
+    this.calendarPaneId = 'md-date-pane-' + $mdUtil.nextUid();
 
     /** Pre-bound click handler is saved so that the event listener can be removed. */
     this.bodyClickHandler = angular.bind(this, this.handleBodyClick);
@@ -30084,7 +32732,9 @@ function MdContactChips($mdTheming, $mdUtil) {
      * the resize event doesn't make sense on mobile and can have a negative impact since it
      * triggers whenever the browser zooms in on a focused input.
      */
-    this.windowEventName = ($mdGesture.isIos || $mdGesture.isAndroid) ? 'orientationchange' : 'resize';
+    this.windowEventName = IS_MOBILE_REGEX.test(
+      navigator.userAgent || navigator.vendor || window.opera
+    ) ? 'orientationchange' : 'resize';
 
     /** Pre-bound close handler so that the event listener can be removed. */
     this.windowEventHandler = $mdUtil.debounce(angular.bind(this, this.closeCalendarPane), 100);
@@ -30111,12 +32761,10 @@ function MdContactChips($mdTheming, $mdUtil) {
       $attrs.$set('tabindex', '-1');
     }
 
+    $attrs.$set('aria-owns', this.calendarPaneId);
+
     $mdTheming($element);
     $mdTheming(angular.element(this.calendarPane));
-
-    this.installPropertyInterceptors();
-    this.attachChangeListeners();
-    this.attachInteractionListeners();
 
     var self = this;
 
@@ -30135,7 +32783,32 @@ function MdContactChips($mdTheming, $mdUtil) {
         }
       });
     }
+
+    // For Angular 1.4 and older, where there are no lifecycle hooks but bindings are pre-assigned,
+    // manually call the $onInit hook.
+    if (angular.version.major === 1 && angular.version.minor <= 4) {
+      this.$onInit();
+    }
+
   }
+
+  /**
+   * Angular Lifecycle hook for newer Angular versions.
+   * Bindings are not guaranteed to have been assigned in the controller, but they are in the $onInit hook.
+   */
+  DatePickerCtrl.prototype.$onInit = function() {
+
+    /**
+     * Holds locale-specific formatters, parsers, labels etc. Allows
+     * the user to override specific ones from the $mdDateLocale provider.
+     * @type {!Object}
+     */
+    this.locale = this.dateLocale ? angular.extend({}, this.$mdDateLocale, this.dateLocale) : this.$mdDateLocale;
+
+    this.installPropertyInterceptors();
+    this.attachChangeListeners();
+    this.attachInteractionListeners();
+  };
 
   /**
    * Sets up the controller's reference to ngModelController and
@@ -30170,17 +32843,25 @@ function MdContactChips($mdTheming, $mdUtil) {
             'Currently the model is a: ' + (typeof value));
       }
 
-      self.date = value;
-      self.inputElement.value = self.dateLocale.formatDate(value);
-      self.mdInputContainer && self.mdInputContainer.setHasValue(!!value);
-      self.resizeInputElement();
-      self.updateErrorState();
+      self.onExternalChange(value);
 
       return value;
     });
 
     // Responds to external error state changes (e.g. ng-required based on another input).
     ngModelCtrl.$viewChangeListeners.unshift(angular.bind(this, this.updateErrorState));
+
+    // Forwards any events from the input to the root element. This is necessary to get `updateOn`
+    // working for events that don't bubble (e.g. 'blur') since Angular binds the handlers to
+    // the `<md-datepicker>`.
+    var updateOn = self.$mdUtil.getModelOption(ngModelCtrl, 'updateOn');
+
+    if (updateOn) {
+      this.ngInputElement.on(
+        updateOn,
+        angular.bind(this.$element, this.$element.triggerHandler, updateOn)
+      );
+    }
   };
 
   /**
@@ -30193,12 +32874,8 @@ function MdContactChips($mdTheming, $mdUtil) {
 
     self.$scope.$on('md-calendar-change', function(event, date) {
       self.setModelValue(date);
-      self.date = date;
-      self.inputElement.value = self.dateLocale.formatDate(date);
-      self.mdInputContainer && self.mdInputContainer.setHasValue(!!date);
+      self.onExternalChange(date);
       self.closeCalendarPane();
-      self.resizeInputElement();
-      self.updateErrorState();
     });
 
     self.ngInputElement.on('input', angular.bind(self, self.resizeInputElement));
@@ -30315,12 +32992,7 @@ function MdContactChips($mdTheming, $mdUtil) {
       this.ngModelCtrl.$setValidity('valid', date == null);
     }
 
-    // TODO(jelbourn): Change this to classList.toggle when we stop using PhantomJS in unit tests
-    // because it doesn't conform to the DOMTokenList spec.
-    // See https://github.com/ariya/phantomjs/issues/12782.
-    if (!this.ngModelCtrl.$valid) {
-      this.inputContainer.classList.add(INVALID_CLASS);
-    }
+    angular.element(this.inputContainer).toggleClass(INVALID_CLASS, !this.ngModelCtrl.$valid);
   };
 
   /** Clears any error flags set by `updateErrorState`. */
@@ -30342,14 +33014,14 @@ function MdContactChips($mdTheming, $mdUtil) {
    */
   DatePickerCtrl.prototype.handleInputEvent = function() {
     var inputString = this.inputElement.value;
-    var parsedDate = inputString ? this.dateLocale.parseDate(inputString) : null;
+    var parsedDate = inputString ? this.locale.parseDate(inputString) : null;
     this.dateUtil.setDateTimeToMidnight(parsedDate);
 
     // An input string is valid if it is either empty (representing no date)
     // or if it parses to a valid date that the user is allowed to select.
     var isValidInput = inputString == '' || (
       this.dateUtil.isValidDate(parsedDate) &&
-      this.dateLocale.isDateComplete(inputString) &&
+      this.locale.isDateComplete(inputString) &&
       this.isDateEnabled(parsedDate)
     );
 
@@ -30614,7 +33286,22 @@ function MdContactChips($mdTheming, $mdUtil) {
    * @param {Date=} value Date to be set as the model value.
    */
   DatePickerCtrl.prototype.setModelValue = function(value) {
-    this.ngModelCtrl.$setViewValue(this.ngDateFilter(value, 'yyyy-MM-dd'));
+    var timezone = this.$mdUtil.getModelOption(this.ngModelCtrl, 'timezone');
+    this.ngModelCtrl.$setViewValue(this.ngDateFilter(value, 'yyyy-MM-dd', timezone));
+  };
+
+  /**
+   * Updates the datepicker when a model change occurred externally.
+   * @param {Date=} value Value that was set to the model.
+   */
+  DatePickerCtrl.prototype.onExternalChange = function(value) {
+    var timezone = this.$mdUtil.getModelOption(this.ngModelCtrl, 'timezone');
+
+    this.date = value;
+    this.inputElement.value = this.locale.formatDate(value, timezone);
+    this.mdInputContainer && this.mdInputContainer.setHasValue(!!value);
+    this.resizeInputElement();
+    this.updateErrorState();
   };
 })();
 
@@ -30664,7 +33351,7 @@ angular
  * like `"social:cake"`.
  *
  * When using SVGs, both external SVGs (via URLs) or sets of SVGs [from icon sets] can be
- * easily loaded and used.When use font-icons, developers must following three (3) simple steps:
+ * easily loaded and used. When using font-icons, developers must follow three (3) simple steps:
  *
  * <ol>
  * <li>Load the font library. e.g.<br/>
@@ -30672,13 +33359,18 @@ angular
  *    rel="stylesheet">`
  * </li>
  * <li>
- *   Use either (a) font-icon class names or (b) font ligatures to render the font glyph by using
- *   its textual name
+ *   Use either (a) font-icon class names or (b) a fontset and a font ligature to render the font glyph by
+ *   using its textual name _or_ numerical character reference. Note that `material-icons` is the default fontset when
+ *   none is specified.
  * </li>
- * <li>
- *   Use `<md-icon md-font-icon="classname" />` or <br/>
- *   use `<md-icon md-font-set="font library classname or alias"> textual_name </md-icon>` or <br/>
- *   use `<md-icon md-font-set="font library classname or alias"> numerical_character_reference </md-icon>`
+ * <li> Use any of the following templates: <br/>
+ *   <ul>
+ *     <li>`<md-icon md-font-icon="classname"></md-icon>`</li>
+ *     <li>`<md-icon md-font-set="font library classname or alias">textual_name</md-icon>`</li>
+ *     <li>`<md-icon> numerical_character_reference </md-icon>`</li>
+ *     <li>`<md-icon ng_bind="'textual_name'"></md-icon>`</li>
+ *     <li>`<md-icon ng-bind="scopeVariable"></md-icon>`</li>
+ *   </ul>
  * </li>
  * </ol>
  *
@@ -30695,6 +33387,19 @@ angular
  * <ul>
  * <li>https://design.google.com/icons/</li>
  * <li>https://design.google.com/icons/#ic_accessibility</li>
+ * </ul>
+ *
+ * ### Localization
+ *
+ * Because an `md-icon` element's text content is not intended to translated, it is recommended to declare the text
+ * content for an `md-icon` element in its start tag. Instead of using the HTML text content, consider using `ng-bind`
+ * with a scope variable or literal string.
+ *
+ * Examples:
+ *
+ * <ul>
+ *   <li>`<md-icon ng-bind="myIconVariable"></md-icon>`</li>
+ *   <li>`<md-icon ng-bind="'menu'"></md-icon>`
  * </ul>
  *
  * <h2 id="material_design_icons">Material Design Icons</h2>
@@ -31531,7 +34236,7 @@ function MdIconService(config, $templateRequest, $q, $log, $mdUtil, $sce) {
 
 
 
-MenuController.$inject = ["$mdMenu", "$attrs", "$element", "$scope", "$mdUtil", "$timeout", "$rootScope", "$q"];
+MenuController.$inject = ["$mdMenu", "$attrs", "$element", "$scope", "$mdUtil", "$timeout", "$rootScope", "$q", "$log"];
 angular
     .module('material.components.menu')
     .controller('mdMenuCtrl', MenuController);
@@ -31539,7 +34244,7 @@ angular
 /**
  * @ngInject
  */
-function MenuController($mdMenu, $attrs, $element, $scope, $mdUtil, $timeout, $rootScope, $q) {
+function MenuController($mdMenu, $attrs, $element, $scope, $mdUtil, $timeout, $rootScope, $q, $log) {
 
   var prefixer = $mdUtil.prefixer();
   var menuContainer;
@@ -31673,9 +34378,6 @@ function MenuController($mdMenu, $attrs, $element, $scope, $mdUtil, $timeout, $r
     });
   };
 
-  // Expose a open function to the child scope for html to use
-  $scope.$mdOpenMenu = this.open;
-
   this.onIsOpenChanged = function(isOpen) {
     if (isOpen) {
       menuContainer.attr('aria-hidden', 'false');
@@ -31694,7 +34396,7 @@ function MenuController($mdMenu, $attrs, $element, $scope, $mdUtil, $timeout, $r
     var focusTarget = menuContainer[0]
       .querySelector(prefixer.buildSelector(['md-menu-focus-target', 'md-autofocus']));
 
-    if (!focusTarget) focusTarget = menuContainer[0].querySelector('.md-button');
+    if (!focusTarget) focusTarget = menuContainer[0].querySelector('.md-button:not([disabled])');
     focusTarget.focus();
   };
 
@@ -31766,6 +34468,18 @@ function MenuController($mdMenu, $attrs, $element, $scope, $mdUtil, $timeout, $r
       throw Error('Invalid offsets specified. Please follow format <x, y> or <n>');
     }
   };
+
+  // Functionality that is exposed in the view.
+  $scope.$mdMenu = {
+    open: this.open,
+    close: this.close
+  };
+
+  // Deprecated APIs
+  $scope.$mdOpenMenu = angular.bind(this, function() {
+    $log.warn('mdMenu: The $mdOpenMenu method is deprecated. Please use `$mdMenu.open`.');
+    return this.open.apply(this, arguments);
+  });
 }
 
 })();
@@ -31784,9 +34498,10 @@ function MenuController($mdMenu, $attrs, $element, $scope, $mdUtil, $timeout, $r
  *
  * Every `md-menu` must specify exactly two child elements. The first element is what is
  * left in the DOM and is used to open the menu. This element is called the trigger element.
- * The trigger element's scope has access to `$mdOpenMenu($event)`
+ * The trigger element's scope has access to `$mdMenu.open($event)`
  * which it may call to open the menu. By passing $event as argument, the
- * corresponding event is stopped from propagating up the DOM-tree.
+ * corresponding event is stopped from propagating up the DOM-tree. Similarly, `$mdMenu.close()`
+ * can be used to close the menu.
  *
  * The second element is the `md-menu-content` element which represents the
  * contents of the menu when it is open. Typically this will contain `md-menu-item`s,
@@ -31795,7 +34510,7 @@ function MenuController($mdMenu, $attrs, $element, $scope, $mdUtil, $timeout, $r
  * <hljs lang="html">
  * <md-menu>
  *  <!-- Trigger element is a md-button with an icon -->
- *  <md-button ng-click="$mdOpenMenu($event)" class="md-icon-button" aria-label="Open sample menu">
+ *  <md-button ng-click="$mdMenu.open($event)" class="md-icon-button" aria-label="Open sample menu">
  *    <md-icon md-svg-icon="call:phone"></md-icon>
  *  </md-button>
  *  <md-menu-content>
@@ -31837,7 +34552,7 @@ function MenuController($mdMenu, $attrs, $element, $scope, $mdUtil, $timeout, $r
  *
  * <hljs lang="html">
  * <md-menu>
- *  <md-button ng-click="$mdOpenMenu($event)" class="md-icon-button" aria-label="Open some menu">
+ *  <md-button ng-click="$mdMenu.open($event)" class="md-icon-button" aria-label="Open some menu">
  *    <md-icon md-menu-origin md-svg-icon="call:phone"></md-icon>
  *  </md-button>
  *  <md-menu-content>
@@ -31870,16 +34585,16 @@ function MenuController($mdMenu, $attrs, $element, $scope, $mdUtil, $timeout, $r
  * This offset is provided in the format of `x y` or `n` where `n` will be used
  * in both the `x` and `y` axis.
  *
- * For example, to move a menu by `2px` from the top, we can use:
+ * For example, to move a menu by `2px` down from the top, we can use:
  * <hljs lang="html">
- * <md-menu md-offset="2 0">
+ * <md-menu md-offset="0 2">
  *   <!-- menu-content -->
  * </md-menu>
  * </hljs>
  *
  * ### Auto Focus
  * By default, when a menu opens, `md-menu` focuses the first button in the menu content.
- * 
+ *
  * But sometimes you would like to focus another specific menu item instead of the first.<br/>
  * This can be done by applying the `md-autofocus` directive on the given element.
  *
@@ -31897,22 +34612,24 @@ function MenuController($mdMenu, $attrs, $element, $scope, $mdUtil, $timeout, $r
  * Sometimes you would like to be able to click on a menu item without having the menu
  * close. To do this, ngMaterial exposes the `md-prevent-menu-close` attribute which
  * can be added to a button inside a menu to stop the menu from automatically closing.
- * You can then close the menu programatically by injecting `$mdMenu` and calling 
- * `$mdMenu.hide()`.
+ * You can then close the menu either by using `$mdMenu.close()` in the template,
+ * or programatically by injecting `$mdMenu` and calling `$mdMenu.hide()`.
  *
  * <hljs lang="html">
- * <md-menu-item>
- *   <md-button ng-click="doSomething()" aria-label="Do something" md-prevent-menu-close="md-prevent-menu-close">
- *     <md-icon md-menu-align-target md-svg-icon="call:phone"></md-icon>
- *     Do Something
- *   </md-button>
- * </md-menu-item>
+ * <md-menu-content ng-mouseleave="$mdMenu.close()">
+ *   <md-menu-item>
+ *     <md-button ng-click="doSomething()" aria-label="Do something" md-prevent-menu-close="md-prevent-menu-close">
+ *       <md-icon md-menu-align-target md-svg-icon="call:phone"></md-icon>
+ *       Do Something
+ *     </md-button>
+ *   </md-menu-item>
+ * </md-menu-content>
  * </hljs>
  *
  * @usage
  * <hljs lang="html">
  * <md-menu>
- *  <md-button ng-click="$mdOpenMenu($event)" class="md-icon-button">
+ *  <md-button ng-click="$mdMenu.open($event)" class="md-icon-button">
  *    <md-icon md-svg-icon="call:phone"></md-icon>
  *  </md-button>
  *  <md-menu-content>
@@ -31923,7 +34640,7 @@ function MenuController($mdMenu, $attrs, $element, $scope, $mdUtil, $timeout, $r
  *
  * @param {string} md-position-mode The position mode in the form of
  *           `x`, `y`. Default value is `target`,`target`. Right now the `x` axis
- *           also suppports `target-right`.
+ *           also supports `target-right`.
  * @param {string} md-offset An offset to apply to the dropdown after positioning
  *           `x`, `y`. Default value is `0`,`0`.
  *
@@ -31949,26 +34666,33 @@ function MenuDirective($mdUtil) {
 
   function compile(templateElement) {
     templateElement.addClass('md-menu');
-    var triggerElement = templateElement.children()[0];
+
+    var triggerEl = templateElement.children()[0];
+    var contentEl = templateElement.children()[1];
+
     var prefixer = $mdUtil.prefixer();
 
-    if (!prefixer.hasAttribute(triggerElement, 'ng-click')) {
-      triggerElement = triggerElement
-          .querySelector(prefixer.buildSelector(['ng-click', 'ng-mouseenter'])) || triggerElement;
-    }
-    if (triggerElement && (
-      triggerElement.nodeName == 'MD-BUTTON' ||
-      triggerElement.nodeName == 'BUTTON'
-    ) && !triggerElement.hasAttribute('type')) {
-      triggerElement.setAttribute('type', 'button');
+    if (!prefixer.hasAttribute(triggerEl, 'ng-click')) {
+      triggerEl = triggerEl
+          .querySelector(prefixer.buildSelector(['ng-click', 'ng-mouseenter'])) || triggerEl;
     }
 
-    if (templateElement.children().length != 2) {
-      throw Error(INVALID_PREFIX + 'Expected two children elements.');
+    var isButtonTrigger = triggerEl.nodeName === 'MD-BUTTON' || triggerEl.nodeName === 'BUTTON';
+
+    if (triggerEl && isButtonTrigger && !triggerEl.hasAttribute('type')) {
+      triggerEl.setAttribute('type', 'button');
+    }
+
+    if (!triggerEl) {
+      throw Error(INVALID_PREFIX + 'Expected the menu to have a trigger element.');
+    }
+
+    if (!contentEl || contentEl.nodeName !== 'MD-MENU-CONTENT') {
+      throw Error(INVALID_PREFIX + 'Expected the menu to contain a `md-menu-content` element.');
     }
 
     // Default element for ARIA attributes has the ngClick or ngMouseenter expression
-    triggerElement && triggerElement.setAttribute('aria-haspopup', 'true');
+    triggerEl && triggerEl.setAttribute('aria-haspopup', 'true');
 
     var nestedMenus = templateElement[0].querySelectorAll('md-menu');
     var nestingDepth = parseInt(templateElement[0].getAttribute('md-nest-level'), 10) || 0;
@@ -31986,7 +34710,7 @@ function MenuDirective($mdUtil) {
 
   function link(scope, element, attr, ctrls) {
     var mdMenuCtrl = ctrls[0];
-    var isInMenuBar = ctrls[1] != undefined;
+    var isInMenuBar = !!ctrls[1];
     // Move everything into a md-menu-container and pass it to the controller
     var menuContainer = angular.element( '<div class="_md md-open-menu-container md-whiteframe-z2"></div>');
     var menuContents = element.children()[1];
@@ -32029,7 +34753,7 @@ MenuProvider.$inject = ["$$interimElementProvider"];angular
  */
 
 function MenuProvider($$interimElementProvider) {
-  menuDefaultOptions.$inject = ["$mdUtil", "$mdTheming", "$mdConstant", "$document", "$window", "$q", "$$rAF", "$animateCss", "$animate"];
+  menuDefaultOptions.$inject = ["$mdUtil", "$mdTheming", "$mdConstant", "$document", "$window", "$q", "$$rAF", "$animateCss", "$animate", "$log"];
   var MENU_EDGE_MARGIN = 8;
 
   return $$interimElementProvider('$mdMenu')
@@ -32039,7 +34763,9 @@ function MenuProvider($$interimElementProvider) {
     });
 
   /* @ngInject */
-  function menuDefaultOptions($mdUtil, $mdTheming, $mdConstant, $document, $window, $q, $$rAF, $animateCss, $animate) {
+  function menuDefaultOptions($mdUtil, $mdTheming, $mdConstant, $document, $window, $q, $$rAF,
+                              $animateCss, $animate, $log) {
+
     var prefixer = $mdUtil.prefixer();
     var animator = $mdUtil.dom.animator;
 
@@ -32051,7 +34777,7 @@ function MenuProvider($$interimElementProvider) {
       disableParentScroll: true,
       skipCompile: true,
       preserveScope: true,
-      skipHide: true,
+      multiple: true,
       themable: true
     };
 
@@ -32091,9 +34817,13 @@ function MenuProvider($$interimElementProvider) {
      * and backdrop
      */
     function onRemove(scope, element, opts) {
-      opts.cleanupInteraction && opts.cleanupInteraction();
+      opts.cleanupInteraction();
+      opts.cleanupBackdrop();
       opts.cleanupResizing();
       opts.hideBackdrop();
+
+      // Before the menu is closing remove the clickable class.
+      element.removeClass('md-clickable');
 
       // For navigation $destroy events, do a quick, non-animated removal,
       // but for normal closes (from clicks, etc) animate the removal
@@ -32126,9 +34856,17 @@ function MenuProvider($$interimElementProvider) {
     function onShow(scope, element, opts) {
       sanitizeAndConfigure(opts);
 
-      // Wire up theming on our menu element
-      $mdTheming.inherit(opts.menuContentEl, opts.target);
-
+      if (opts.menuContentEl[0]) {
+        // Inherit the theme from the target element.
+        $mdTheming.inherit(opts.menuContentEl, opts.target);
+      } else {
+        $log.warn(
+          '$mdMenu: Menu elements should always contain a `md-menu-content` element,' +
+          'otherwise interactivity features will not work properly.',
+          element
+        );
+      }
+      
       // Register various listeners to move menu on resize/orientation change
       opts.cleanupResizing = startRepositioningOnResize();
       opts.hideBackdrop = showBackdrop(scope, element, opts);
@@ -32138,6 +34876,11 @@ function MenuProvider($$interimElementProvider) {
         .then(function(response) {
           opts.alreadyOpen = true;
           opts.cleanupInteraction = activateInteraction();
+          opts.cleanupBackdrop = setupBackdrop();
+
+          // Since the menu finished its animation, mark the menu as clickable.
+          element.addClass('md-clickable');
+
           return response;
         });
 
@@ -32207,18 +34950,44 @@ function MenuProvider($$interimElementProvider) {
           $window.removeEventListener('resize', repositionMenu);
           $window.removeEventListener('orientationchange', repositionMenu);
 
+        };
+      }
+
+      /**
+       * Sets up the backdrop and listens for click elements.
+       * Once the backdrop will be clicked, the menu will automatically close.
+       * @returns {!Function} Function to remove the backdrop.
+       */
+      function setupBackdrop() {
+        if (!opts.backdrop) return angular.noop;
+
+        opts.backdrop.on('click', onBackdropClick);
+
+        return function() {
+          opts.backdrop.off('click', onBackdropClick);
         }
       }
 
       /**
-       * Activate interaction on the menu. Wire up keyboard listerns for
-       * clicks, keypresses, backdrop closing, etc.
+       * Function to be called whenever the backdrop is clicked.
+       * @param {!MouseEvent} event
+       */
+      function onBackdropClick(event) {
+        event.preventDefault();
+        event.stopPropagation();
+
+        scope.$apply(function() {
+          opts.mdMenuCtrl.close(true, { closeAll: true });
+        });
+      }
+
+      /**
+       * Activate interaction on the menu. Resolves the focus target and closes the menu on
+       * escape or option click.
+       * @returns {!Function} Function to deactivate the interaction listeners.
        */
       function activateInteraction() {
-        element.addClass('md-clickable');
-
-        // close on backdrop click
-        if (opts.backdrop) opts.backdrop.on('click', onBackdropClick);
+        if (!opts.menuContentEl[0]) return angular.noop;
 
         // Wire up keyboard listeners.
         // - Close on escape,
@@ -32227,21 +34996,28 @@ function MenuProvider($$interimElementProvider) {
         opts.menuContentEl.on('keydown', onMenuKeyDown);
         opts.menuContentEl[0].addEventListener('click', captureClickListener, true);
 
-        // kick off initial focus in the menu on the first element
+        // kick off initial focus in the menu on the first enabled element
         var focusTarget = opts.menuContentEl[0]
           .querySelector(prefixer.buildSelector(['md-menu-focus-target', 'md-autofocus']));
 
         if ( !focusTarget ) {
-          var firstChild = opts.menuContentEl[0].firstElementChild;
-
-          focusTarget = firstChild && (firstChild.querySelector('.md-button:not([disabled])') || firstChild.firstElementChild);
+          var childrenLen = opts.menuContentEl[0].children.length;
+          for(var childIndex = 0; childIndex < childrenLen; childIndex++) {
+            var child = opts.menuContentEl[0].children[childIndex];
+            focusTarget = child.querySelector('.md-button:not([disabled])');
+            if (focusTarget) {
+              break;
+            }
+            if (child.firstElementChild && !child.firstElementChild.disabled) {
+              focusTarget = child.firstElementChild;
+              break;
+            }
+          }
         }
 
         focusTarget && focusTarget.focus();
 
         return function cleanupInteraction() {
-          element.removeClass('md-clickable');
-          if (opts.backdrop) opts.backdrop.off('click', onBackdropClick);
           opts.menuContentEl.off('keydown', onMenuKeyDown);
           opts.menuContentEl[0].removeEventListener('click', captureClickListener, true);
         };
@@ -32316,7 +35092,7 @@ function MenuProvider($$interimElementProvider) {
               }
               break;
             }
-          } while (target = target.parentNode)
+          } while (target = target.parentNode);
 
           function close() {
             scope.$apply(function() {
@@ -32798,15 +35574,11 @@ MenuBarController.prototype.handleParentClick = function(event) {
   var openMenu = this.querySelector('md-menu.md-open');
 
   if (openMenu && !openMenu.contains(event.target)) {
-    angular.element(openMenu).controller('mdMenu').close();
+    angular.element(openMenu).controller('mdMenu').close(true, {
+      closeAll: true
+    });
   }
 };
-
-
-
-
-
-
 
 })();
 (function(){
@@ -32815,7 +35587,7 @@ MenuBarController.prototype.handleParentClick = function(event) {
 /**
  * @ngdoc directive
  * @name mdMenuBar
- * @module material.components.menu-bar
+ * @module material.components.menuBar
  * @restrict E
  * @description
  *
@@ -32826,7 +35598,7 @@ MenuBarController.prototype.handleParentClick = function(event) {
  * <hljs lang="html">
  * <md-menu-bar>
  *   <md-menu>
- *     <button ng-click="$mdOpenMenu()">
+ *     <button ng-click="$mdMenu.open()">
  *       File
  *     </button>
  *     <md-menu-content>
@@ -32839,7 +35611,7 @@ MenuBarController.prototype.handleParentClick = function(event) {
  *       <md-menu-item>
  *       <md-menu-item>
  *         <md-menu>
- *           <md-button ng-click="$mdOpenMenu()">New</md-button>
+ *           <md-button ng-click="$mdMenu.open()">New</md-button>
  *           <md-menu-content>
  *             <md-menu-item><md-button ng-click="ctrl.sampleAction('New Document', $event)">Document</md-button></md-menu-item>
  *             <md-menu-item><md-button ng-click="ctrl.sampleAction('New Spreadsheet', $event)">Spreadsheet</md-button></md-menu-item>
@@ -32866,7 +35638,7 @@ MenuBarController.prototype.handleParentClick = function(event) {
  * <hljs lang="html">
  * <md-menu-bar>
  *  <md-menu>
- *    <button ng-click="$mdOpenMenu()">
+ *    <button ng-click="$mdMenu.open()">
  *      Sample Menu
  *    </button>
  *    <md-menu-content>
@@ -32888,7 +35660,7 @@ MenuBarController.prototype.handleParentClick = function(event) {
  * <hljs lang="html">
  * <md-menu-item>
  *   <md-menu>
- *     <button ng-click="$mdOpenMenu()">New</md-button>
+ *     <button ng-click="$mdMenu.open()">New</md-button>
  *     <md-menu-content>
  *       <md-menu-item><md-button ng-click="ctrl.sampleAction('New Document', $event)">Document</md-button></md-menu-item>
  *       <md-menu-item><md-button ng-click="ctrl.sampleAction('New Spreadsheet', $event)">Spreadsheet</md-button></md-menu-item>
@@ -33091,17 +35863,17 @@ MenuItemController.prototype.handleClick = function(e) {
 "use strict";
 
 
-MenuItemDirective.$inject = ["$mdUtil", "$$mdSvgRegistry"];
+MenuItemDirective.$inject = ["$mdUtil", "$mdConstant", "$$mdSvgRegistry"];
 angular
   .module('material.components.menuBar')
   .directive('mdMenuItem', MenuItemDirective);
 
  /* @ngInject */
-function MenuItemDirective($mdUtil, $$mdSvgRegistry) {
+function MenuItemDirective($mdUtil, $mdConstant, $$mdSvgRegistry) {
   return {
     controller: 'MenuItemController',
     require: ['mdMenuItem', '?ngModel'],
-    priority: 210, // ensure that our post link runs after ngAria
+    priority: $mdConstant.BEFORE_NG_ARIA,
     compile: function(templateEl, templateAttrs) {
       var type = templateAttrs.type;
       var inMenuBarClass = 'md-in-menu-bar';
@@ -33229,7 +36001,6 @@ function MdProgressCircularDirective($window, $mdProgressCircular, $mdTheming,
             $window.webkitCancelRequestAnimationFrame ||
             angular.noop;
 
-  var DEGREE_IN_RADIANS = $window.Math.PI / 180;
   var MODE_DETERMINATE = 'determinate';
   var MODE_INDETERMINATE = 'indeterminate';
   var DISABLED_CLASS = '_md-progress-circular-disabled';
@@ -33254,11 +36025,7 @@ function MdProgressCircularDirective($window, $mdProgressCircular, $mdTheming,
       });
 
       if (angular.isUndefined(attrs.mdMode)) {
-        var hasValue = angular.isDefined(attrs.value);
-        var mode = hasValue ? MODE_DETERMINATE : MODE_INDETERMINATE;
-        var info = "Auto-adding the missing md-mode='{0}' to the ProgressCircular element";
-
-          // $log.debug( $mdUtil.supplant(info, [mode]) );
+        var mode = attrs.hasOwnProperty('value') ? MODE_DETERMINATE : MODE_INDETERMINATE;
         attrs.$set('mdMode', mode);
       } else {
         attrs.$set('mdMode', attrs.mdMode.trim());
@@ -33274,7 +36041,7 @@ function MdProgressCircularDirective($window, $mdProgressCircular, $mdTheming,
     var path = angular.element(node.querySelector('path'));
     var startIndeterminate = $mdProgressCircular.startIndeterminate;
     var endIndeterminate = $mdProgressCircular.endIndeterminate;
-    var rotationIndeterminate = 0;
+    var iterationCount = 0;
     var lastAnimationId = 0;
     var lastDrawFrame;
     var interval;
@@ -33305,8 +36072,8 @@ function MdProgressCircularDirective($window, $mdProgressCircular, $mdTheming,
       if (isDisabled === true || isDisabled === false){
         return isDisabled;
       }
-      return angular.isDefined(element.attr('disabled'));
 
+      return angular.isDefined(element.attr('disabled'));
     }], function(newValues, oldValues) {
       var mode = newValues[1];
       var isDisabled = newValues[2];
@@ -33343,6 +36110,7 @@ function MdProgressCircularDirective($window, $mdProgressCircular, $mdTheming,
     scope.$watch('mdDiameter', function(newValue) {
       var diameter = getSize(newValue);
       var strokeWidth = getStroke(diameter);
+      var value = clamp(scope.value);
       var transformOrigin = (diameter / 2) + 'px';
       var dimensions = {
         width: diameter + 'px',
@@ -33366,37 +36134,52 @@ function MdProgressCircularDirective($window, $mdProgressCircular, $mdTheming,
         .css('transform-origin', transformOrigin + ' ' + transformOrigin + ' ' + transformOrigin);
 
       element.css(dimensions);
-      path.css('stroke-width',  strokeWidth + 'px');
+
+      path.attr('stroke-width', strokeWidth);
+      path.attr('stroke-linecap', 'square');
+      if (scope.mdMode == MODE_INDETERMINATE) {
+        path.attr('d', getSvgArc(diameter, strokeWidth, true));
+        path.attr('stroke-dasharray', (diameter - strokeWidth) * $window.Math.PI * 0.75);
+        path.attr('stroke-dashoffset', getDashLength(diameter, strokeWidth, 1, 75));
+      } else {
+        path.attr('d', getSvgArc(diameter, strokeWidth, false));
+        path.attr('stroke-dasharray', (diameter - strokeWidth) * $window.Math.PI);
+        path.attr('stroke-dashoffset', getDashLength(diameter, strokeWidth, 0, 100));
+        renderCircle(value, value);
+      }
+
     });
 
-    function renderCircle(animateFrom, animateTo, easing, duration, rotation) {
+    function renderCircle(animateFrom, animateTo, easing, duration, iterationCount, maxValue) {
       var id = ++lastAnimationId;
       var startTime = $mdUtil.now();
       var changeInValue = animateTo - animateFrom;
       var diameter = getSize(scope.mdDiameter);
-      var pathDiameter = diameter - getStroke(diameter);
+      var strokeWidth = getStroke(diameter);
       var ease = easing || $mdProgressCircular.easeFn;
       var animationDuration = duration || $mdProgressCircular.duration;
+      var rotation = -90 * (iterationCount || 0);
+      var dashLimit = maxValue || 100;
 
       // No need to animate it if the values are the same
       if (animateTo === animateFrom) {
-        path.attr('d', getSvgArc(animateTo, diameter, pathDiameter, rotation));
+        renderFrame(animateTo);
       } else {
         lastDrawFrame = rAF(function animation() {
           var currentTime = $window.Math.max(0, $window.Math.min($mdUtil.now() - startTime, animationDuration));
 
-          path.attr('d', getSvgArc(
-            ease(currentTime, animateFrom, changeInValue, animationDuration),
-            diameter,
-            pathDiameter,
-            rotation
-          ));
+          renderFrame(ease(currentTime, animateFrom, changeInValue, animationDuration));
 
           // Do not allow overlapping animations
           if (id === lastAnimationId && currentTime < animationDuration) {
             lastDrawFrame = rAF(animation);
           }
         });
+      }
+
+      function renderFrame(value) {
+        path.attr('stroke-dashoffset', getDashLength(diameter, strokeWidth, value, dashLimit));
+        path.attr('transform','rotate(' + (rotation) + ' ' + diameter/2 + ' ' + diameter/2 + ')');
       }
     }
 
@@ -33406,16 +36189,14 @@ function MdProgressCircularDirective($window, $mdProgressCircular, $mdTheming,
         endIndeterminate,
         $mdProgressCircular.easeFnIndeterminate,
         $mdProgressCircular.durationIndeterminate,
-        rotationIndeterminate
+        iterationCount,
+        75
       );
 
-      // The % 100 technically isn't necessary, but it keeps the rotation
-      // under 100, instead of becoming a crazy large number.
-      rotationIndeterminate = (rotationIndeterminate + endIndeterminate) % 100;
+      // The %4 technically isn't necessary, but it keeps the rotation
+      // under 360, instead of becoming a crazy large number.
+      iterationCount = ++iterationCount % 4;
 
-      var temp = startIndeterminate;
-      startIndeterminate = -endIndeterminate;
-      endIndeterminate = -temp;
     }
 
     function startIndeterminateAnimation() {
@@ -33423,7 +36204,7 @@ function MdProgressCircularDirective($window, $mdProgressCircular, $mdTheming,
         // Note that this interval isn't supposed to trigger a digest.
         interval = $interval(
           animateIndeterminate,
-          $mdProgressCircular.durationIndeterminate + 50,
+          $mdProgressCircular.durationIndeterminate,
           0,
           false
         );
@@ -33446,55 +36227,38 @@ function MdProgressCircularDirective($window, $mdProgressCircular, $mdTheming,
   }
 
   /**
-   * Generates an arc following the SVG arc syntax.
+   * Returns SVG path data for progress circle
    * Syntax spec: https://www.w3.org/TR/SVG/paths.html#PathDataEllipticalArcCommands
    *
-   * @param {number} current Current value between 0 and 100.
    * @param {number} diameter Diameter of the container.
-   * @param {number} pathDiameter Diameter of the path element.
-   * @param {number=0} rotation The point at which the semicircle should start rendering.
-   * Used for doing the indeterminate animation.
+   * @param {number} strokeWidth Stroke width to be used when drawing circle
+   * @param {boolean} indeterminate Use if progress circle will be used for indeterminate
    *
    * @returns {string} String representation of an SVG arc.
    */
-  function getSvgArc(current, diameter, pathDiameter, rotation) {
-    // The angle can't be exactly 360, because the arc becomes hidden.
-    var maximumAngle = 359.99 / 100;
-    var startPoint = rotation || 0;
+  function getSvgArc(diameter, strokeWidth, indeterminate) {
     var radius = diameter / 2;
-    var pathRadius = pathDiameter / 2;
-
-    var startAngle = startPoint * maximumAngle;
-    var endAngle = current * maximumAngle;
-    var start = polarToCartesian(radius, pathRadius, startAngle);
-    var end = polarToCartesian(radius, pathRadius, endAngle + startAngle);
-    var arcSweep = endAngle < 0 ? 0 : 1;
-    var largeArcFlag;
-
-    if (endAngle < 0) {
-      largeArcFlag = endAngle >= -180 ? 0 : 1;
-    } else {
-      largeArcFlag = endAngle <= 180 ? 0 : 1;
-    }
-
-    return 'M' + start + 'A' + pathRadius + ',' + pathRadius +
-      ' 0 ' + largeArcFlag + ',' + arcSweep + ' ' + end;
+    var offset = strokeWidth / 2;
+    var start = radius + ',' + offset; // ie: (25, 2.5) or 12 o'clock
+    var end = offset + ',' + radius;   // ie: (2.5, 25) or  9 o'clock
+    var arcRadius = radius - offset;
+    return 'M' + start
+         + 'A' + arcRadius + ',' + arcRadius + ' 0 1 1 ' + end // 75% circle
+         + (indeterminate ? '' : 'A' + arcRadius + ',' + arcRadius + ' 0 0 1 ' + start); // loop to start
   }
 
   /**
-   * Converts Polar coordinates to Cartesian.
+   * Return stroke length for progress circle
    *
-   * @param {number} radius Radius of the container.
-   * @param {number} pathRadius Radius of the path element
-   * @param {number} angleInDegress Angle at which to place the point.
+   * @param {number} diameter Diameter of the container.
+   * @param {number} strokeWidth Stroke width to be used when drawing circle
+   * @param {number} value Percentage of circle (between 0 and 100)
+   * @param {number} limit Max percentage for circle
    *
-   * @returns {string} Cartesian coordinates in the format of `x,y`.
+   * @returns {number} Stroke length for progres circle
    */
-  function polarToCartesian(radius, pathRadius, angleInDegrees) {
-    var angleInRadians = (angleInDegrees - 90) * DEGREE_IN_RADIANS;
-
-    return (radius + (pathRadius * $window.Math.cos(angleInRadians))) +
-      ',' + (radius + (pathRadius * $window.Math.sin(angleInRadians)));
+  function getDashLength(diameter, strokeWidth, value, limit) {
+    return (diameter - strokeWidth) * $window.Math.PI * ( (3 * (limit || 100) / 100) - (value/100) );
   }
 
   /**
@@ -33531,6 +36295,7 @@ function MdProgressCircularDirective($window, $mdProgressCircular, $mdTheming,
   function getStroke(diameter) {
     return $mdProgressCircular.strokeWidth / 100 * diameter;
   }
+
 }
 
 })();
@@ -33585,9 +36350,9 @@ function MdProgressCircularProvider() {
     duration: 100,
     easeFn: linearEase,
 
-    durationIndeterminate: 500,
-    startIndeterminate: 3,
-    endIndeterminate: 80,
+    durationIndeterminate: 1333,
+    startIndeterminate: 1,
+    endIndeterminate: 149,
     easeFnIndeterminate: materialEase,
 
     easingPresets: {
@@ -33684,12 +36449,12 @@ function MdTab () {
       var label = firstChild(element, 'md-tab-label'),
           body  = firstChild(element, 'md-tab-body');
 
-      if (label.length == 0) {
+      if (label.length === 0) {
         label = angular.element('<md-tab-label></md-tab-label>');
         if (attr.label) label.text(attr.label);
         else label.append(element.contents());
 
-        if (body.length == 0) {
+        if (body.length === 0) {
           var contents = element.contents().detach();
           body         = angular.element('<md-tab-body></md-tab-body>');
           body.append(contents);
@@ -33800,7 +36565,7 @@ function MdTabScroll ($parse) {
         });
       };
     }
-  }
+  };
 }
 
 })();
@@ -33808,15 +36573,15 @@ function MdTabScroll ($parse) {
 "use strict";
 
 
-MdTabsController.$inject = ["$scope", "$element", "$window", "$mdConstant", "$mdTabInkRipple", "$mdUtil", "$animateCss", "$attrs", "$compile", "$mdTheming"];angular
+MdTabsController.$inject = ["$scope", "$element", "$window", "$mdConstant", "$mdTabInkRipple", "$mdUtil", "$animateCss", "$attrs", "$compile", "$mdTheming", "$mdInteraction"];angular
     .module('material.components.tabs')
     .controller('MdTabsController', MdTabsController);
 
 /**
  * @ngInject
  */
-function MdTabsController ($scope, $element, $window, $mdConstant, $mdTabInkRipple,
-                           $mdUtil, $animateCss, $attrs, $compile, $mdTheming) {
+function MdTabsController ($scope, $element, $window, $mdConstant, $mdTabInkRipple, $mdUtil,
+                           $animateCss, $attrs, $compile, $mdTheming, $mdInteraction) {
   // define private properties
   var ctrl      = this,
       locked    = false,
@@ -33825,37 +36590,9 @@ function MdTabsController ($scope, $element, $window, $mdConstant, $mdTabInkRipp
       destroyed = false,
       loaded    = false;
 
-  // define one-way bindings
-  defineOneWayBinding('stretchTabs', handleStretchTabs);
 
-  // define public properties with change handlers
-  defineProperty('focusIndex', handleFocusIndexChange, ctrl.selectedIndex || 0);
-  defineProperty('offsetLeft', handleOffsetChange, 0);
-  defineProperty('hasContent', handleHasContent, false);
-  defineProperty('maxTabWidth', handleMaxTabWidth, getMaxTabWidth());
-  defineProperty('shouldPaginate', handleShouldPaginate, false);
-
-  // define boolean attributes
-  defineBooleanAttribute('noInkBar', handleInkBar);
-  defineBooleanAttribute('dynamicHeight', handleDynamicHeight);
-  defineBooleanAttribute('noPagination');
-  defineBooleanAttribute('swipeContent');
-  defineBooleanAttribute('noDisconnect');
-  defineBooleanAttribute('autoselect');
-  defineBooleanAttribute('noSelectClick');
-  defineBooleanAttribute('centerTabs', handleCenterTabs, false);
-  defineBooleanAttribute('enableDisconnect');
-
-  // define public properties
-  ctrl.scope             = $scope;
-  ctrl.parent            = $scope.$parent;
-  ctrl.tabs              = [];
-  ctrl.lastSelectedIndex = null;
-  ctrl.hasFocus          = false;
-  ctrl.lastClick         = true;
-  ctrl.shouldCenterTabs  = shouldCenterTabs();
-
-  // define public methods
+  // Define public methods
+  ctrl.$onInit            = $onInit;
   ctrl.updatePagination   = $mdUtil.debounce(updatePagination, 100);
   ctrl.redirectFocus      = redirectFocus;
   ctrl.attachRipple       = attachRipple;
@@ -33873,13 +36610,58 @@ function MdTabsController ($scope, $element, $window, $mdConstant, $mdTabInkRipp
   ctrl.getTabElementIndex = getTabElementIndex;
   ctrl.updateInkBarStyles = $mdUtil.debounce(updateInkBarStyles, 100);
   ctrl.updateTabOrder     = $mdUtil.debounce(updateTabOrder, 100);
+  ctrl.getFocusedTabId    = getFocusedTabId;
 
-  init();
+  // For Angular 1.4 and older, where there are no lifecycle hooks but bindings are pre-assigned,
+  // manually call the $onInit hook.
+  if (angular.version.major === 1 && angular.version.minor <= 4) {
+    this.$onInit();
+  }
 
   /**
-   * Perform initialization for the controller, setup events and watcher(s)
+   * Angular Lifecycle hook for newer Angular versions.
+   * Bindings are not guaranteed to have been assigned in the controller, but they are in the $onInit hook.
    */
-  function init () {
+  function $onInit() {
+    // Define one-way bindings
+    defineOneWayBinding('stretchTabs', handleStretchTabs);
+
+    // Define public properties with change handlers
+    defineProperty('focusIndex', handleFocusIndexChange, ctrl.selectedIndex || 0);
+    defineProperty('offsetLeft', handleOffsetChange, 0);
+    defineProperty('hasContent', handleHasContent, false);
+    defineProperty('maxTabWidth', handleMaxTabWidth, getMaxTabWidth());
+    defineProperty('shouldPaginate', handleShouldPaginate, false);
+
+    // Define boolean attributes
+    defineBooleanAttribute('noInkBar', handleInkBar);
+    defineBooleanAttribute('dynamicHeight', handleDynamicHeight);
+    defineBooleanAttribute('noPagination');
+    defineBooleanAttribute('swipeContent');
+    defineBooleanAttribute('noDisconnect');
+    defineBooleanAttribute('autoselect');
+    defineBooleanAttribute('noSelectClick');
+    defineBooleanAttribute('centerTabs', handleCenterTabs, false);
+    defineBooleanAttribute('enableDisconnect');
+
+    // Define public properties
+    ctrl.scope             = $scope;
+    ctrl.parent            = $scope.$parent;
+    ctrl.tabs              = [];
+    ctrl.lastSelectedIndex = null;
+    ctrl.hasFocus          = false;
+    ctrl.styleTabItemFocus = false;
+    ctrl.shouldCenterTabs  = shouldCenterTabs();
+    ctrl.tabContentPrefix  = 'tab-content-';
+
+    // Setup the tabs controller after all bindings are available.
+    setupTabsController();
+  }
+
+  /**
+   * Perform setup for the controller, setup events and watcher(s)
+   */
+  function setupTabsController () {
     ctrl.selectedIndex = ctrl.selectedIndex || 0;
     compileTemplate();
     configureWatchers();
@@ -34101,7 +36883,6 @@ function MdTabsController ($scope, $element, $window, $mdConstant, $mdTabInkRipp
         if (!locked) select(ctrl.focusIndex);
         break;
     }
-    ctrl.lastClick = false;
   }
 
   /**
@@ -34112,7 +36893,6 @@ function MdTabsController ($scope, $element, $window, $mdConstant, $mdTabInkRipp
    */
   function select (index, canSkipClick) {
     if (!locked) ctrl.focusIndex = ctrl.selectedIndex = index;
-    ctrl.lastClick = true;
     // skip the click event if noSelectClick is enabled
     if (canSkipClick && ctrl.noSelectClick) return;
     // nextTick is required to prevent errors in user-defined click events
@@ -34143,13 +36923,13 @@ function MdTabsController ($scope, $element, $window, $mdConstant, $mdTabInkRipp
       tab = elements.tabs[ i ];
       if (tab.offsetLeft + tab.offsetWidth > totalWidth) break;
     }
-    
+
     if (viewportWidth > tab.offsetWidth) {
       //Canvas width *greater* than tab width: usual positioning
       ctrl.offsetLeft = fixOffset(tab.offsetLeft);
     } else {
       /**
-       * Canvas width *smaller* than tab width: positioning at the *end* of current tab to let 
+       * Canvas width *smaller* than tab width: positioning at the *end* of current tab to let
        * pagination "for loop" to proceed correctly on next tab when nextPage() is called again
        */
       ctrl.offsetLeft = fixOffset(tab.offsetLeft + (tab.offsetWidth - viewportWidth + 1));
@@ -34166,16 +36946,16 @@ function MdTabsController ($scope, $element, $window, $mdConstant, $mdTabInkRipp
       tab = elements.tabs[ i ];
       if (tab.offsetLeft + tab.offsetWidth >= ctrl.offsetLeft) break;
     }
-    
+
     if (elements.canvas.clientWidth > tab.offsetWidth) {
       //Canvas width *greater* than tab width: usual positioning
       ctrl.offsetLeft = fixOffset(tab.offsetLeft + tab.offsetWidth - elements.canvas.clientWidth);
     } else {
       /**
-       * Canvas width *smaller* than tab width: positioning at the *beginning* of current tab to let 
+       * Canvas width *smaller* than tab width: positioning at the *beginning* of current tab to let
        * pagination "for loop" to break correctly on previous tab when previousPage() is called again
        */
-      ctrl.offsetLeft = fixOffset(tab.offsetLeft);  
+      ctrl.offsetLeft = fixOffset(tab.offsetLeft);
     }
   }
 
@@ -34239,10 +37019,11 @@ function MdTabsController ($scope, $element, $window, $mdConstant, $mdTabInkRipp
           isRight:      function () { return this.getIndex() > ctrl.selectedIndex; },
           shouldRender: function () { return !ctrl.noDisconnect || this.isActive(); },
           hasFocus:     function () {
-            return !ctrl.lastClick
+            return ctrl.styleTabItemFocus
                 && ctrl.hasFocus && this.getIndex() === ctrl.focusIndex;
           },
-          id:           $mdUtil.nextUid()
+          id:           $mdUtil.nextUid(),
+          hasContent: !!(tabData.template && tabData.template.trim())
         },
         tab       = angular.extend(proto, tabData);
     if (angular.isDefined(index)) {
@@ -34250,10 +37031,13 @@ function MdTabsController ($scope, $element, $window, $mdConstant, $mdTabInkRipp
     } else {
       ctrl.tabs.push(tab);
     }
+
     processQueue();
     updateHasContent();
     $mdUtil.nextTick(function () {
       updatePagination();
+      setAriaControls(tab);
+
       // if autoselect is enabled, select the newly added tab
       if (hasLoaded && ctrl.autoselect) $mdUtil.nextTick(function () {
         $mdUtil.nextTick(function () { select(ctrl.tabs.indexOf(tab)); });
@@ -34302,6 +37086,17 @@ function MdTabsController ($scope, $element, $window, $mdConstant, $mdTabInkRipp
     var lastTab = elements.tabs[ elements.tabs.length - 1 ];
     return lastTab && lastTab.offsetLeft + lastTab.offsetWidth > elements.canvas.clientWidth +
         ctrl.offsetLeft;
+  }
+
+  /**
+   * Returns currently focused tab item's element ID
+   */
+  function getFocusedTabId() {
+    var focusedTab = ctrl.tabs[ctrl.focusIndex];
+    if (!focusedTab || !focusedTab.id) {
+      return null;
+    }
+    return 'tab-item-' + focusedTab.id;
   }
 
   /**
@@ -34386,21 +37181,8 @@ function MdTabsController ($scope, $element, $window, $mdConstant, $mdTabInkRipp
    * Updates whether or not pagination should be displayed.
    */
   function updatePagination () {
-    updatePagingWidth();
     ctrl.maxTabWidth = getMaxTabWidth();
     ctrl.shouldPaginate = shouldPaginate();
-  }
-
-  /**
-   * Sets or clears fixed width for md-pagination-wrapper depending on if tabs should stretch.
-   */
-  function updatePagingWidth() {
-    var elements = getElements();
-    if (shouldStretchTabs()) {
-      angular.element(elements.paging).css('width', '');
-    } else {
-      angular.element(elements.paging).css('width', calcPagingWidth() + 'px');
-    }
   }
 
   /**
@@ -34464,6 +37246,7 @@ function MdTabsController ($scope, $element, $window, $mdConstant, $mdTabInkRipp
    * issues when attempting to focus an item that is out of view.
    */
   function redirectFocus () {
+    ctrl.styleTabItemFocus = ($mdInteraction.getLastInteractionType() === 'keyboard');
     getElements().dummies[ ctrl.focusIndex ].focus();
   }
 
@@ -34473,7 +37256,7 @@ function MdTabsController ($scope, $element, $window, $mdConstant, $mdTabInkRipp
   function adjustOffset (index) {
     var elements = getElements();
 
-    if (index == null) index = ctrl.focusIndex;
+    if (!angular.isNumber(index)) index = ctrl.focusIndex;
     if (!elements.tabs[ index ]) return;
     if (ctrl.shouldCenterTabs) return;
     var tab         = elements.tabs[ index ],
@@ -34497,9 +37280,14 @@ function MdTabsController ($scope, $element, $window, $mdConstant, $mdTabInkRipp
    */
   function updateHasContent () {
     var hasContent  = false;
-    angular.forEach(ctrl.tabs, function (tab) {
-      if (tab.template) hasContent = true;
-    });
+
+    for (var i = 0; i < ctrl.tabs.length; i++) {
+      if (ctrl.tabs[i].hasContent) {
+        hasContent = true;
+        break;
+      }
+    }
+
     ctrl.hasContent = hasContent;
   }
 
@@ -34649,6 +37437,18 @@ function MdTabsController ($scope, $element, $window, $mdConstant, $mdTabInkRipp
     var options = { colorElement: angular.element(elements.inkBar) };
     $mdTabInkRipple.attach(scope, element, options);
   }
+
+  /**
+   * Sets the `aria-controls` attribute to the elements that
+   * correspond to the passed-in tab.
+   * @param tab
+   */
+  function setAriaControls (tab) {
+    if (tab.hasContent) {
+      var nodes = $element[0].querySelectorAll('[md-tab-id="' + tab.id + '"]');
+      angular.element(nodes).attr('aria-controls', ctrl.tabContentPrefix + tab.id);
+    }
+  }
 }
 
 })();
@@ -34764,7 +37564,7 @@ function MdTabs ($$mdSvgRegistry) {
       selectedIndex: '=?mdSelected'
     },
     template:         function (element, attr) {
-      attr[ "$mdTabsTemplate" ] = element.html();
+      attr.$mdTabsTemplate = element.html();
       return '' +
         '<md-tabs-wrapper> ' +
           '<md-tab-data></md-tab-data> ' +
@@ -34790,7 +37590,7 @@ function MdTabs ($$mdSvgRegistry) {
           '</md-next-button> ' +
           '<md-tabs-canvas ' +
               'tabindex="{{ $mdTabsCtrl.hasFocus ? -1 : 0 }}" ' +
-              'aria-activedescendant="tab-item-{{$mdTabsCtrl.tabs[$mdTabsCtrl.focusIndex].id}}" ' +
+              'aria-activedescendant="{{$mdTabsCtrl.getFocusedTabId()}}" ' +
               'ng-focus="$mdTabsCtrl.redirectFocus()" ' +
               'ng-class="{ ' +
                   '\'md-paginated\': $mdTabsCtrl.shouldPaginate, ' +
@@ -34806,7 +37606,7 @@ function MdTabs ($$mdSvgRegistry) {
                   'class="md-tab" ' +
                   'ng-repeat="tab in $mdTabsCtrl.tabs" ' +
                   'role="tab" ' +
-                  'aria-controls="tab-content-{{::tab.id}}" ' +
+                  'md-tab-id="{{::tab.id}}"' +
                   'aria-selected="{{tab.isActive()}}" ' +
                   'aria-disabled="{{tab.scope.disabled || \'false\'}}" ' +
                   'ng-click="$mdTabsCtrl.select(tab.getIndex())" ' +
@@ -34827,8 +37627,7 @@ function MdTabs ($$mdSvgRegistry) {
                   'class="md-tab" ' +
                   'tabindex="-1" ' +
                   'id="tab-item-{{::tab.id}}" ' +
-                  'role="tab" ' +
-                  'aria-controls="tab-content-{{::tab.id}}" ' +
+                  'md-tab-id="{{::tab.id}}"' +
                   'aria-selected="{{tab.isActive()}}" ' +
                   'aria-disabled="{{tab.scope.disabled || \'false\'}}" ' +
                   'ng-focus="$mdTabsCtrl.hasFocus = true" ' +
@@ -34841,13 +37640,13 @@ function MdTabs ($$mdSvgRegistry) {
         '</md-tabs-wrapper> ' +
         '<md-tabs-content-wrapper ng-show="$mdTabsCtrl.hasContent && $mdTabsCtrl.selectedIndex >= 0" class="_md"> ' +
           '<md-tab-content ' +
-              'id="tab-content-{{::tab.id}}" ' +
+              'id="{{:: $mdTabsCtrl.tabContentPrefix + tab.id}}" ' +
               'class="_md" ' +
               'role="tabpanel" ' +
               'aria-labelledby="tab-item-{{::tab.id}}" ' +
               'md-swipe-left="$mdTabsCtrl.swipeContent && $mdTabsCtrl.incrementIndex(1)" ' +
               'md-swipe-right="$mdTabsCtrl.swipeContent && $mdTabsCtrl.incrementIndex(-1)" ' +
-              'ng-if="$mdTabsCtrl.hasContent" ' +
+              'ng-if="tab.hasContent" ' +
               'ng-repeat="(index, tab) in $mdTabsCtrl.tabs" ' +
               'ng-class="{ ' +
                 '\'md-no-transition\': $mdTabsCtrl.lastSelectedIndex == null, ' +
@@ -34978,11 +37777,11 @@ function MdTabsTemplate ($compile, $mdUtil) {
 
 })();
 (function(){ 
-angular.module("material.core").constant("$MD_THEME_CSS", "md-autocomplete.md-THEME_NAME-theme {  background: '{{background-A100}}'; }  md-autocomplete.md-THEME_NAME-theme[disabled]:not([md-floating-label]) {    background: '{{background-100}}'; }  md-autocomplete.md-THEME_NAME-theme button md-icon path {    fill: '{{background-600}}'; }  md-autocomplete.md-THEME_NAME-theme button:after {    background: '{{background-600-0.3}}'; }.md-autocomplete-suggestions-container.md-THEME_NAME-theme {  background: '{{background-A100}}'; }  .md-autocomplete-suggestions-container.md-THEME_NAME-theme li {    color: '{{background-900}}'; }    .md-autocomplete-suggestions-container.md-THEME_NAME-theme li .highlight {      color: '{{background-600}}'; }    .md-autocomplete-suggestions-container.md-THEME_NAME-theme li:hover, .md-autocomplete-suggestions-container.md-THEME_NAME-theme li.selected {      background: '{{background-200}}'; }md-backdrop {  background-color: '{{background-900-0.0}}'; }  md-backdrop.md-opaque.md-THEME_NAME-theme {    background-color: '{{background-900-1.0}}'; }md-bottom-sheet.md-THEME_NAME-theme {  background-color: '{{background-50}}';  border-top-color: '{{background-300}}'; }  md-bottom-sheet.md-THEME_NAME-theme.md-list md-list-item {    color: '{{foreground-1}}'; }  md-bottom-sheet.md-THEME_NAME-theme .md-subheader {    background-color: '{{background-50}}'; }  md-bottom-sheet.md-THEME_NAME-theme .md-subheader {    color: '{{foreground-1}}'; }.md-button.md-THEME_NAME-theme:not([disabled]):hover {  background-color: '{{background-500-0.2}}'; }.md-button.md-THEME_NAME-theme:not([disabled]).md-focused {  background-color: '{{background-500-0.2}}'; }.md-button.md-THEME_NAME-theme:not([disabled]).md-icon-button:hover {  background-color: transparent; }.md-button.md-THEME_NAME-theme.md-fab {  background-color: '{{accent-color}}';  color: '{{accent-contrast}}'; }  .md-button.md-THEME_NAME-theme.md-fab md-icon {    color: '{{accent-contrast}}'; }  .md-button.md-THEME_NAME-theme.md-fab:not([disabled]):hover {    background-color: '{{accent-A700}}'; }  .md-button.md-THEME_NAME-theme.md-fab:not([disabled]).md-focused {    background-color: '{{accent-A700}}'; }.md-button.md-THEME_NAME-theme.md-primary {  color: '{{primary-color}}'; }  .md-button.md-THEME_NAME-theme.md-primary.md-raised, .md-button.md-THEME_NAME-theme.md-primary.md-fab {    color: '{{primary-contrast}}';    background-color: '{{primary-color}}'; }    .md-button.md-THEME_NAME-theme.md-primary.md-raised:not([disabled]) md-icon, .md-button.md-THEME_NAME-theme.md-primary.md-fab:not([disabled]) md-icon {      color: '{{primary-contrast}}'; }    .md-button.md-THEME_NAME-theme.md-primary.md-raised:not([disabled]):hover, .md-button.md-THEME_NAME-theme.md-primary.md-fab:not([disabled]):hover {      background-color: '{{primary-600}}'; }    .md-button.md-THEME_NAME-theme.md-primary.md-raised:not([disabled]).md-focused, .md-button.md-THEME_NAME-theme.md-primary.md-fab:not([disabled]).md-focused {      background-color: '{{primary-600}}'; }  .md-button.md-THEME_NAME-theme.md-primary:not([disabled]) md-icon {    color: '{{primary-color}}'; }.md-button.md-THEME_NAME-theme.md-fab {  background-color: '{{accent-color}}';  color: '{{accent-contrast}}'; }  .md-button.md-THEME_NAME-theme.md-fab:not([disabled]) .md-icon {    color: '{{accent-contrast}}'; }  .md-button.md-THEME_NAME-theme.md-fab:not([disabled]):hover {    background-color: '{{accent-A700}}'; }  .md-button.md-THEME_NAME-theme.md-fab:not([disabled]).md-focused {    background-color: '{{accent-A700}}'; }.md-button.md-THEME_NAME-theme.md-raised {  color: '{{background-900}}';  background-color: '{{background-50}}'; }  .md-button.md-THEME_NAME-theme.md-raised:not([disabled]) md-icon {    color: '{{background-900}}'; }  .md-button.md-THEME_NAME-theme.md-raised:not([disabled]):hover {    background-color: '{{background-50}}'; }  .md-button.md-THEME_NAME-theme.md-raised:not([disabled]).md-focused {    background-color: '{{background-200}}'; }.md-button.md-THEME_NAME-theme.md-warn {  color: '{{warn-color}}'; }  .md-button.md-THEME_NAME-theme.md-warn.md-raised, .md-button.md-THEME_NAME-theme.md-warn.md-fab {    color: '{{warn-contrast}}';    background-color: '{{warn-color}}'; }    .md-button.md-THEME_NAME-theme.md-warn.md-raised:not([disabled]) md-icon, .md-button.md-THEME_NAME-theme.md-warn.md-fab:not([disabled]) md-icon {      color: '{{warn-contrast}}'; }    .md-button.md-THEME_NAME-theme.md-warn.md-raised:not([disabled]):hover, .md-button.md-THEME_NAME-theme.md-warn.md-fab:not([disabled]):hover {      background-color: '{{warn-600}}'; }    .md-button.md-THEME_NAME-theme.md-warn.md-raised:not([disabled]).md-focused, .md-button.md-THEME_NAME-theme.md-warn.md-fab:not([disabled]).md-focused {      background-color: '{{warn-600}}'; }  .md-button.md-THEME_NAME-theme.md-warn:not([disabled]) md-icon {    color: '{{warn-color}}'; }.md-button.md-THEME_NAME-theme.md-accent {  color: '{{accent-color}}'; }  .md-button.md-THEME_NAME-theme.md-accent.md-raised, .md-button.md-THEME_NAME-theme.md-accent.md-fab {    color: '{{accent-contrast}}';    background-color: '{{accent-color}}'; }    .md-button.md-THEME_NAME-theme.md-accent.md-raised:not([disabled]) md-icon, .md-button.md-THEME_NAME-theme.md-accent.md-fab:not([disabled]) md-icon {      color: '{{accent-contrast}}'; }    .md-button.md-THEME_NAME-theme.md-accent.md-raised:not([disabled]):hover, .md-button.md-THEME_NAME-theme.md-accent.md-fab:not([disabled]):hover {      background-color: '{{accent-A700}}'; }    .md-button.md-THEME_NAME-theme.md-accent.md-raised:not([disabled]).md-focused, .md-button.md-THEME_NAME-theme.md-accent.md-fab:not([disabled]).md-focused {      background-color: '{{accent-A700}}'; }  .md-button.md-THEME_NAME-theme.md-accent:not([disabled]) md-icon {    color: '{{accent-color}}'; }.md-button.md-THEME_NAME-theme[disabled], .md-button.md-THEME_NAME-theme.md-raised[disabled], .md-button.md-THEME_NAME-theme.md-fab[disabled], .md-button.md-THEME_NAME-theme.md-accent[disabled], .md-button.md-THEME_NAME-theme.md-warn[disabled] {  color: '{{foreground-3}}';  cursor: default; }  .md-button.md-THEME_NAME-theme[disabled] md-icon, .md-button.md-THEME_NAME-theme.md-raised[disabled] md-icon, .md-button.md-THEME_NAME-theme.md-fab[disabled] md-icon, .md-button.md-THEME_NAME-theme.md-accent[disabled] md-icon, .md-button.md-THEME_NAME-theme.md-warn[disabled] md-icon {    color: '{{foreground-3}}'; }.md-button.md-THEME_NAME-theme.md-raised[disabled], .md-button.md-THEME_NAME-theme.md-fab[disabled] {  background-color: '{{foreground-4}}'; }.md-button.md-THEME_NAME-theme[disabled] {  background-color: transparent; }._md a.md-THEME_NAME-theme:not(.md-button).md-primary {  color: '{{primary-color}}'; }  ._md a.md-THEME_NAME-theme:not(.md-button).md-primary:hover {    color: '{{primary-700}}'; }._md a.md-THEME_NAME-theme:not(.md-button).md-accent {  color: '{{accent-color}}'; }  ._md a.md-THEME_NAME-theme:not(.md-button).md-accent:hover {    color: '{{accent-700}}'; }._md a.md-THEME_NAME-theme:not(.md-button).md-accent {  color: '{{accent-color}}'; }  ._md a.md-THEME_NAME-theme:not(.md-button).md-accent:hover {    color: '{{accent-A700}}'; }._md a.md-THEME_NAME-theme:not(.md-button).md-warn {  color: '{{warn-color}}'; }  ._md a.md-THEME_NAME-theme:not(.md-button).md-warn:hover {    color: '{{warn-700}}'; }md-card.md-THEME_NAME-theme {  color: '{{foreground-1}}';  background-color: '{{background-hue-1}}';  border-radius: 2px; }  md-card.md-THEME_NAME-theme .md-card-image {    border-radius: 2px 2px 0 0; }  md-card.md-THEME_NAME-theme md-card-header md-card-avatar md-icon {    color: '{{background-color}}';    background-color: '{{foreground-3}}'; }  md-card.md-THEME_NAME-theme md-card-header md-card-header-text .md-subhead {    color: '{{foreground-2}}'; }  md-card.md-THEME_NAME-theme md-card-title md-card-title-text:not(:only-child) .md-subhead {    color: '{{foreground-2}}'; }md-chips.md-THEME_NAME-theme .md-chips {  box-shadow: 0 1px '{{foreground-4}}'; }  md-chips.md-THEME_NAME-theme .md-chips.md-focused {    box-shadow: 0 2px '{{primary-color}}'; }  md-chips.md-THEME_NAME-theme .md-chips .md-chip-input-container input {    color: '{{foreground-1}}'; }    md-chips.md-THEME_NAME-theme .md-chips .md-chip-input-container input::-webkit-input-placeholder {      color: '{{foreground-3}}'; }    md-chips.md-THEME_NAME-theme .md-chips .md-chip-input-container input:-moz-placeholder {      color: '{{foreground-3}}'; }    md-chips.md-THEME_NAME-theme .md-chips .md-chip-input-container input::-moz-placeholder {      color: '{{foreground-3}}'; }    md-chips.md-THEME_NAME-theme .md-chips .md-chip-input-container input:-ms-input-placeholder {      color: '{{foreground-3}}'; }    md-chips.md-THEME_NAME-theme .md-chips .md-chip-input-container input::-webkit-input-placeholder {      color: '{{foreground-3}}'; }md-chips.md-THEME_NAME-theme md-chip {  background: '{{background-300}}';  color: '{{background-800}}'; }  md-chips.md-THEME_NAME-theme md-chip md-icon {    color: '{{background-700}}'; }  md-chips.md-THEME_NAME-theme md-chip.md-focused {    background: '{{primary-color}}';    color: '{{primary-contrast}}'; }    md-chips.md-THEME_NAME-theme md-chip.md-focused md-icon {      color: '{{primary-contrast}}'; }  md-chips.md-THEME_NAME-theme md-chip._md-chip-editing {    background: transparent;    color: '{{background-800}}'; }md-chips.md-THEME_NAME-theme md-chip-remove .md-button md-icon path {  fill: '{{background-500}}'; }.md-contact-suggestion span.md-contact-email {  color: '{{background-400}}'; }md-checkbox.md-THEME_NAME-theme .md-ripple {  color: '{{accent-A700}}'; }md-checkbox.md-THEME_NAME-theme.md-checked .md-ripple {  color: '{{background-600}}'; }md-checkbox.md-THEME_NAME-theme.md-checked.md-focused .md-container:before {  background-color: '{{accent-color-0.26}}'; }md-checkbox.md-THEME_NAME-theme .md-ink-ripple {  color: '{{foreground-2}}'; }md-checkbox.md-THEME_NAME-theme.md-checked .md-ink-ripple {  color: '{{accent-color-0.87}}'; }md-checkbox.md-THEME_NAME-theme:not(.md-checked) .md-icon {  border-color: '{{foreground-2}}'; }md-checkbox.md-THEME_NAME-theme.md-checked .md-icon {  background-color: '{{accent-color-0.87}}'; }md-checkbox.md-THEME_NAME-theme.md-checked .md-icon:after {  border-color: '{{accent-contrast-0.87}}'; }md-checkbox.md-THEME_NAME-theme:not([disabled]).md-primary .md-ripple {  color: '{{primary-600}}'; }md-checkbox.md-THEME_NAME-theme:not([disabled]).md-primary.md-checked .md-ripple {  color: '{{background-600}}'; }md-checkbox.md-THEME_NAME-theme:not([disabled]).md-primary .md-ink-ripple {  color: '{{foreground-2}}'; }md-checkbox.md-THEME_NAME-theme:not([disabled]).md-primary.md-checked .md-ink-ripple {  color: '{{primary-color-0.87}}'; }md-checkbox.md-THEME_NAME-theme:not([disabled]).md-primary:not(.md-checked) .md-icon {  border-color: '{{foreground-2}}'; }md-checkbox.md-THEME_NAME-theme:not([disabled]).md-primary.md-checked .md-icon {  background-color: '{{primary-color-0.87}}'; }md-checkbox.md-THEME_NAME-theme:not([disabled]).md-primary.md-checked.md-focused .md-container:before {  background-color: '{{primary-color-0.26}}'; }md-checkbox.md-THEME_NAME-theme:not([disabled]).md-primary.md-checked .md-icon:after {  border-color: '{{primary-contrast-0.87}}'; }md-checkbox.md-THEME_NAME-theme:not([disabled]).md-primary .md-indeterminate[disabled] .md-container {  color: '{{foreground-3}}'; }md-checkbox.md-THEME_NAME-theme:not([disabled]).md-warn .md-ripple {  color: '{{warn-600}}'; }md-checkbox.md-THEME_NAME-theme:not([disabled]).md-warn .md-ink-ripple {  color: '{{foreground-2}}'; }md-checkbox.md-THEME_NAME-theme:not([disabled]).md-warn.md-checked .md-ink-ripple {  color: '{{warn-color-0.87}}'; }md-checkbox.md-THEME_NAME-theme:not([disabled]).md-warn:not(.md-checked) .md-icon {  border-color: '{{foreground-2}}'; }md-checkbox.md-THEME_NAME-theme:not([disabled]).md-warn.md-checked .md-icon {  background-color: '{{warn-color-0.87}}'; }md-checkbox.md-THEME_NAME-theme:not([disabled]).md-warn.md-checked.md-focused:not([disabled]) .md-container:before {  background-color: '{{warn-color-0.26}}'; }md-checkbox.md-THEME_NAME-theme:not([disabled]).md-warn.md-checked .md-icon:after {  border-color: '{{background-200}}'; }md-checkbox.md-THEME_NAME-theme[disabled]:not(.md-checked) .md-icon {  border-color: '{{foreground-3}}'; }md-checkbox.md-THEME_NAME-theme[disabled].md-checked .md-icon {  background-color: '{{foreground-3}}'; }md-checkbox.md-THEME_NAME-theme[disabled].md-checked .md-icon:after {  border-color: '{{background-200}}'; }md-checkbox.md-THEME_NAME-theme[disabled] .md-icon:after {  border-color: '{{foreground-3}}'; }md-checkbox.md-THEME_NAME-theme[disabled] .md-label {  color: '{{foreground-3}}'; }md-content.md-THEME_NAME-theme {  color: '{{foreground-1}}';  background-color: '{{background-default}}'; }/** Theme styles for mdCalendar. */.md-calendar.md-THEME_NAME-theme {  background: '{{background-A100}}';  color: '{{background-A200-0.87}}'; }  .md-calendar.md-THEME_NAME-theme tr:last-child td {    border-bottom-color: '{{background-200}}'; }.md-THEME_NAME-theme .md-calendar-day-header {  background: '{{background-300}}';  color: '{{background-A200-0.87}}'; }.md-THEME_NAME-theme .md-calendar-date.md-calendar-date-today .md-calendar-date-selection-indicator {  border: 1px solid '{{primary-500}}'; }.md-THEME_NAME-theme .md-calendar-date.md-calendar-date-today.md-calendar-date-disabled {  color: '{{primary-500-0.6}}'; }.md-calendar-date.md-focus .md-THEME_NAME-theme .md-calendar-date-selection-indicator, .md-THEME_NAME-theme .md-calendar-date-selection-indicator:hover {  background: '{{background-300}}'; }.md-THEME_NAME-theme .md-calendar-date.md-calendar-selected-date .md-calendar-date-selection-indicator,.md-THEME_NAME-theme .md-calendar-date.md-focus.md-calendar-selected-date .md-calendar-date-selection-indicator {  background: '{{primary-500}}';  color: '{{primary-500-contrast}}';  border-color: transparent; }.md-THEME_NAME-theme .md-calendar-date-disabled,.md-THEME_NAME-theme .md-calendar-month-label-disabled {  color: '{{background-A200-0.435}}'; }/** Theme styles for mdDatepicker. */.md-THEME_NAME-theme .md-datepicker-input {  color: '{{foreground-1}}'; }  .md-THEME_NAME-theme .md-datepicker-input::-webkit-input-placeholder {    color: '{{foreground-3}}'; }  .md-THEME_NAME-theme .md-datepicker-input:-moz-placeholder {    color: '{{foreground-3}}'; }  .md-THEME_NAME-theme .md-datepicker-input::-moz-placeholder {    color: '{{foreground-3}}'; }  .md-THEME_NAME-theme .md-datepicker-input:-ms-input-placeholder {    color: '{{foreground-3}}'; }  .md-THEME_NAME-theme .md-datepicker-input::-webkit-input-placeholder {    color: '{{foreground-3}}'; }.md-THEME_NAME-theme .md-datepicker-input-container {  border-bottom-color: '{{foreground-4}}'; }  .md-THEME_NAME-theme .md-datepicker-input-container.md-datepicker-focused {    border-bottom-color: '{{primary-color}}'; }    .md-accent .md-THEME_NAME-theme .md-datepicker-input-container.md-datepicker-focused {      border-bottom-color: '{{accent-color}}'; }    .md-warn .md-THEME_NAME-theme .md-datepicker-input-container.md-datepicker-focused {      border-bottom-color: '{{warn-A700}}'; }  .md-THEME_NAME-theme .md-datepicker-input-container.md-datepicker-invalid {    border-bottom-color: '{{warn-A700}}'; }.md-THEME_NAME-theme .md-datepicker-calendar-pane {  border-color: '{{background-hue-1}}'; }.md-THEME_NAME-theme .md-datepicker-triangle-button .md-datepicker-expand-triangle {  border-top-color: '{{foreground-3}}'; }.md-THEME_NAME-theme .md-datepicker-triangle-button:hover .md-datepicker-expand-triangle {  border-top-color: '{{foreground-2}}'; }.md-THEME_NAME-theme .md-datepicker-open .md-datepicker-calendar-icon {  color: '{{primary-color}}'; }.md-THEME_NAME-theme .md-datepicker-open.md-accent .md-datepicker-calendar-icon, .md-accent .md-THEME_NAME-theme .md-datepicker-open .md-datepicker-calendar-icon {  color: '{{accent-color}}'; }.md-THEME_NAME-theme .md-datepicker-open.md-warn .md-datepicker-calendar-icon, .md-warn .md-THEME_NAME-theme .md-datepicker-open .md-datepicker-calendar-icon {  color: '{{warn-A700}}'; }.md-THEME_NAME-theme .md-datepicker-calendar {  background: '{{background-A100}}'; }.md-THEME_NAME-theme .md-datepicker-input-mask-opaque {  box-shadow: 0 0 0 9999px \"{{background-hue-1}}\"; }.md-THEME_NAME-theme .md-datepicker-open .md-datepicker-input-container {  background: \"{{background-hue-1}}\"; }md-dialog.md-THEME_NAME-theme {  border-radius: 4px;  background-color: '{{background-hue-1}}';  color: '{{foreground-1}}'; }  md-dialog.md-THEME_NAME-theme.md-content-overflow .md-actions, md-dialog.md-THEME_NAME-theme.md-content-overflow md-dialog-actions {    border-top-color: '{{foreground-4}}'; }md-divider.md-THEME_NAME-theme {  border-top-color: '{{foreground-4}}'; }.layout-row > md-divider.md-THEME_NAME-theme,.layout-xs-row > md-divider.md-THEME_NAME-theme, .layout-gt-xs-row > md-divider.md-THEME_NAME-theme,.layout-sm-row > md-divider.md-THEME_NAME-theme, .layout-gt-sm-row > md-divider.md-THEME_NAME-theme,.layout-md-row > md-divider.md-THEME_NAME-theme, .layout-gt-md-row > md-divider.md-THEME_NAME-theme,.layout-lg-row > md-divider.md-THEME_NAME-theme, .layout-gt-lg-row > md-divider.md-THEME_NAME-theme,.layout-xl-row > md-divider.md-THEME_NAME-theme {  border-right-color: '{{foreground-4}}'; }md-icon.md-THEME_NAME-theme {  color: '{{foreground-2}}'; }  md-icon.md-THEME_NAME-theme.md-primary {    color: '{{primary-color}}'; }  md-icon.md-THEME_NAME-theme.md-accent {    color: '{{accent-color}}'; }  md-icon.md-THEME_NAME-theme.md-warn {    color: '{{warn-color}}'; }md-input-container.md-THEME_NAME-theme .md-input {  color: '{{foreground-1}}';  border-color: '{{foreground-4}}'; }  md-input-container.md-THEME_NAME-theme .md-input::-webkit-input-placeholder {    color: '{{foreground-3}}'; }  md-input-container.md-THEME_NAME-theme .md-input:-moz-placeholder {    color: '{{foreground-3}}'; }  md-input-container.md-THEME_NAME-theme .md-input::-moz-placeholder {    color: '{{foreground-3}}'; }  md-input-container.md-THEME_NAME-theme .md-input:-ms-input-placeholder {    color: '{{foreground-3}}'; }  md-input-container.md-THEME_NAME-theme .md-input::-webkit-input-placeholder {    color: '{{foreground-3}}'; }md-input-container.md-THEME_NAME-theme > md-icon {  color: '{{foreground-1}}'; }md-input-container.md-THEME_NAME-theme label,md-input-container.md-THEME_NAME-theme .md-placeholder {  color: '{{foreground-3}}'; }md-input-container.md-THEME_NAME-theme label.md-required:after {  color: '{{warn-A700}}'; }md-input-container.md-THEME_NAME-theme:not(.md-input-focused):not(.md-input-invalid) label.md-required:after {  color: '{{foreground-2}}'; }md-input-container.md-THEME_NAME-theme .md-input-messages-animation, md-input-container.md-THEME_NAME-theme .md-input-message-animation {  color: '{{warn-A700}}'; }  md-input-container.md-THEME_NAME-theme .md-input-messages-animation .md-char-counter, md-input-container.md-THEME_NAME-theme .md-input-message-animation .md-char-counter {    color: '{{foreground-1}}'; }md-input-container.md-THEME_NAME-theme:not(.md-input-invalid).md-input-has-value label {  color: '{{foreground-2}}'; }md-input-container.md-THEME_NAME-theme:not(.md-input-invalid).md-input-focused .md-input, md-input-container.md-THEME_NAME-theme:not(.md-input-invalid).md-input-resized .md-input {  border-color: '{{primary-color}}'; }md-input-container.md-THEME_NAME-theme:not(.md-input-invalid).md-input-focused label,md-input-container.md-THEME_NAME-theme:not(.md-input-invalid).md-input-focused md-icon {  color: '{{primary-color}}'; }md-input-container.md-THEME_NAME-theme:not(.md-input-invalid).md-input-focused.md-accent .md-input {  border-color: '{{accent-color}}'; }md-input-container.md-THEME_NAME-theme:not(.md-input-invalid).md-input-focused.md-accent label,md-input-container.md-THEME_NAME-theme:not(.md-input-invalid).md-input-focused.md-accent md-icon {  color: '{{accent-color}}'; }md-input-container.md-THEME_NAME-theme:not(.md-input-invalid).md-input-focused.md-warn .md-input {  border-color: '{{warn-A700}}'; }md-input-container.md-THEME_NAME-theme:not(.md-input-invalid).md-input-focused.md-warn label,md-input-container.md-THEME_NAME-theme:not(.md-input-invalid).md-input-focused.md-warn md-icon {  color: '{{warn-A700}}'; }md-input-container.md-THEME_NAME-theme.md-input-invalid .md-input {  border-color: '{{warn-A700}}'; }md-input-container.md-THEME_NAME-theme.md-input-invalid label,md-input-container.md-THEME_NAME-theme.md-input-invalid .md-input-message-animation,md-input-container.md-THEME_NAME-theme.md-input-invalid .md-char-counter {  color: '{{warn-A700}}'; }md-input-container.md-THEME_NAME-theme .md-input[disabled],[disabled] md-input-container.md-THEME_NAME-theme .md-input {  border-bottom-color: transparent;  color: '{{foreground-3}}';  background-image: linear-gradient(to right, \"{{foreground-3}}\" 0%, \"{{foreground-3}}\" 33%, transparent 0%);  background-image: -ms-linear-gradient(left, transparent 0%, \"{{foreground-3}}\" 100%); }md-list.md-THEME_NAME-theme md-list-item.md-2-line .md-list-item-text h3, md-list.md-THEME_NAME-theme md-list-item.md-2-line .md-list-item-text h4,md-list.md-THEME_NAME-theme md-list-item.md-3-line .md-list-item-text h3,md-list.md-THEME_NAME-theme md-list-item.md-3-line .md-list-item-text h4 {  color: '{{foreground-1}}'; }md-list.md-THEME_NAME-theme md-list-item.md-2-line .md-list-item-text p,md-list.md-THEME_NAME-theme md-list-item.md-3-line .md-list-item-text p {  color: '{{foreground-2}}'; }md-list.md-THEME_NAME-theme .md-proxy-focus.md-focused div.md-no-style {  background-color: '{{background-100}}'; }md-list.md-THEME_NAME-theme md-list-item .md-avatar-icon {  background-color: '{{foreground-3}}';  color: '{{background-color}}'; }md-list.md-THEME_NAME-theme md-list-item > md-icon {  color: '{{foreground-2}}'; }  md-list.md-THEME_NAME-theme md-list-item > md-icon.md-highlight {    color: '{{primary-color}}'; }    md-list.md-THEME_NAME-theme md-list-item > md-icon.md-highlight.md-accent {      color: '{{accent-color}}'; }md-menu-content.md-THEME_NAME-theme {  background-color: '{{background-A100}}'; }  md-menu-content.md-THEME_NAME-theme md-menu-item {    color: '{{background-A200-0.87}}'; }    md-menu-content.md-THEME_NAME-theme md-menu-item md-icon {      color: '{{background-A200-0.54}}'; }    md-menu-content.md-THEME_NAME-theme md-menu-item .md-button[disabled] {      color: '{{background-A200-0.25}}'; }      md-menu-content.md-THEME_NAME-theme md-menu-item .md-button[disabled] md-icon {        color: '{{background-A200-0.25}}'; }  md-menu-content.md-THEME_NAME-theme md-menu-divider {    background-color: '{{background-A200-0.11}}'; }md-menu-bar.md-THEME_NAME-theme > button.md-button {  color: '{{foreground-2}}';  border-radius: 2px; }md-menu-bar.md-THEME_NAME-theme md-menu.md-open > button, md-menu-bar.md-THEME_NAME-theme md-menu > button:focus {  outline: none;  background: '{{background-200}}'; }md-menu-bar.md-THEME_NAME-theme.md-open:not(.md-keyboard-mode) md-menu:hover > button {  background-color: '{{ background-500-0.2}}'; }md-menu-bar.md-THEME_NAME-theme:not(.md-keyboard-mode):not(.md-open) md-menu button:hover,md-menu-bar.md-THEME_NAME-theme:not(.md-keyboard-mode):not(.md-open) md-menu button:focus {  background: transparent; }md-menu-content.md-THEME_NAME-theme .md-menu > .md-button:after {  color: '{{background-A200-0.54}}'; }md-menu-content.md-THEME_NAME-theme .md-menu.md-open > .md-button {  background-color: '{{ background-500-0.2}}'; }md-toolbar.md-THEME_NAME-theme.md-menu-toolbar {  background-color: '{{background-A100}}';  color: '{{background-A200}}'; }  md-toolbar.md-THEME_NAME-theme.md-menu-toolbar md-toolbar-filler {    background-color: '{{primary-color}}';    color: '{{background-A100-0.87}}'; }    md-toolbar.md-THEME_NAME-theme.md-menu-toolbar md-toolbar-filler md-icon {      color: '{{background-A100-0.87}}'; }md-nav-bar.md-THEME_NAME-theme .md-nav-bar {  background-color: transparent;  border-color: '{{foreground-4}}'; }md-nav-bar.md-THEME_NAME-theme .md-button._md-nav-button.md-unselected {  color: '{{foreground-2}}'; }md-nav-bar.md-THEME_NAME-theme md-nav-ink-bar {  color: '{{accent-color}}';  background: '{{accent-color}}'; }.md-panel {  background-color: '{{background-900-0.0}}'; }  .md-panel._md-panel-backdrop.md-THEME_NAME-theme {    background-color: '{{background-900-1.0}}'; }md-progress-circular.md-THEME_NAME-theme path {  stroke: '{{primary-color}}'; }md-progress-circular.md-THEME_NAME-theme.md-warn path {  stroke: '{{warn-color}}'; }md-progress-circular.md-THEME_NAME-theme.md-accent path {  stroke: '{{accent-color}}'; }md-progress-linear.md-THEME_NAME-theme .md-container {  background-color: '{{primary-100}}'; }md-progress-linear.md-THEME_NAME-theme .md-bar {  background-color: '{{primary-color}}'; }md-progress-linear.md-THEME_NAME-theme.md-warn .md-container {  background-color: '{{warn-100}}'; }md-progress-linear.md-THEME_NAME-theme.md-warn .md-bar {  background-color: '{{warn-color}}'; }md-progress-linear.md-THEME_NAME-theme.md-accent .md-container {  background-color: '{{accent-100}}'; }md-progress-linear.md-THEME_NAME-theme.md-accent .md-bar {  background-color: '{{accent-color}}'; }md-progress-linear.md-THEME_NAME-theme[md-mode=buffer].md-warn .md-bar1 {  background-color: '{{warn-100}}'; }md-progress-linear.md-THEME_NAME-theme[md-mode=buffer].md-warn .md-dashed:before {  background: radial-gradient(\"{{warn-100}}\" 0%, \"{{warn-100}}\" 16%, transparent 42%); }md-progress-linear.md-THEME_NAME-theme[md-mode=buffer].md-accent .md-bar1 {  background-color: '{{accent-100}}'; }md-progress-linear.md-THEME_NAME-theme[md-mode=buffer].md-accent .md-dashed:before {  background: radial-gradient(\"{{accent-100}}\" 0%, \"{{accent-100}}\" 16%, transparent 42%); }md-radio-button.md-THEME_NAME-theme .md-off {  border-color: '{{foreground-2}}'; }md-radio-button.md-THEME_NAME-theme .md-on {  background-color: '{{accent-color-0.87}}'; }md-radio-button.md-THEME_NAME-theme.md-checked .md-off {  border-color: '{{accent-color-0.87}}'; }md-radio-button.md-THEME_NAME-theme.md-checked .md-ink-ripple {  color: '{{accent-color-0.87}}'; }md-radio-button.md-THEME_NAME-theme .md-container .md-ripple {  color: '{{accent-A700}}'; }md-radio-group.md-THEME_NAME-theme:not([disabled]) .md-primary .md-on, md-radio-group.md-THEME_NAME-theme:not([disabled]).md-primary .md-on,md-radio-button.md-THEME_NAME-theme:not([disabled]) .md-primary .md-on,md-radio-button.md-THEME_NAME-theme:not([disabled]).md-primary .md-on {  background-color: '{{primary-color-0.87}}'; }md-radio-group.md-THEME_NAME-theme:not([disabled]) .md-primary .md-checked .md-off, md-radio-group.md-THEME_NAME-theme:not([disabled]) .md-primary.md-checked .md-off, md-radio-group.md-THEME_NAME-theme:not([disabled]).md-primary .md-checked .md-off, md-radio-group.md-THEME_NAME-theme:not([disabled]).md-primary.md-checked .md-off,md-radio-button.md-THEME_NAME-theme:not([disabled]) .md-primary .md-checked .md-off,md-radio-button.md-THEME_NAME-theme:not([disabled]) .md-primary.md-checked .md-off,md-radio-button.md-THEME_NAME-theme:not([disabled]).md-primary .md-checked .md-off,md-radio-button.md-THEME_NAME-theme:not([disabled]).md-primary.md-checked .md-off {  border-color: '{{primary-color-0.87}}'; }md-radio-group.md-THEME_NAME-theme:not([disabled]) .md-primary .md-checked .md-ink-ripple, md-radio-group.md-THEME_NAME-theme:not([disabled]) .md-primary.md-checked .md-ink-ripple, md-radio-group.md-THEME_NAME-theme:not([disabled]).md-primary .md-checked .md-ink-ripple, md-radio-group.md-THEME_NAME-theme:not([disabled]).md-primary.md-checked .md-ink-ripple,md-radio-button.md-THEME_NAME-theme:not([disabled]) .md-primary .md-checked .md-ink-ripple,md-radio-button.md-THEME_NAME-theme:not([disabled]) .md-primary.md-checked .md-ink-ripple,md-radio-button.md-THEME_NAME-theme:not([disabled]).md-primary .md-checked .md-ink-ripple,md-radio-button.md-THEME_NAME-theme:not([disabled]).md-primary.md-checked .md-ink-ripple {  color: '{{primary-color-0.87}}'; }md-radio-group.md-THEME_NAME-theme:not([disabled]) .md-primary .md-container .md-ripple, md-radio-group.md-THEME_NAME-theme:not([disabled]).md-primary .md-container .md-ripple,md-radio-button.md-THEME_NAME-theme:not([disabled]) .md-primary .md-container .md-ripple,md-radio-button.md-THEME_NAME-theme:not([disabled]).md-primary .md-container .md-ripple {  color: '{{primary-600}}'; }md-radio-group.md-THEME_NAME-theme:not([disabled]) .md-warn .md-on, md-radio-group.md-THEME_NAME-theme:not([disabled]).md-warn .md-on,md-radio-button.md-THEME_NAME-theme:not([disabled]) .md-warn .md-on,md-radio-button.md-THEME_NAME-theme:not([disabled]).md-warn .md-on {  background-color: '{{warn-color-0.87}}'; }md-radio-group.md-THEME_NAME-theme:not([disabled]) .md-warn .md-checked .md-off, md-radio-group.md-THEME_NAME-theme:not([disabled]) .md-warn.md-checked .md-off, md-radio-group.md-THEME_NAME-theme:not([disabled]).md-warn .md-checked .md-off, md-radio-group.md-THEME_NAME-theme:not([disabled]).md-warn.md-checked .md-off,md-radio-button.md-THEME_NAME-theme:not([disabled]) .md-warn .md-checked .md-off,md-radio-button.md-THEME_NAME-theme:not([disabled]) .md-warn.md-checked .md-off,md-radio-button.md-THEME_NAME-theme:not([disabled]).md-warn .md-checked .md-off,md-radio-button.md-THEME_NAME-theme:not([disabled]).md-warn.md-checked .md-off {  border-color: '{{warn-color-0.87}}'; }md-radio-group.md-THEME_NAME-theme:not([disabled]) .md-warn .md-checked .md-ink-ripple, md-radio-group.md-THEME_NAME-theme:not([disabled]) .md-warn.md-checked .md-ink-ripple, md-radio-group.md-THEME_NAME-theme:not([disabled]).md-warn .md-checked .md-ink-ripple, md-radio-group.md-THEME_NAME-theme:not([disabled]).md-warn.md-checked .md-ink-ripple,md-radio-button.md-THEME_NAME-theme:not([disabled]) .md-warn .md-checked .md-ink-ripple,md-radio-button.md-THEME_NAME-theme:not([disabled]) .md-warn.md-checked .md-ink-ripple,md-radio-button.md-THEME_NAME-theme:not([disabled]).md-warn .md-checked .md-ink-ripple,md-radio-button.md-THEME_NAME-theme:not([disabled]).md-warn.md-checked .md-ink-ripple {  color: '{{warn-color-0.87}}'; }md-radio-group.md-THEME_NAME-theme:not([disabled]) .md-warn .md-container .md-ripple, md-radio-group.md-THEME_NAME-theme:not([disabled]).md-warn .md-container .md-ripple,md-radio-button.md-THEME_NAME-theme:not([disabled]) .md-warn .md-container .md-ripple,md-radio-button.md-THEME_NAME-theme:not([disabled]).md-warn .md-container .md-ripple {  color: '{{warn-600}}'; }md-radio-group.md-THEME_NAME-theme[disabled],md-radio-button.md-THEME_NAME-theme[disabled] {  color: '{{foreground-3}}'; }  md-radio-group.md-THEME_NAME-theme[disabled] .md-container .md-off,  md-radio-button.md-THEME_NAME-theme[disabled] .md-container .md-off {    border-color: '{{foreground-3}}'; }  md-radio-group.md-THEME_NAME-theme[disabled] .md-container .md-on,  md-radio-button.md-THEME_NAME-theme[disabled] .md-container .md-on {    border-color: '{{foreground-3}}'; }md-radio-group.md-THEME_NAME-theme .md-checked .md-ink-ripple {  color: '{{accent-color-0.26}}'; }md-radio-group.md-THEME_NAME-theme.md-primary .md-checked:not([disabled]) .md-ink-ripple, md-radio-group.md-THEME_NAME-theme .md-checked:not([disabled]).md-primary .md-ink-ripple {  color: '{{primary-color-0.26}}'; }md-radio-group.md-THEME_NAME-theme .md-checked.md-primary .md-ink-ripple {  color: '{{warn-color-0.26}}'; }md-radio-group.md-THEME_NAME-theme.md-focused:not(:empty) .md-checked .md-container:before {  background-color: '{{accent-color-0.26}}'; }md-radio-group.md-THEME_NAME-theme.md-focused:not(:empty).md-primary .md-checked .md-container:before,md-radio-group.md-THEME_NAME-theme.md-focused:not(:empty) .md-checked.md-primary .md-container:before {  background-color: '{{primary-color-0.26}}'; }md-radio-group.md-THEME_NAME-theme.md-focused:not(:empty).md-warn .md-checked .md-container:before,md-radio-group.md-THEME_NAME-theme.md-focused:not(:empty) .md-checked.md-warn .md-container:before {  background-color: '{{warn-color-0.26}}'; }md-input-container md-select.md-THEME_NAME-theme .md-select-value span:first-child:after {  color: '{{warn-A700}}'; }md-input-container:not(.md-input-focused):not(.md-input-invalid) md-select.md-THEME_NAME-theme .md-select-value span:first-child:after {  color: '{{foreground-3}}'; }md-input-container.md-input-focused:not(.md-input-has-value) md-select.md-THEME_NAME-theme .md-select-value {  color: '{{primary-color}}'; }  md-input-container.md-input-focused:not(.md-input-has-value) md-select.md-THEME_NAME-theme .md-select-value.md-select-placeholder {    color: '{{primary-color}}'; }md-input-container.md-input-invalid md-select.md-THEME_NAME-theme .md-select-value {  color: '{{warn-A700}}' !important;  border-bottom-color: '{{warn-A700}}' !important; }md-input-container.md-input-invalid md-select.md-THEME_NAME-theme.md-no-underline .md-select-value {  border-bottom-color: transparent !important; }md-select.md-THEME_NAME-theme[disabled] .md-select-value {  border-bottom-color: transparent;  background-image: linear-gradient(to right, \"{{foreground-3}}\" 0%, \"{{foreground-3}}\" 33%, transparent 0%);  background-image: -ms-linear-gradient(left, transparent 0%, \"{{foreground-3}}\" 100%); }md-select.md-THEME_NAME-theme .md-select-value {  border-bottom-color: '{{foreground-4}}'; }  md-select.md-THEME_NAME-theme .md-select-value.md-select-placeholder {    color: '{{foreground-3}}'; }  md-select.md-THEME_NAME-theme .md-select-value span:first-child:after {    color: '{{warn-A700}}'; }md-select.md-THEME_NAME-theme.md-no-underline .md-select-value {  border-bottom-color: transparent !important; }md-select.md-THEME_NAME-theme.ng-invalid.ng-touched .md-select-value {  color: '{{warn-A700}}' !important;  border-bottom-color: '{{warn-A700}}' !important; }md-select.md-THEME_NAME-theme.ng-invalid.ng-touched.md-no-underline .md-select-value {  border-bottom-color: transparent !important; }md-select.md-THEME_NAME-theme:not([disabled]):focus .md-select-value {  border-bottom-color: '{{primary-color}}';  color: '{{ foreground-1 }}'; }  md-select.md-THEME_NAME-theme:not([disabled]):focus .md-select-value.md-select-placeholder {    color: '{{ foreground-1 }}'; }md-select.md-THEME_NAME-theme:not([disabled]):focus.md-no-underline .md-select-value {  border-bottom-color: transparent !important; }md-select.md-THEME_NAME-theme:not([disabled]):focus.md-accent .md-select-value {  border-bottom-color: '{{accent-color}}'; }md-select.md-THEME_NAME-theme:not([disabled]):focus.md-warn .md-select-value {  border-bottom-color: '{{warn-color}}'; }md-select.md-THEME_NAME-theme[disabled] .md-select-value {  color: '{{foreground-3}}'; }  md-select.md-THEME_NAME-theme[disabled] .md-select-value.md-select-placeholder {    color: '{{foreground-3}}'; }md-select-menu.md-THEME_NAME-theme md-content {  background: '{{background-A100}}'; }  md-select-menu.md-THEME_NAME-theme md-content md-optgroup {    color: '{{background-600-0.87}}'; }  md-select-menu.md-THEME_NAME-theme md-content md-option {    color: '{{background-900-0.87}}'; }    md-select-menu.md-THEME_NAME-theme md-content md-option[disabled] .md-text {      color: '{{background-400-0.87}}'; }    md-select-menu.md-THEME_NAME-theme md-content md-option:not([disabled]):focus, md-select-menu.md-THEME_NAME-theme md-content md-option:not([disabled]):hover {      background: '{{background-200}}'; }    md-select-menu.md-THEME_NAME-theme md-content md-option[selected] {      color: '{{primary-500}}'; }      md-select-menu.md-THEME_NAME-theme md-content md-option[selected]:focus {        color: '{{primary-600}}'; }      md-select-menu.md-THEME_NAME-theme md-content md-option[selected].md-accent {        color: '{{accent-color}}'; }        md-select-menu.md-THEME_NAME-theme md-content md-option[selected].md-accent:focus {          color: '{{accent-A700}}'; }.md-checkbox-enabled.md-THEME_NAME-theme .md-ripple {  color: '{{primary-600}}'; }.md-checkbox-enabled.md-THEME_NAME-theme[selected] .md-ripple {  color: '{{background-600}}'; }.md-checkbox-enabled.md-THEME_NAME-theme .md-ink-ripple {  color: '{{foreground-2}}'; }.md-checkbox-enabled.md-THEME_NAME-theme[selected] .md-ink-ripple {  color: '{{primary-color-0.87}}'; }.md-checkbox-enabled.md-THEME_NAME-theme:not(.md-checked) .md-icon {  border-color: '{{foreground-2}}'; }.md-checkbox-enabled.md-THEME_NAME-theme[selected] .md-icon {  background-color: '{{primary-color-0.87}}'; }.md-checkbox-enabled.md-THEME_NAME-theme[selected].md-focused .md-container:before {  background-color: '{{primary-color-0.26}}'; }.md-checkbox-enabled.md-THEME_NAME-theme[selected] .md-icon:after {  border-color: '{{primary-contrast-0.87}}'; }.md-checkbox-enabled.md-THEME_NAME-theme .md-indeterminate[disabled] .md-container {  color: '{{foreground-3}}'; }.md-checkbox-enabled.md-THEME_NAME-theme md-option .md-text {  color: '{{background-900-0.87}}'; }md-sidenav.md-THEME_NAME-theme, md-sidenav.md-THEME_NAME-theme md-content {  background-color: '{{background-hue-1}}'; }md-slider.md-THEME_NAME-theme .md-track {  background-color: '{{foreground-3}}'; }md-slider.md-THEME_NAME-theme .md-track-ticks {  color: '{{background-contrast}}'; }md-slider.md-THEME_NAME-theme .md-focus-ring {  background-color: '{{accent-A200-0.2}}'; }md-slider.md-THEME_NAME-theme .md-disabled-thumb {  border-color: '{{background-color}}';  background-color: '{{background-color}}'; }md-slider.md-THEME_NAME-theme.md-min .md-thumb:after {  background-color: '{{background-color}}';  border-color: '{{foreground-3}}'; }md-slider.md-THEME_NAME-theme.md-min .md-focus-ring {  background-color: '{{foreground-3-0.38}}'; }md-slider.md-THEME_NAME-theme.md-min[md-discrete] .md-thumb:after {  background-color: '{{background-contrast}}';  border-color: transparent; }md-slider.md-THEME_NAME-theme.md-min[md-discrete] .md-sign {  background-color: '{{background-400}}'; }  md-slider.md-THEME_NAME-theme.md-min[md-discrete] .md-sign:after {    border-top-color: '{{background-400}}'; }md-slider.md-THEME_NAME-theme.md-min[md-discrete][md-vertical] .md-sign:after {  border-top-color: transparent;  border-left-color: '{{background-400}}'; }md-slider.md-THEME_NAME-theme .md-track.md-track-fill {  background-color: '{{accent-color}}'; }md-slider.md-THEME_NAME-theme .md-thumb:after {  border-color: '{{accent-color}}';  background-color: '{{accent-color}}'; }md-slider.md-THEME_NAME-theme .md-sign {  background-color: '{{accent-color}}'; }  md-slider.md-THEME_NAME-theme .md-sign:after {    border-top-color: '{{accent-color}}'; }md-slider.md-THEME_NAME-theme[md-vertical] .md-sign:after {  border-top-color: transparent;  border-left-color: '{{accent-color}}'; }md-slider.md-THEME_NAME-theme .md-thumb-text {  color: '{{accent-contrast}}'; }md-slider.md-THEME_NAME-theme.md-warn .md-focus-ring {  background-color: '{{warn-200-0.38}}'; }md-slider.md-THEME_NAME-theme.md-warn .md-track.md-track-fill {  background-color: '{{warn-color}}'; }md-slider.md-THEME_NAME-theme.md-warn .md-thumb:after {  border-color: '{{warn-color}}';  background-color: '{{warn-color}}'; }md-slider.md-THEME_NAME-theme.md-warn .md-sign {  background-color: '{{warn-color}}'; }  md-slider.md-THEME_NAME-theme.md-warn .md-sign:after {    border-top-color: '{{warn-color}}'; }md-slider.md-THEME_NAME-theme.md-warn[md-vertical] .md-sign:after {  border-top-color: transparent;  border-left-color: '{{warn-color}}'; }md-slider.md-THEME_NAME-theme.md-warn .md-thumb-text {  color: '{{warn-contrast}}'; }md-slider.md-THEME_NAME-theme.md-primary .md-focus-ring {  background-color: '{{primary-200-0.38}}'; }md-slider.md-THEME_NAME-theme.md-primary .md-track.md-track-fill {  background-color: '{{primary-color}}'; }md-slider.md-THEME_NAME-theme.md-primary .md-thumb:after {  border-color: '{{primary-color}}';  background-color: '{{primary-color}}'; }md-slider.md-THEME_NAME-theme.md-primary .md-sign {  background-color: '{{primary-color}}'; }  md-slider.md-THEME_NAME-theme.md-primary .md-sign:after {    border-top-color: '{{primary-color}}'; }md-slider.md-THEME_NAME-theme.md-primary[md-vertical] .md-sign:after {  border-top-color: transparent;  border-left-color: '{{primary-color}}'; }md-slider.md-THEME_NAME-theme.md-primary .md-thumb-text {  color: '{{primary-contrast}}'; }md-slider.md-THEME_NAME-theme[disabled] .md-thumb:after {  border-color: transparent; }md-slider.md-THEME_NAME-theme[disabled]:not(.md-min) .md-thumb:after, md-slider.md-THEME_NAME-theme[disabled][md-discrete] .md-thumb:after {  background-color: '{{foreground-3}}';  border-color: transparent; }md-slider.md-THEME_NAME-theme[disabled][readonly] .md-sign {  background-color: '{{background-400}}'; }  md-slider.md-THEME_NAME-theme[disabled][readonly] .md-sign:after {    border-top-color: '{{background-400}}'; }md-slider.md-THEME_NAME-theme[disabled][readonly][md-vertical] .md-sign:after {  border-top-color: transparent;  border-left-color: '{{background-400}}'; }md-slider.md-THEME_NAME-theme[disabled][readonly] .md-disabled-thumb {  border-color: transparent;  background-color: transparent; }md-slider-container[disabled] > *:first-child:not(md-slider),md-slider-container[disabled] > *:last-child:not(md-slider) {  color: '{{foreground-3}}'; }.md-subheader.md-THEME_NAME-theme {  color: '{{ foreground-2-0.23 }}';  background-color: '{{background-default}}'; }  .md-subheader.md-THEME_NAME-theme.md-primary {    color: '{{primary-color}}'; }  .md-subheader.md-THEME_NAME-theme.md-accent {    color: '{{accent-color}}'; }  .md-subheader.md-THEME_NAME-theme.md-warn {    color: '{{warn-color}}'; }md-switch.md-THEME_NAME-theme .md-ink-ripple {  color: '{{background-500}}'; }md-switch.md-THEME_NAME-theme .md-thumb {  background-color: '{{background-50}}'; }md-switch.md-THEME_NAME-theme .md-bar {  background-color: '{{background-500}}'; }md-switch.md-THEME_NAME-theme.md-checked .md-ink-ripple {  color: '{{accent-color}}'; }md-switch.md-THEME_NAME-theme.md-checked .md-thumb {  background-color: '{{accent-color}}'; }md-switch.md-THEME_NAME-theme.md-checked .md-bar {  background-color: '{{accent-color-0.5}}'; }md-switch.md-THEME_NAME-theme.md-checked.md-focused .md-thumb:before {  background-color: '{{accent-color-0.26}}'; }md-switch.md-THEME_NAME-theme.md-checked.md-primary .md-ink-ripple {  color: '{{primary-color}}'; }md-switch.md-THEME_NAME-theme.md-checked.md-primary .md-thumb {  background-color: '{{primary-color}}'; }md-switch.md-THEME_NAME-theme.md-checked.md-primary .md-bar {  background-color: '{{primary-color-0.5}}'; }md-switch.md-THEME_NAME-theme.md-checked.md-primary.md-focused .md-thumb:before {  background-color: '{{primary-color-0.26}}'; }md-switch.md-THEME_NAME-theme.md-checked.md-warn .md-ink-ripple {  color: '{{warn-color}}'; }md-switch.md-THEME_NAME-theme.md-checked.md-warn .md-thumb {  background-color: '{{warn-color}}'; }md-switch.md-THEME_NAME-theme.md-checked.md-warn .md-bar {  background-color: '{{warn-color-0.5}}'; }md-switch.md-THEME_NAME-theme.md-checked.md-warn.md-focused .md-thumb:before {  background-color: '{{warn-color-0.26}}'; }md-switch.md-THEME_NAME-theme[disabled] .md-thumb {  background-color: '{{background-400}}'; }md-switch.md-THEME_NAME-theme[disabled] .md-bar {  background-color: '{{foreground-4}}'; }md-tabs.md-THEME_NAME-theme md-tabs-wrapper {  background-color: transparent;  border-color: '{{foreground-4}}'; }md-tabs.md-THEME_NAME-theme .md-paginator md-icon {  color: '{{primary-color}}'; }md-tabs.md-THEME_NAME-theme md-ink-bar {  color: '{{accent-color}}';  background: '{{accent-color}}'; }md-tabs.md-THEME_NAME-theme .md-tab {  color: '{{foreground-2}}'; }  md-tabs.md-THEME_NAME-theme .md-tab[disabled], md-tabs.md-THEME_NAME-theme .md-tab[disabled] md-icon {    color: '{{foreground-3}}'; }  md-tabs.md-THEME_NAME-theme .md-tab.md-active, md-tabs.md-THEME_NAME-theme .md-tab.md-active md-icon, md-tabs.md-THEME_NAME-theme .md-tab.md-focused, md-tabs.md-THEME_NAME-theme .md-tab.md-focused md-icon {    color: '{{primary-color}}'; }  md-tabs.md-THEME_NAME-theme .md-tab.md-focused {    background: '{{primary-color-0.1}}'; }  md-tabs.md-THEME_NAME-theme .md-tab .md-ripple-container {    color: '{{accent-A100}}'; }md-tabs.md-THEME_NAME-theme.md-accent > md-tabs-wrapper {  background-color: '{{accent-color}}'; }  md-tabs.md-THEME_NAME-theme.md-accent > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]) {    color: '{{accent-A100}}'; }    md-tabs.md-THEME_NAME-theme.md-accent > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-active, md-tabs.md-THEME_NAME-theme.md-accent > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-active md-icon, md-tabs.md-THEME_NAME-theme.md-accent > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-focused, md-tabs.md-THEME_NAME-theme.md-accent > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-focused md-icon {      color: '{{accent-contrast}}'; }    md-tabs.md-THEME_NAME-theme.md-accent > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-focused {      background: '{{accent-contrast-0.1}}'; }  md-tabs.md-THEME_NAME-theme.md-accent > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-ink-bar {    color: '{{primary-600-1}}';    background: '{{primary-600-1}}'; }md-tabs.md-THEME_NAME-theme.md-primary > md-tabs-wrapper {  background-color: '{{primary-color}}'; }  md-tabs.md-THEME_NAME-theme.md-primary > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]) {    color: '{{primary-100}}'; }    md-tabs.md-THEME_NAME-theme.md-primary > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-active, md-tabs.md-THEME_NAME-theme.md-primary > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-active md-icon, md-tabs.md-THEME_NAME-theme.md-primary > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-focused, md-tabs.md-THEME_NAME-theme.md-primary > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-focused md-icon {      color: '{{primary-contrast}}'; }    md-tabs.md-THEME_NAME-theme.md-primary > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-focused {      background: '{{primary-contrast-0.1}}'; }md-tabs.md-THEME_NAME-theme.md-warn > md-tabs-wrapper {  background-color: '{{warn-color}}'; }  md-tabs.md-THEME_NAME-theme.md-warn > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]) {    color: '{{warn-100}}'; }    md-tabs.md-THEME_NAME-theme.md-warn > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-active, md-tabs.md-THEME_NAME-theme.md-warn > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-active md-icon, md-tabs.md-THEME_NAME-theme.md-warn > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-focused, md-tabs.md-THEME_NAME-theme.md-warn > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-focused md-icon {      color: '{{warn-contrast}}'; }    md-tabs.md-THEME_NAME-theme.md-warn > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-focused {      background: '{{warn-contrast-0.1}}'; }md-toolbar > md-tabs.md-THEME_NAME-theme > md-tabs-wrapper {  background-color: '{{primary-color}}'; }  md-toolbar > md-tabs.md-THEME_NAME-theme > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]) {    color: '{{primary-100}}'; }    md-toolbar > md-tabs.md-THEME_NAME-theme > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-active, md-toolbar > md-tabs.md-THEME_NAME-theme > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-active md-icon, md-toolbar > md-tabs.md-THEME_NAME-theme > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-focused, md-toolbar > md-tabs.md-THEME_NAME-theme > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-focused md-icon {      color: '{{primary-contrast}}'; }    md-toolbar > md-tabs.md-THEME_NAME-theme > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-focused {      background: '{{primary-contrast-0.1}}'; }md-toolbar.md-accent > md-tabs.md-THEME_NAME-theme > md-tabs-wrapper {  background-color: '{{accent-color}}'; }  md-toolbar.md-accent > md-tabs.md-THEME_NAME-theme > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]) {    color: '{{accent-A100}}'; }    md-toolbar.md-accent > md-tabs.md-THEME_NAME-theme > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-active, md-toolbar.md-accent > md-tabs.md-THEME_NAME-theme > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-active md-icon, md-toolbar.md-accent > md-tabs.md-THEME_NAME-theme > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-focused, md-toolbar.md-accent > md-tabs.md-THEME_NAME-theme > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-focused md-icon {      color: '{{accent-contrast}}'; }    md-toolbar.md-accent > md-tabs.md-THEME_NAME-theme > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-focused {      background: '{{accent-contrast-0.1}}'; }  md-toolbar.md-accent > md-tabs.md-THEME_NAME-theme > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-ink-bar {    color: '{{primary-600-1}}';    background: '{{primary-600-1}}'; }md-toolbar.md-warn > md-tabs.md-THEME_NAME-theme > md-tabs-wrapper {  background-color: '{{warn-color}}'; }  md-toolbar.md-warn > md-tabs.md-THEME_NAME-theme > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]) {    color: '{{warn-100}}'; }    md-toolbar.md-warn > md-tabs.md-THEME_NAME-theme > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-active, md-toolbar.md-warn > md-tabs.md-THEME_NAME-theme > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-active md-icon, md-toolbar.md-warn > md-tabs.md-THEME_NAME-theme > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-focused, md-toolbar.md-warn > md-tabs.md-THEME_NAME-theme > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-focused md-icon {      color: '{{warn-contrast}}'; }    md-toolbar.md-warn > md-tabs.md-THEME_NAME-theme > md-tabs-wrapper > md-tabs-canvas > md-pagination-wrapper > md-tab-item:not([disabled]).md-focused {      background: '{{warn-contrast-0.1}}'; }md-toast.md-THEME_NAME-theme .md-toast-content {  background-color: #323232;  color: '{{background-50}}'; }  md-toast.md-THEME_NAME-theme .md-toast-content .md-button {    color: '{{background-50}}'; }    md-toast.md-THEME_NAME-theme .md-toast-content .md-button.md-highlight {      color: '{{accent-color}}'; }      md-toast.md-THEME_NAME-theme .md-toast-content .md-button.md-highlight.md-primary {        color: '{{primary-color}}'; }      md-toast.md-THEME_NAME-theme .md-toast-content .md-button.md-highlight.md-warn {        color: '{{warn-color}}'; }md-toolbar.md-THEME_NAME-theme:not(.md-menu-toolbar) {  background-color: '{{primary-color}}';  color: '{{primary-contrast}}'; }  md-toolbar.md-THEME_NAME-theme:not(.md-menu-toolbar) md-icon {    color: '{{primary-contrast}}';    fill: '{{primary-contrast}}'; }  md-toolbar.md-THEME_NAME-theme:not(.md-menu-toolbar) .md-button[disabled] md-icon {    color: '{{primary-contrast-0.26}}';    fill: '{{primary-contrast-0.26}}'; }  md-toolbar.md-THEME_NAME-theme:not(.md-menu-toolbar).md-accent {    background-color: '{{accent-color}}';    color: '{{accent-contrast}}'; }    md-toolbar.md-THEME_NAME-theme:not(.md-menu-toolbar).md-accent .md-ink-ripple {      color: '{{accent-contrast}}'; }    md-toolbar.md-THEME_NAME-theme:not(.md-menu-toolbar).md-accent md-icon {      color: '{{accent-contrast}}';      fill: '{{accent-contrast}}'; }    md-toolbar.md-THEME_NAME-theme:not(.md-menu-toolbar).md-accent .md-button[disabled] md-icon {      color: '{{accent-contrast-0.26}}';      fill: '{{accent-contrast-0.26}}'; }  md-toolbar.md-THEME_NAME-theme:not(.md-menu-toolbar).md-warn {    background-color: '{{warn-color}}';    color: '{{warn-contrast}}'; }md-tooltip.md-THEME_NAME-theme {  color: '{{background-700-contrast}}'; }  md-tooltip.md-THEME_NAME-theme .md-content {    background-color: '{{background-700}}'; }/*  Only used with Theme processes */html.md-THEME_NAME-theme, body.md-THEME_NAME-theme {  color: '{{foreground-1}}';  background-color: '{{background-color}}'; }"); 
+angular.module("material.core").constant("$MD_THEME_CSS", "md-autocomplete.md-THEME_NAME-theme{background:\"{{background-A100}}\"}md-autocomplete.md-THEME_NAME-theme[disabled]:not([md-floating-label]){background:\"{{background-100}}\"}md-autocomplete.md-THEME_NAME-theme button md-icon path{fill:\"{{background-600}}\"}md-autocomplete.md-THEME_NAME-theme button:after{background:\"{{background-600-0.3}}\"}.md-autocomplete-suggestions-container.md-THEME_NAME-theme{background:\"{{background-A100}}\"}.md-autocomplete-suggestions-container.md-THEME_NAME-theme li{color:\"{{background-900}}\"}.md-autocomplete-suggestions-container.md-THEME_NAME-theme li .highlight{color:\"{{background-600}}\"}.md-autocomplete-suggestions-container.md-THEME_NAME-theme li.selected,.md-autocomplete-suggestions-container.md-THEME_NAME-theme li:hover{background:\"{{background-200}}\"}md-backdrop{background-color:\"{{background-900-0.0}}\"}md-backdrop.md-opaque.md-THEME_NAME-theme{background-color:\"{{background-900-1.0}}\"}md-bottom-sheet.md-THEME_NAME-theme{background-color:\"{{background-50}}\";border-top-color:\"{{background-300}}\"}md-bottom-sheet.md-THEME_NAME-theme.md-list md-list-item{color:\"{{foreground-1}}\"}md-bottom-sheet.md-THEME_NAME-theme .md-subheader{background-color:\"{{background-50}}\";color:\"{{foreground-1}}\"}.md-button.md-THEME_NAME-theme:not([disabled]).md-focused,.md-button.md-THEME_NAME-theme:not([disabled]):hover{background-color:\"{{background-500-0.2}}\"}.md-button.md-THEME_NAME-theme:not([disabled]).md-icon-button:hover{background-color:transparent}.md-button.md-THEME_NAME-theme.md-fab md-icon{color:\"{{accent-contrast}}\"}.md-button.md-THEME_NAME-theme.md-primary{color:\"{{primary-color}}\"}.md-button.md-THEME_NAME-theme.md-primary.md-fab,.md-button.md-THEME_NAME-theme.md-primary.md-raised{color:\"{{primary-contrast}}\";background-color:\"{{primary-color}}\"}.md-button.md-THEME_NAME-theme.md-primary.md-fab:not([disabled]) md-icon,.md-button.md-THEME_NAME-theme.md-primary.md-raised:not([disabled]) md-icon{color:\"{{primary-contrast}}\"}.md-button.md-THEME_NAME-theme.md-primary.md-fab:not([disabled]).md-focused,.md-button.md-THEME_NAME-theme.md-primary.md-fab:not([disabled]):hover,.md-button.md-THEME_NAME-theme.md-primary.md-raised:not([disabled]).md-focused,.md-button.md-THEME_NAME-theme.md-primary.md-raised:not([disabled]):hover{background-color:\"{{primary-600}}\"}.md-button.md-THEME_NAME-theme.md-primary:not([disabled]) md-icon{color:\"{{primary-color}}\"}.md-button.md-THEME_NAME-theme.md-fab{background-color:\"{{accent-color}}\";color:\"{{accent-contrast}}\"}.md-button.md-THEME_NAME-theme.md-fab:not([disabled]) .md-icon{color:\"{{accent-contrast}}\"}.md-button.md-THEME_NAME-theme.md-fab:not([disabled]).md-focused,.md-button.md-THEME_NAME-theme.md-fab:not([disabled]):hover{background-color:\"{{accent-A700}}\"}.md-button.md-THEME_NAME-theme.md-raised{color:\"{{background-900}}\";background-color:\"{{background-50}}\"}.md-button.md-THEME_NAME-theme.md-raised:not([disabled]) md-icon{color:\"{{background-900}}\"}.md-button.md-THEME_NAME-theme.md-raised:not([disabled]):hover{background-color:\"{{background-50}}\"}.md-button.md-THEME_NAME-theme.md-raised:not([disabled]).md-focused{background-color:\"{{background-200}}\"}.md-button.md-THEME_NAME-theme.md-warn{color:\"{{warn-color}}\"}.md-button.md-THEME_NAME-theme.md-warn.md-fab,.md-button.md-THEME_NAME-theme.md-warn.md-raised{color:\"{{warn-contrast}}\";background-color:\"{{warn-color}}\"}.md-button.md-THEME_NAME-theme.md-warn.md-fab:not([disabled]) md-icon,.md-button.md-THEME_NAME-theme.md-warn.md-raised:not([disabled]) md-icon{color:\"{{warn-contrast}}\"}.md-button.md-THEME_NAME-theme.md-warn.md-fab:not([disabled]).md-focused,.md-button.md-THEME_NAME-theme.md-warn.md-fab:not([disabled]):hover,.md-button.md-THEME_NAME-theme.md-warn.md-raised:not([disabled]).md-focused,.md-button.md-THEME_NAME-theme.md-warn.md-raised:not([disabled]):hover{background-color:\"{{warn-600}}\"}.md-button.md-THEME_NAME-theme.md-warn:not([disabled]) md-icon{color:\"{{warn-color}}\"}.md-button.md-THEME_NAME-theme.md-accent{color:\"{{accent-color}}\"}.md-button.md-THEME_NAME-theme.md-accent.md-fab,.md-button.md-THEME_NAME-theme.md-accent.md-raised{color:\"{{accent-contrast}}\";background-color:\"{{accent-color}}\"}.md-button.md-THEME_NAME-theme.md-accent.md-fab:not([disabled]) md-icon,.md-button.md-THEME_NAME-theme.md-accent.md-raised:not([disabled]) md-icon{color:\"{{accent-contrast}}\"}.md-button.md-THEME_NAME-theme.md-accent.md-fab:not([disabled]).md-focused,.md-button.md-THEME_NAME-theme.md-accent.md-fab:not([disabled]):hover,.md-button.md-THEME_NAME-theme.md-accent.md-raised:not([disabled]).md-focused,.md-button.md-THEME_NAME-theme.md-accent.md-raised:not([disabled]):hover{background-color:\"{{accent-A700}}\"}.md-button.md-THEME_NAME-theme.md-accent:not([disabled]) md-icon{color:\"{{accent-color}}\"}.md-button.md-THEME_NAME-theme.md-accent[disabled],.md-button.md-THEME_NAME-theme.md-fab[disabled],.md-button.md-THEME_NAME-theme.md-raised[disabled],.md-button.md-THEME_NAME-theme.md-warn[disabled],.md-button.md-THEME_NAME-theme[disabled]{color:\"{{foreground-3}}\";cursor:default}.md-button.md-THEME_NAME-theme.md-accent[disabled] md-icon,.md-button.md-THEME_NAME-theme.md-fab[disabled] md-icon,.md-button.md-THEME_NAME-theme.md-raised[disabled] md-icon,.md-button.md-THEME_NAME-theme.md-warn[disabled] md-icon,.md-button.md-THEME_NAME-theme[disabled] md-icon{color:\"{{foreground-3}}\"}.md-button.md-THEME_NAME-theme.md-fab[disabled],.md-button.md-THEME_NAME-theme.md-raised[disabled]{background-color:\"{{foreground-4}}\"}.md-button.md-THEME_NAME-theme[disabled]{background-color:transparent}._md a.md-THEME_NAME-theme:not(.md-button).md-primary{color:\"{{primary-color}}\"}._md a.md-THEME_NAME-theme:not(.md-button).md-primary:hover{color:\"{{primary-700}}\"}._md a.md-THEME_NAME-theme:not(.md-button).md-accent:hover{color:\"{{accent-700}}\"}._md a.md-THEME_NAME-theme:not(.md-button).md-accent{color:\"{{accent-color}}\"}._md a.md-THEME_NAME-theme:not(.md-button).md-accent:hover{color:\"{{accent-A700}}\"}._md a.md-THEME_NAME-theme:not(.md-button).md-warn{color:\"{{warn-color}}\"}._md a.md-THEME_NAME-theme:not(.md-button).md-warn:hover{color:\"{{warn-700}}\"}md-card.md-THEME_NAME-theme{color:\"{{foreground-1}}\";background-color:\"{{background-hue-1}}\";border-radius:2px}md-card.md-THEME_NAME-theme .md-card-image{border-radius:2px 2px 0 0}md-card.md-THEME_NAME-theme md-card-header md-card-avatar md-icon{color:\"{{background-color}}\";background-color:\"{{foreground-3}}\"}md-card.md-THEME_NAME-theme md-card-header md-card-header-text .md-subhead,md-card.md-THEME_NAME-theme md-card-title md-card-title-text:not(:only-child) .md-subhead{color:\"{{foreground-2}}\"}md-checkbox.md-THEME_NAME-theme .md-ripple{color:\"{{accent-A700}}\"}md-checkbox.md-THEME_NAME-theme.md-checked .md-ripple{color:\"{{background-600}}\"}md-checkbox.md-THEME_NAME-theme.md-checked.md-focused .md-container:before{background-color:\"{{accent-color-0.26}}\"}md-checkbox.md-THEME_NAME-theme .md-ink-ripple{color:\"{{foreground-2}}\"}md-checkbox.md-THEME_NAME-theme.md-checked .md-ink-ripple{color:\"{{accent-color-0.87}}\"}md-checkbox.md-THEME_NAME-theme:not(.md-checked) .md-icon{border-color:\"{{foreground-2}}\"}md-checkbox.md-THEME_NAME-theme.md-checked .md-icon{background-color:\"{{accent-color-0.87}}\"}md-checkbox.md-THEME_NAME-theme.md-checked .md-icon:after{border-color:\"{{accent-contrast-0.87}}\"}md-checkbox.md-THEME_NAME-theme:not([disabled]).md-primary .md-ripple{color:\"{{primary-600}}\"}md-checkbox.md-THEME_NAME-theme:not([disabled]).md-primary.md-checked .md-ripple{color:\"{{background-600}}\"}md-checkbox.md-THEME_NAME-theme:not([disabled]).md-primary .md-ink-ripple{color:\"{{foreground-2}}\"}md-checkbox.md-THEME_NAME-theme:not([disabled]).md-primary.md-checked .md-ink-ripple{color:\"{{primary-color-0.87}}\"}md-checkbox.md-THEME_NAME-theme:not([disabled]).md-primary:not(.md-checked) .md-icon{border-color:\"{{foreground-2}}\"}md-checkbox.md-THEME_NAME-theme:not([disabled]).md-primary.md-checked .md-icon{background-color:\"{{primary-color-0.87}}\"}md-checkbox.md-THEME_NAME-theme:not([disabled]).md-primary.md-checked.md-focused .md-container:before{background-color:\"{{primary-color-0.26}}\"}md-checkbox.md-THEME_NAME-theme:not([disabled]).md-primary.md-checked .md-icon:after{border-color:\"{{primary-contrast-0.87}}\"}md-checkbox.md-THEME_NAME-theme:not([disabled]).md-primary .md-indeterminate[disabled] .md-container{color:\"{{foreground-3}}\"}md-checkbox.md-THEME_NAME-theme:not([disabled]).md-warn .md-ripple{color:\"{{warn-600}}\"}md-checkbox.md-THEME_NAME-theme:not([disabled]).md-warn .md-ink-ripple{color:\"{{foreground-2}}\"}md-checkbox.md-THEME_NAME-theme:not([disabled]).md-warn.md-checked .md-ink-ripple{color:\"{{warn-color-0.87}}\"}md-checkbox.md-THEME_NAME-theme:not([disabled]).md-warn:not(.md-checked) .md-icon{border-color:\"{{foreground-2}}\"}md-checkbox.md-THEME_NAME-theme:not([disabled]).md-warn.md-checked .md-icon{background-color:\"{{warn-color-0.87}}\"}md-checkbox.md-THEME_NAME-theme:not([disabled]).md-warn.md-checked.md-focused:not([disabled]) .md-container:before{background-color:\"{{warn-color-0.26}}\"}md-checkbox.md-THEME_NAME-theme:not([disabled]).md-warn.md-checked .md-icon:after{border-color:\"{{background-200}}\"}md-checkbox.md-THEME_NAME-theme[disabled]:not(.md-checked) .md-icon{border-color:\"{{foreground-3}}\"}md-checkbox.md-THEME_NAME-theme[disabled].md-checked .md-icon{background-color:\"{{foreground-3}}\"}md-checkbox.md-THEME_NAME-theme[disabled].md-checked .md-icon:after{border-color:\"{{background-200}}\"}md-checkbox.md-THEME_NAME-theme[disabled] .md-icon:after{border-color:\"{{foreground-3}}\"}md-checkbox.md-THEME_NAME-theme[disabled] .md-label{color:\"{{foreground-3}}\"}md-chips.md-THEME_NAME-theme .md-chips{box-shadow:0 1px \"{{foreground-4}}\"}md-chips.md-THEME_NAME-theme .md-chips.md-focused{box-shadow:0 2px \"{{primary-color}}\"}md-chips.md-THEME_NAME-theme .md-chips .md-chip-input-container input{color:\"{{foreground-1}}\"}md-chips.md-THEME_NAME-theme .md-chips .md-chip-input-container input:-moz-placeholder,md-chips.md-THEME_NAME-theme .md-chips .md-chip-input-container input::-moz-placeholder{color:\"{{foreground-3}}\"}md-chips.md-THEME_NAME-theme .md-chips .md-chip-input-container input:-ms-input-placeholder{color:\"{{foreground-3}}\"}md-chips.md-THEME_NAME-theme .md-chips .md-chip-input-container input::-webkit-input-placeholder{color:\"{{foreground-3}}\"}md-chips.md-THEME_NAME-theme md-chip{background:\"{{background-300}}\";color:\"{{background-800}}\"}md-chips.md-THEME_NAME-theme md-chip md-icon{color:\"{{background-700}}\"}md-chips.md-THEME_NAME-theme md-chip.md-focused{background:\"{{primary-color}}\";color:\"{{primary-contrast}}\"}md-chips.md-THEME_NAME-theme md-chip.md-focused md-icon{color:\"{{primary-contrast}}\"}md-chips.md-THEME_NAME-theme md-chip._md-chip-editing{background:transparent;color:\"{{background-800}}\"}md-chips.md-THEME_NAME-theme md-chip-remove .md-button md-icon path{fill:\"{{background-500}}\"}.md-contact-suggestion span.md-contact-email{color:\"{{background-400}}\"}md-content.md-THEME_NAME-theme{color:\"{{foreground-1}}\";background-color:\"{{background-default}}\"}.md-calendar.md-THEME_NAME-theme{background:\"{{background-A100}}\";color:\"{{background-A200-0.87}}\"}.md-calendar.md-THEME_NAME-theme tr:last-child td{border-bottom-color:\"{{background-200}}\"}.md-THEME_NAME-theme .md-calendar-day-header{background:\"{{background-300}}\";color:\"{{background-A200-0.87}}\"}.md-THEME_NAME-theme .md-calendar-date.md-calendar-date-today .md-calendar-date-selection-indicator{border:1px solid \"{{primary-500}}\"}.md-THEME_NAME-theme .md-calendar-date.md-calendar-date-today.md-calendar-date-disabled{color:\"{{primary-500-0.6}}\"}.md-calendar-date.md-focus .md-THEME_NAME-theme .md-calendar-date-selection-indicator,.md-THEME_NAME-theme .md-calendar-date-selection-indicator:hover{background:\"{{background-300}}\"}.md-THEME_NAME-theme .md-calendar-date.md-calendar-selected-date .md-calendar-date-selection-indicator,.md-THEME_NAME-theme .md-calendar-date.md-focus.md-calendar-selected-date .md-calendar-date-selection-indicator{background:\"{{primary-500}}\";color:\"{{primary-500-contrast}}\";border-color:transparent}.md-THEME_NAME-theme .md-calendar-date-disabled,.md-THEME_NAME-theme .md-calendar-month-label-disabled{color:\"{{background-A200-0.435}}\"}.md-THEME_NAME-theme .md-datepicker-input{color:\"{{foreground-1}}\"}.md-THEME_NAME-theme .md-datepicker-input:-moz-placeholder,.md-THEME_NAME-theme .md-datepicker-input::-moz-placeholder{color:\"{{foreground-3}}\"}.md-THEME_NAME-theme .md-datepicker-input:-ms-input-placeholder{color:\"{{foreground-3}}\"}.md-THEME_NAME-theme .md-datepicker-input::-webkit-input-placeholder{color:\"{{foreground-3}}\"}.md-THEME_NAME-theme .md-datepicker-input-container{border-bottom-color:\"{{foreground-4}}\"}.md-THEME_NAME-theme .md-datepicker-input-container.md-datepicker-focused{border-bottom-color:\"{{primary-color}}\"}.md-accent .md-THEME_NAME-theme .md-datepicker-input-container.md-datepicker-focused{border-bottom-color:\"{{accent-color}}\"}.md-THEME_NAME-theme .md-datepicker-input-container.md-datepicker-invalid,.md-warn .md-THEME_NAME-theme .md-datepicker-input-container.md-datepicker-focused{border-bottom-color:\"{{warn-A700}}\"}.md-THEME_NAME-theme .md-datepicker-calendar-pane{border-color:\"{{background-hue-1}}\"}.md-THEME_NAME-theme .md-datepicker-triangle-button .md-datepicker-expand-triangle{border-top-color:\"{{foreground-2}}\"}.md-THEME_NAME-theme .md-datepicker-open .md-datepicker-calendar-icon{color:\"{{primary-color}}\"}.md-accent .md-THEME_NAME-theme .md-datepicker-open .md-datepicker-calendar-icon,.md-THEME_NAME-theme .md-datepicker-open.md-accent .md-datepicker-calendar-icon{color:\"{{accent-color}}\"}.md-THEME_NAME-theme .md-datepicker-open.md-warn .md-datepicker-calendar-icon,.md-warn .md-THEME_NAME-theme .md-datepicker-open .md-datepicker-calendar-icon{color:\"{{warn-A700}}\"}.md-THEME_NAME-theme .md-datepicker-calendar{background:\"{{background-A100}}\"}.md-THEME_NAME-theme .md-datepicker-input-mask-opaque{box-shadow:0 0 0 9999px \"{{background-hue-1}}\"}.md-THEME_NAME-theme .md-datepicker-open .md-datepicker-input-container{background:\"{{background-hue-1}}\"}md-dialog.md-THEME_NAME-theme{border-radius:4px;background-color:\"{{background-hue-1}}\";color:\"{{foreground-1}}\"}md-dialog.md-THEME_NAME-theme.md-content-overflow .md-actions,md-dialog.md-THEME_NAME-theme.md-content-overflow md-dialog-actions,md-divider.md-THEME_NAME-theme{border-top-color:\"{{foreground-4}}\"}.layout-gt-lg-row>md-divider.md-THEME_NAME-theme,.layout-gt-md-row>md-divider.md-THEME_NAME-theme,.layout-gt-sm-row>md-divider.md-THEME_NAME-theme,.layout-gt-xs-row>md-divider.md-THEME_NAME-theme,.layout-lg-row>md-divider.md-THEME_NAME-theme,.layout-md-row>md-divider.md-THEME_NAME-theme,.layout-row>md-divider.md-THEME_NAME-theme,.layout-sm-row>md-divider.md-THEME_NAME-theme,.layout-xl-row>md-divider.md-THEME_NAME-theme,.layout-xs-row>md-divider.md-THEME_NAME-theme{border-right-color:\"{{foreground-4}}\"}md-icon.md-THEME_NAME-theme{color:\"{{foreground-2}}\"}md-icon.md-THEME_NAME-theme.md-primary{color:\"{{primary-color}}\"}md-icon.md-THEME_NAME-theme.md-accent{color:\"{{accent-color}}\"}md-icon.md-THEME_NAME-theme.md-warn{color:\"{{warn-color}}\"}md-input-container.md-THEME_NAME-theme .md-input{color:\"{{foreground-1}}\";border-color:\"{{foreground-4}}\"}md-input-container.md-THEME_NAME-theme .md-input:-moz-placeholder,md-input-container.md-THEME_NAME-theme .md-input::-moz-placeholder{color:\"{{foreground-3}}\"}md-input-container.md-THEME_NAME-theme .md-input:-ms-input-placeholder{color:\"{{foreground-3}}\"}md-input-container.md-THEME_NAME-theme .md-input::-webkit-input-placeholder{color:\"{{foreground-3}}\"}md-input-container.md-THEME_NAME-theme>md-icon{color:\"{{foreground-1}}\"}md-input-container.md-THEME_NAME-theme .md-placeholder,md-input-container.md-THEME_NAME-theme label{color:\"{{foreground-3}}\"}md-input-container.md-THEME_NAME-theme label.md-required:after{color:\"{{warn-A700}}\"}md-input-container.md-THEME_NAME-theme:not(.md-input-focused):not(.md-input-invalid) label.md-required:after{color:\"{{foreground-2}}\"}md-input-container.md-THEME_NAME-theme .md-input-message-animation,md-input-container.md-THEME_NAME-theme .md-input-messages-animation{color:\"{{warn-A700}}\"}md-input-container.md-THEME_NAME-theme .md-input-message-animation .md-char-counter,md-input-container.md-THEME_NAME-theme .md-input-messages-animation .md-char-counter{color:\"{{foreground-1}}\"}md-input-container.md-THEME_NAME-theme.md-input-focused .md-input:-moz-placeholder,md-input-container.md-THEME_NAME-theme.md-input-focused .md-input::-moz-placeholder{color:\"{{foreground-2}}\"}md-input-container.md-THEME_NAME-theme.md-input-focused .md-input:-ms-input-placeholder{color:\"{{foreground-2}}\"}md-input-container.md-THEME_NAME-theme.md-input-focused .md-input::-webkit-input-placeholder{color:\"{{foreground-2}}\"}md-input-container.md-THEME_NAME-theme:not(.md-input-invalid).md-input-has-value label{color:\"{{foreground-2}}\"}md-input-container.md-THEME_NAME-theme:not(.md-input-invalid).md-input-focused .md-input,md-input-container.md-THEME_NAME-theme:not(.md-input-invalid).md-input-resized .md-input{border-color:\"{{primary-color}}\"}md-input-container.md-THEME_NAME-theme:not(.md-input-invalid).md-input-focused label,md-input-container.md-THEME_NAME-theme:not(.md-input-invalid).md-input-focused md-icon{color:\"{{primary-color}}\"}md-input-container.md-THEME_NAME-theme:not(.md-input-invalid).md-input-focused.md-accent .md-input{border-color:\"{{accent-color}}\"}md-input-container.md-THEME_NAME-theme:not(.md-input-invalid).md-input-focused.md-accent label,md-input-container.md-THEME_NAME-theme:not(.md-input-invalid).md-input-focused.md-accent md-icon{color:\"{{accent-color}}\"}md-input-container.md-THEME_NAME-theme:not(.md-input-invalid).md-input-focused.md-warn .md-input{border-color:\"{{warn-A700}}\"}md-input-container.md-THEME_NAME-theme:not(.md-input-invalid).md-input-focused.md-warn label,md-input-container.md-THEME_NAME-theme:not(.md-input-invalid).md-input-focused.md-warn md-icon{color:\"{{warn-A700}}\"}md-input-container.md-THEME_NAME-theme.md-input-invalid .md-input{border-color:\"{{warn-A700}}\"}md-input-container.md-THEME_NAME-theme.md-input-invalid .md-char-counter,md-input-container.md-THEME_NAME-theme.md-input-invalid .md-input-message-animation,md-input-container.md-THEME_NAME-theme.md-input-invalid label{color:\"{{warn-A700}}\"}[disabled] md-input-container.md-THEME_NAME-theme .md-input,md-input-container.md-THEME_NAME-theme .md-input[disabled]{border-bottom-color:transparent;color:\"{{foreground-3}}\";background-image:linear-gradient(90deg,\"{{foreground-3}}\" 0,\"{{foreground-3}}\" 33%,transparent 0);background-image:-ms-linear-gradient(left,transparent 0,\"{{foreground-3}}\" 100%)}md-list.md-THEME_NAME-theme md-list-item.md-2-line .md-list-item-text h3,md-list.md-THEME_NAME-theme md-list-item.md-2-line .md-list-item-text h4,md-list.md-THEME_NAME-theme md-list-item.md-3-line .md-list-item-text h3,md-list.md-THEME_NAME-theme md-list-item.md-3-line .md-list-item-text h4{color:\"{{foreground-1}}\"}md-list.md-THEME_NAME-theme md-list-item.md-2-line .md-list-item-text p,md-list.md-THEME_NAME-theme md-list-item.md-3-line .md-list-item-text p{color:\"{{foreground-2}}\"}md-list.md-THEME_NAME-theme .md-proxy-focus.md-focused div.md-no-style{background-color:\"{{background-100}}\"}md-list.md-THEME_NAME-theme md-list-item .md-avatar-icon{background-color:\"{{foreground-3}}\";color:\"{{background-color}}\"}md-list.md-THEME_NAME-theme md-list-item>md-icon{color:\"{{foreground-2}}\"}md-list.md-THEME_NAME-theme md-list-item>md-icon.md-highlight{color:\"{{primary-color}}\"}md-list.md-THEME_NAME-theme md-list-item>md-icon.md-highlight.md-accent{color:\"{{accent-color}}\"}md-menu-content.md-THEME_NAME-theme{background-color:\"{{background-A100}}\"}md-menu-content.md-THEME_NAME-theme md-menu-item{color:\"{{background-A200-0.87}}\"}md-menu-content.md-THEME_NAME-theme md-menu-item md-icon{color:\"{{background-A200-0.54}}\"}md-menu-content.md-THEME_NAME-theme md-menu-item .md-button[disabled],md-menu-content.md-THEME_NAME-theme md-menu-item .md-button[disabled] md-icon{color:\"{{background-A200-0.25}}\"}md-menu-content.md-THEME_NAME-theme md-menu-divider{background-color:\"{{background-A200-0.11}}\"}md-menu-bar.md-THEME_NAME-theme>button.md-button{color:\"{{foreground-2}}\";border-radius:2px}md-menu-bar.md-THEME_NAME-theme md-menu.md-open>button,md-menu-bar.md-THEME_NAME-theme md-menu>button:focus{outline:none;background:\"{{background-200}}\"}md-menu-bar.md-THEME_NAME-theme.md-open:not(.md-keyboard-mode) md-menu:hover>button{background-color:\"{{ background-500-0.2}}\"}md-menu-bar.md-THEME_NAME-theme:not(.md-keyboard-mode):not(.md-open) md-menu button:focus,md-menu-bar.md-THEME_NAME-theme:not(.md-keyboard-mode):not(.md-open) md-menu button:hover{background:transparent}md-menu-content.md-THEME_NAME-theme .md-menu>.md-button:after{color:\"{{background-A200-0.54}}\"}md-menu-content.md-THEME_NAME-theme .md-menu.md-open>.md-button{background-color:\"{{ background-500-0.2}}\"}md-toolbar.md-THEME_NAME-theme.md-menu-toolbar{background-color:\"{{background-A100}}\";color:\"{{background-A200}}\"}md-toolbar.md-THEME_NAME-theme.md-menu-toolbar md-toolbar-filler{background-color:\"{{primary-color}}\";color:\"{{background-A100-0.87}}\"}md-toolbar.md-THEME_NAME-theme.md-menu-toolbar md-toolbar-filler md-icon{color:\"{{background-A100-0.87}}\"}._md-panel-backdrop.md-THEME_NAME-theme{background-color:\"{{background-900-1.0}}\"}md-nav-bar.md-THEME_NAME-theme .md-nav-bar{background-color:transparent;border-color:\"{{foreground-4}}\"}md-nav-bar.md-THEME_NAME-theme .md-button._md-nav-button.md-unselected{color:\"{{foreground-2}}\"}md-nav-bar.md-THEME_NAME-theme md-nav-ink-bar{color:\"{{accent-color}}\";background:\"{{accent-color}}\"}md-progress-circular.md-THEME_NAME-theme path{stroke:\"{{primary-color}}\"}md-progress-circular.md-THEME_NAME-theme.md-warn path{stroke:\"{{warn-color}}\"}md-progress-circular.md-THEME_NAME-theme.md-accent path{stroke:\"{{accent-color}}\"}md-progress-linear.md-THEME_NAME-theme .md-container{background-color:\"{{primary-100}}\"}md-progress-linear.md-THEME_NAME-theme .md-bar{background-color:\"{{primary-color}}\"}md-progress-linear.md-THEME_NAME-theme.md-warn .md-container{background-color:\"{{warn-100}}\"}md-progress-linear.md-THEME_NAME-theme.md-warn .md-bar{background-color:\"{{warn-color}}\"}md-progress-linear.md-THEME_NAME-theme.md-accent .md-container{background-color:\"{{accent-100}}\"}md-progress-linear.md-THEME_NAME-theme.md-accent .md-bar{background-color:\"{{accent-color}}\"}md-progress-linear.md-THEME_NAME-theme[md-mode=buffer].md-warn .md-bar1{background-color:\"{{warn-100}}\"}md-progress-linear.md-THEME_NAME-theme[md-mode=buffer].md-warn .md-dashed:before{background:radial-gradient(\"{{warn-100}}\" 0,\"{{warn-100}}\" 16%,transparent 42%)}md-progress-linear.md-THEME_NAME-theme[md-mode=buffer].md-accent .md-bar1{background-color:\"{{accent-100}}\"}md-progress-linear.md-THEME_NAME-theme[md-mode=buffer].md-accent .md-dashed:before{background:radial-gradient(\"{{accent-100}}\" 0,\"{{accent-100}}\" 16%,transparent 42%)}md-radio-button.md-THEME_NAME-theme .md-off{border-color:\"{{foreground-2}}\"}md-radio-button.md-THEME_NAME-theme .md-on{background-color:\"{{accent-color-0.87}}\"}md-radio-button.md-THEME_NAME-theme.md-checked .md-off{border-color:\"{{accent-color-0.87}}\"}md-radio-button.md-THEME_NAME-theme.md-checked .md-ink-ripple{color:\"{{accent-color-0.87}}\"}md-radio-button.md-THEME_NAME-theme .md-container .md-ripple{color:\"{{accent-A700}}\"}md-radio-button.md-THEME_NAME-theme:not([disabled]).md-primary .md-on,md-radio-button.md-THEME_NAME-theme:not([disabled]) .md-primary .md-on,md-radio-group.md-THEME_NAME-theme:not([disabled]).md-primary .md-on,md-radio-group.md-THEME_NAME-theme:not([disabled]) .md-primary .md-on{background-color:\"{{primary-color-0.87}}\"}md-radio-button.md-THEME_NAME-theme:not([disabled]).md-primary.md-checked .md-off,md-radio-button.md-THEME_NAME-theme:not([disabled]) .md-primary.md-checked .md-off,md-radio-button.md-THEME_NAME-theme:not([disabled]).md-primary .md-checked .md-off,md-radio-button.md-THEME_NAME-theme:not([disabled]) .md-primary .md-checked .md-off,md-radio-group.md-THEME_NAME-theme:not([disabled]).md-primary.md-checked .md-off,md-radio-group.md-THEME_NAME-theme:not([disabled]) .md-primary.md-checked .md-off,md-radio-group.md-THEME_NAME-theme:not([disabled]).md-primary .md-checked .md-off,md-radio-group.md-THEME_NAME-theme:not([disabled]) .md-primary .md-checked .md-off{border-color:\"{{primary-color-0.87}}\"}md-radio-button.md-THEME_NAME-theme:not([disabled]).md-primary.md-checked .md-ink-ripple,md-radio-button.md-THEME_NAME-theme:not([disabled]) .md-primary.md-checked .md-ink-ripple,md-radio-button.md-THEME_NAME-theme:not([disabled]).md-primary .md-checked .md-ink-ripple,md-radio-button.md-THEME_NAME-theme:not([disabled]) .md-primary .md-checked .md-ink-ripple,md-radio-group.md-THEME_NAME-theme:not([disabled]).md-primary.md-checked .md-ink-ripple,md-radio-group.md-THEME_NAME-theme:not([disabled]) .md-primary.md-checked .md-ink-ripple,md-radio-group.md-THEME_NAME-theme:not([disabled]).md-primary .md-checked .md-ink-ripple,md-radio-group.md-THEME_NAME-theme:not([disabled]) .md-primary .md-checked .md-ink-ripple{color:\"{{primary-color-0.87}}\"}md-radio-button.md-THEME_NAME-theme:not([disabled]).md-primary .md-container .md-ripple,md-radio-button.md-THEME_NAME-theme:not([disabled]) .md-primary .md-container .md-ripple,md-radio-group.md-THEME_NAME-theme:not([disabled]).md-primary .md-container .md-ripple,md-radio-group.md-THEME_NAME-theme:not([disabled]) .md-primary .md-container .md-ripple{color:\"{{primary-600}}\"}md-radio-button.md-THEME_NAME-theme:not([disabled]).md-warn .md-on,md-radio-button.md-THEME_NAME-theme:not([disabled]) .md-warn .md-on,md-radio-group.md-THEME_NAME-theme:not([disabled]).md-warn .md-on,md-radio-group.md-THEME_NAME-theme:not([disabled]) .md-warn .md-on{background-color:\"{{warn-color-0.87}}\"}md-radio-button.md-THEME_NAME-theme:not([disabled]).md-warn.md-checked .md-off,md-radio-button.md-THEME_NAME-theme:not([disabled]) .md-warn.md-checked .md-off,md-radio-button.md-THEME_NAME-theme:not([disabled]).md-warn .md-checked .md-off,md-radio-button.md-THEME_NAME-theme:not([disabled]) .md-warn .md-checked .md-off,md-radio-group.md-THEME_NAME-theme:not([disabled]).md-warn.md-checked .md-off,md-radio-group.md-THEME_NAME-theme:not([disabled]) .md-warn.md-checked .md-off,md-radio-group.md-THEME_NAME-theme:not([disabled]).md-warn .md-checked .md-off,md-radio-group.md-THEME_NAME-theme:not([disabled]) .md-warn .md-checked .md-off{border-color:\"{{warn-color-0.87}}\"}md-radio-button.md-THEME_NAME-theme:not([disabled]).md-warn.md-checked .md-ink-ripple,md-radio-button.md-THEME_NAME-theme:not([disabled]) .md-warn.md-checked .md-ink-ripple,md-radio-button.md-THEME_NAME-theme:not([disabled]).md-warn .md-checked .md-ink-ripple,md-radio-button.md-THEME_NAME-theme:not([disabled]) .md-warn .md-checked .md-ink-ripple,md-radio-group.md-THEME_NAME-theme:not([disabled]).md-warn.md-checked .md-ink-ripple,md-radio-group.md-THEME_NAME-theme:not([disabled]) .md-warn.md-checked .md-ink-ripple,md-radio-group.md-THEME_NAME-theme:not([disabled]).md-warn .md-checked .md-ink-ripple,md-radio-group.md-THEME_NAME-theme:not([disabled]) .md-warn .md-checked .md-ink-ripple{color:\"{{warn-color-0.87}}\"}md-radio-button.md-THEME_NAME-theme:not([disabled]).md-warn .md-container .md-ripple,md-radio-button.md-THEME_NAME-theme:not([disabled]) .md-warn .md-container .md-ripple,md-radio-group.md-THEME_NAME-theme:not([disabled]).md-warn .md-container .md-ripple,md-radio-group.md-THEME_NAME-theme:not([disabled]) .md-warn .md-container .md-ripple{color:\"{{warn-600}}\"}md-radio-button.md-THEME_NAME-theme[disabled],md-radio-group.md-THEME_NAME-theme[disabled]{color:\"{{foreground-3}}\"}md-radio-button.md-THEME_NAME-theme[disabled] .md-container .md-off,md-radio-button.md-THEME_NAME-theme[disabled] .md-container .md-on,md-radio-group.md-THEME_NAME-theme[disabled] .md-container .md-off,md-radio-group.md-THEME_NAME-theme[disabled] .md-container .md-on{border-color:\"{{foreground-3}}\"}md-radio-group.md-THEME_NAME-theme .md-checked .md-ink-ripple{color:\"{{accent-color-0.26}}\"}md-radio-group.md-THEME_NAME-theme .md-checked:not([disabled]).md-primary .md-ink-ripple,md-radio-group.md-THEME_NAME-theme.md-primary .md-checked:not([disabled]) .md-ink-ripple{color:\"{{primary-color-0.26}}\"}md-radio-group.md-THEME_NAME-theme .md-checked.md-primary .md-ink-ripple{color:\"{{warn-color-0.26}}\"}md-radio-group.md-THEME_NAME-theme.md-focused:not(:empty) .md-checked .md-container:before{background-color:\"{{accent-color-0.26}}\"}md-radio-group.md-THEME_NAME-theme.md-focused:not(:empty) .md-checked.md-primary .md-container:before,md-radio-group.md-THEME_NAME-theme.md-focused:not(:empty).md-primary .md-checked .md-container:before{background-color:\"{{primary-color-0.26}}\"}md-radio-group.md-THEME_NAME-theme.md-focused:not(:empty) .md-checked.md-warn .md-container:before,md-radio-group.md-THEME_NAME-theme.md-focused:not(:empty).md-warn .md-checked .md-container:before{background-color:\"{{warn-color-0.26}}\"}md-input-container md-select.md-THEME_NAME-theme .md-select-value span:first-child:after{color:\"{{warn-A700}}\"}md-input-container:not(.md-input-focused):not(.md-input-invalid) md-select.md-THEME_NAME-theme .md-select-value span:first-child:after{color:\"{{foreground-3}}\"}md-input-container.md-input-focused:not(.md-input-has-value) md-select.md-THEME_NAME-theme .md-select-value,md-input-container.md-input-focused:not(.md-input-has-value) md-select.md-THEME_NAME-theme .md-select-value.md-select-placeholder{color:\"{{primary-color}}\"}md-input-container.md-input-invalid md-select.md-THEME_NAME-theme .md-select-value{color:\"{{warn-A700}}\"!important;border-bottom-color:\"{{warn-A700}}\"!important}md-input-container.md-input-invalid md-select.md-THEME_NAME-theme.md-no-underline .md-select-value{border-bottom-color:transparent!important}md-select.md-THEME_NAME-theme[disabled] .md-select-value{border-bottom-color:transparent;background-image:linear-gradient(90deg,\"{{foreground-3}}\" 0,\"{{foreground-3}}\" 33%,transparent 0);background-image:-ms-linear-gradient(left,transparent 0,\"{{foreground-3}}\" 100%)}md-select.md-THEME_NAME-theme .md-select-value{border-bottom-color:\"{{foreground-4}}\"}md-select.md-THEME_NAME-theme .md-select-value.md-select-placeholder{color:\"{{foreground-3}}\"}md-select.md-THEME_NAME-theme .md-select-value span:first-child:after{color:\"{{warn-A700}}\"}md-select.md-THEME_NAME-theme.md-no-underline .md-select-value{border-bottom-color:transparent!important}md-select.md-THEME_NAME-theme.ng-invalid.ng-touched .md-select-value{color:\"{{warn-A700}}\"!important;border-bottom-color:\"{{warn-A700}}\"!important}md-select.md-THEME_NAME-theme.ng-invalid.ng-touched.md-no-underline .md-select-value{border-bottom-color:transparent!important}md-select.md-THEME_NAME-theme:not([disabled]):focus .md-select-value{border-bottom-color:\"{{primary-color}}\";color:\"{{ foreground-1 }}\"}md-select.md-THEME_NAME-theme:not([disabled]):focus .md-select-value.md-select-placeholder{color:\"{{ foreground-1 }}\"}md-select.md-THEME_NAME-theme:not([disabled]):focus.md-no-underline .md-select-value{border-bottom-color:transparent!important}md-select.md-THEME_NAME-theme:not([disabled]):focus.md-accent .md-select-value{border-bottom-color:\"{{accent-color}}\"}md-select.md-THEME_NAME-theme:not([disabled]):focus.md-warn .md-select-value{border-bottom-color:\"{{warn-color}}\"}md-select.md-THEME_NAME-theme[disabled] .md-select-icon,md-select.md-THEME_NAME-theme[disabled] .md-select-value,md-select.md-THEME_NAME-theme[disabled] .md-select-value.md-select-placeholder{color:\"{{foreground-3}}\"}md-select.md-THEME_NAME-theme .md-select-icon{color:\"{{foreground-2}}\"}md-select-menu.md-THEME_NAME-theme md-content{background:\"{{background-A100}}\"}md-select-menu.md-THEME_NAME-theme md-content md-optgroup{color:\"{{background-600-0.87}}\"}md-select-menu.md-THEME_NAME-theme md-content md-option{color:\"{{background-900-0.87}}\"}md-select-menu.md-THEME_NAME-theme md-content md-option[disabled] .md-text{color:\"{{background-400-0.87}}\"}md-select-menu.md-THEME_NAME-theme md-content md-option:not([disabled]):focus,md-select-menu.md-THEME_NAME-theme md-content md-option:not([disabled]):hover{background:\"{{background-200}}\"}md-select-menu.md-THEME_NAME-theme md-content md-option[selected]{color:\"{{primary-500}}\"}md-select-menu.md-THEME_NAME-theme md-content md-option[selected]:focus{color:\"{{primary-600}}\"}md-select-menu.md-THEME_NAME-theme md-content md-option[selected].md-accent{color:\"{{accent-color}}\"}md-select-menu.md-THEME_NAME-theme md-content md-option[selected].md-accent:focus{color:\"{{accent-A700}}\"}.md-checkbox-enabled.md-THEME_NAME-theme .md-ripple{color:\"{{primary-600}}\"}.md-checkbox-enabled.md-THEME_NAME-theme[selected] .md-ripple{color:\"{{background-600}}\"}.md-checkbox-enabled.md-THEME_NAME-theme .md-ink-ripple{color:\"{{foreground-2}}\"}.md-checkbox-enabled.md-THEME_NAME-theme[selected] .md-ink-ripple{color:\"{{primary-color-0.87}}\"}.md-checkbox-enabled.md-THEME_NAME-theme:not(.md-checked) .md-icon{border-color:\"{{foreground-2}}\"}.md-checkbox-enabled.md-THEME_NAME-theme[selected] .md-icon{background-color:\"{{primary-color-0.87}}\"}.md-checkbox-enabled.md-THEME_NAME-theme[selected].md-focused .md-container:before{background-color:\"{{primary-color-0.26}}\"}.md-checkbox-enabled.md-THEME_NAME-theme[selected] .md-icon:after{border-color:\"{{primary-contrast-0.87}}\"}.md-checkbox-enabled.md-THEME_NAME-theme .md-indeterminate[disabled] .md-container{color:\"{{foreground-3}}\"}.md-checkbox-enabled.md-THEME_NAME-theme md-option .md-text{color:\"{{background-900-0.87}}\"}md-sidenav.md-THEME_NAME-theme,md-sidenav.md-THEME_NAME-theme md-content{background-color:\"{{background-hue-1}}\"}md-slider.md-THEME_NAME-theme .md-track{background-color:\"{{foreground-3}}\"}md-slider.md-THEME_NAME-theme .md-track-ticks{color:\"{{background-contrast}}\"}md-slider.md-THEME_NAME-theme .md-focus-ring{background-color:\"{{accent-A200-0.2}}\"}md-slider.md-THEME_NAME-theme .md-disabled-thumb{border-color:\"{{background-color}}\";background-color:\"{{background-color}}\"}md-slider.md-THEME_NAME-theme.md-min .md-thumb:after{background-color:\"{{background-color}}\";border-color:\"{{foreground-3}}\"}md-slider.md-THEME_NAME-theme.md-min .md-focus-ring{background-color:\"{{foreground-3-0.38}}\"}md-slider.md-THEME_NAME-theme.md-min[md-discrete] .md-thumb:after{background-color:\"{{background-contrast}}\";border-color:transparent}md-slider.md-THEME_NAME-theme.md-min[md-discrete] .md-sign{background-color:\"{{background-400}}\"}md-slider.md-THEME_NAME-theme.md-min[md-discrete] .md-sign:after{border-top-color:\"{{background-400}}\"}md-slider.md-THEME_NAME-theme.md-min[md-discrete][md-vertical] .md-sign:after{border-top-color:transparent;border-left-color:\"{{background-400}}\"}md-slider.md-THEME_NAME-theme .md-track.md-track-fill{background-color:\"{{accent-color}}\"}md-slider.md-THEME_NAME-theme .md-thumb:after{border-color:\"{{accent-color}}\";background-color:\"{{accent-color}}\"}md-slider.md-THEME_NAME-theme .md-sign{background-color:\"{{accent-color}}\"}md-slider.md-THEME_NAME-theme .md-sign:after{border-top-color:\"{{accent-color}}\"}md-slider.md-THEME_NAME-theme[md-vertical] .md-sign:after{border-top-color:transparent;border-left-color:\"{{accent-color}}\"}md-slider.md-THEME_NAME-theme .md-thumb-text{color:\"{{accent-contrast}}\"}md-slider.md-THEME_NAME-theme.md-warn .md-focus-ring{background-color:\"{{warn-200-0.38}}\"}md-slider.md-THEME_NAME-theme.md-warn .md-track.md-track-fill{background-color:\"{{warn-color}}\"}md-slider.md-THEME_NAME-theme.md-warn .md-thumb:after{border-color:\"{{warn-color}}\";background-color:\"{{warn-color}}\"}md-slider.md-THEME_NAME-theme.md-warn .md-sign{background-color:\"{{warn-color}}\"}md-slider.md-THEME_NAME-theme.md-warn .md-sign:after{border-top-color:\"{{warn-color}}\"}md-slider.md-THEME_NAME-theme.md-warn[md-vertical] .md-sign:after{border-top-color:transparent;border-left-color:\"{{warn-color}}\"}md-slider.md-THEME_NAME-theme.md-warn .md-thumb-text{color:\"{{warn-contrast}}\"}md-slider.md-THEME_NAME-theme.md-primary .md-focus-ring{background-color:\"{{primary-200-0.38}}\"}md-slider.md-THEME_NAME-theme.md-primary .md-track.md-track-fill{background-color:\"{{primary-color}}\"}md-slider.md-THEME_NAME-theme.md-primary .md-thumb:after{border-color:\"{{primary-color}}\";background-color:\"{{primary-color}}\"}md-slider.md-THEME_NAME-theme.md-primary .md-sign{background-color:\"{{primary-color}}\"}md-slider.md-THEME_NAME-theme.md-primary .md-sign:after{border-top-color:\"{{primary-color}}\"}md-slider.md-THEME_NAME-theme.md-primary[md-vertical] .md-sign:after{border-top-color:transparent;border-left-color:\"{{primary-color}}\"}md-slider.md-THEME_NAME-theme.md-primary .md-thumb-text{color:\"{{primary-contrast}}\"}md-slider.md-THEME_NAME-theme[disabled] .md-thumb:after{border-color:transparent}md-slider.md-THEME_NAME-theme[disabled]:not(.md-min) .md-thumb:after,md-slider.md-THEME_NAME-theme[disabled][md-discrete] .md-thumb:after{background-color:\"{{foreground-3}}\";border-color:transparent}md-slider.md-THEME_NAME-theme[disabled][readonly] .md-sign{background-color:\"{{background-400}}\"}md-slider.md-THEME_NAME-theme[disabled][readonly] .md-sign:after{border-top-color:\"{{background-400}}\"}md-slider.md-THEME_NAME-theme[disabled][readonly][md-vertical] .md-sign:after{border-top-color:transparent;border-left-color:\"{{background-400}}\"}md-slider.md-THEME_NAME-theme[disabled][readonly] .md-disabled-thumb{border-color:transparent;background-color:transparent}md-slider-container[disabled]>:first-child:not(md-slider),md-slider-container[disabled]>:last-child:not(md-slider){color:\"{{foreground-3}}\"}.md-subheader.md-THEME_NAME-theme{color:\"{{ foreground-2-0.23 }}\";background-color:\"{{background-default}}\"}.md-subheader.md-THEME_NAME-theme.md-primary{color:\"{{primary-color}}\"}.md-subheader.md-THEME_NAME-theme.md-accent{color:\"{{accent-color}}\"}.md-subheader.md-THEME_NAME-theme.md-warn{color:\"{{warn-color}}\"}md-switch.md-THEME_NAME-theme .md-ink-ripple{color:\"{{background-500}}\"}md-switch.md-THEME_NAME-theme .md-thumb{background-color:\"{{background-50}}\"}md-switch.md-THEME_NAME-theme .md-bar{background-color:\"{{background-500}}\"}md-switch.md-THEME_NAME-theme.md-checked .md-ink-ripple{color:\"{{accent-color}}\"}md-switch.md-THEME_NAME-theme.md-checked .md-thumb{background-color:\"{{accent-color}}\"}md-switch.md-THEME_NAME-theme.md-checked .md-bar{background-color:\"{{accent-color-0.5}}\"}md-switch.md-THEME_NAME-theme.md-checked.md-focused .md-thumb:before{background-color:\"{{accent-color-0.26}}\"}md-switch.md-THEME_NAME-theme.md-checked.md-primary .md-ink-ripple{color:\"{{primary-color}}\"}md-switch.md-THEME_NAME-theme.md-checked.md-primary .md-thumb{background-color:\"{{primary-color}}\"}md-switch.md-THEME_NAME-theme.md-checked.md-primary .md-bar{background-color:\"{{primary-color-0.5}}\"}md-switch.md-THEME_NAME-theme.md-checked.md-primary.md-focused .md-thumb:before{background-color:\"{{primary-color-0.26}}\"}md-switch.md-THEME_NAME-theme.md-checked.md-warn .md-ink-ripple{color:\"{{warn-color}}\"}md-switch.md-THEME_NAME-theme.md-checked.md-warn .md-thumb{background-color:\"{{warn-color}}\"}md-switch.md-THEME_NAME-theme.md-checked.md-warn .md-bar{background-color:\"{{warn-color-0.5}}\"}md-switch.md-THEME_NAME-theme.md-checked.md-warn.md-focused .md-thumb:before{background-color:\"{{warn-color-0.26}}\"}md-switch.md-THEME_NAME-theme[disabled] .md-thumb{background-color:\"{{background-400}}\"}md-switch.md-THEME_NAME-theme[disabled] .md-bar{background-color:\"{{foreground-4}}\"}md-toast.md-THEME_NAME-theme .md-toast-content{background-color:#323232;color:\"{{background-50}}\"}md-toast.md-THEME_NAME-theme .md-toast-content .md-button{color:\"{{background-50}}\"}md-toast.md-THEME_NAME-theme .md-toast-content .md-button.md-highlight{color:\"{{accent-color}}\"}md-toast.md-THEME_NAME-theme .md-toast-content .md-button.md-highlight.md-primary{color:\"{{primary-color}}\"}md-toast.md-THEME_NAME-theme .md-toast-content .md-button.md-highlight.md-warn{color:\"{{warn-color}}\"}md-tabs.md-THEME_NAME-theme md-tabs-wrapper{background-color:transparent;border-color:\"{{foreground-4}}\"}md-tabs.md-THEME_NAME-theme .md-paginator md-icon{color:\"{{primary-color}}\"}md-tabs.md-THEME_NAME-theme md-ink-bar{color:\"{{accent-color}}\";background:\"{{accent-color}}\"}md-tabs.md-THEME_NAME-theme .md-tab{color:\"{{foreground-2}}\"}md-tabs.md-THEME_NAME-theme .md-tab[disabled],md-tabs.md-THEME_NAME-theme .md-tab[disabled] md-icon{color:\"{{foreground-3}}\"}md-tabs.md-THEME_NAME-theme .md-tab.md-active,md-tabs.md-THEME_NAME-theme .md-tab.md-active md-icon,md-tabs.md-THEME_NAME-theme .md-tab.md-focused,md-tabs.md-THEME_NAME-theme .md-tab.md-focused md-icon{color:\"{{primary-color}}\"}md-tabs.md-THEME_NAME-theme .md-tab.md-focused{background:\"{{primary-color-0.1}}\"}md-tabs.md-THEME_NAME-theme .md-tab .md-ripple-container{color:\"{{accent-A100}}\"}md-tabs.md-THEME_NAME-theme.md-accent>md-tabs-wrapper{background-color:\"{{accent-color}}\"}md-tabs.md-THEME_NAME-theme.md-accent>md-tabs-wrapper>md-tabs-canvas>md-pagination-wrapper>md-tab-item:not([disabled]),md-tabs.md-THEME_NAME-theme.md-accent>md-tabs-wrapper>md-tabs-canvas>md-pagination-wrapper>md-tab-item:not([disabled]) md-icon{color:\"{{accent-A100}}\"}md-tabs.md-THEME_NAME-theme.md-accent>md-tabs-wrapper>md-tabs-canvas>md-pagination-wrapper>md-tab-item:not([disabled]).md-active,md-tabs.md-THEME_NAME-theme.md-accent>md-tabs-wrapper>md-tabs-canvas>md-pagination-wrapper>md-tab-item:not([disabled]).md-active md-icon,md-tabs.md-THEME_NAME-theme.md-accent>md-tabs-wrapper>md-tabs-canvas>md-pagination-wrapper>md-tab-item:not([disabled]).md-focused,md-tabs.md-THEME_NAME-theme.md-accent>md-tabs-wrapper>md-tabs-canvas>md-pagination-wrapper>md-tab-item:not([disabled]).md-focused md-icon{color:\"{{accent-contrast}}\"}md-tabs.md-THEME_NAME-theme.md-accent>md-tabs-wrapper>md-tabs-canvas>md-pagination-wrapper>md-tab-item:not([disabled]).md-focused{background:\"{{accent-contrast-0.1}}\"}md-tabs.md-THEME_NAME-theme.md-accent>md-tabs-wrapper>md-tabs-canvas>md-pagination-wrapper>md-ink-bar{color:\"{{primary-600-1}}\";background:\"{{primary-600-1}}\"}md-tabs.md-THEME_NAME-theme.md-primary>md-tabs-wrapper{background-color:\"{{primary-color}}\"}md-tabs.md-THEME_NAME-theme.md-primary>md-tabs-wrapper>md-tabs-canvas>md-pagination-wrapper>md-tab-item:not([disabled]),md-tabs.md-THEME_NAME-theme.md-primary>md-tabs-wrapper>md-tabs-canvas>md-pagination-wrapper>md-tab-item:not([disabled]) md-icon{color:\"{{primary-100}}\"}md-tabs.md-THEME_NAME-theme.md-primary>md-tabs-wrapper>md-tabs-canvas>md-pagination-wrapper>md-tab-item:not([disabled]).md-active,md-tabs.md-THEME_NAME-theme.md-primary>md-tabs-wrapper>md-tabs-canvas>md-pagination-wrapper>md-tab-item:not([disabled]).md-active md-icon,md-tabs.md-THEME_NAME-theme.md-primary>md-tabs-wrapper>md-tabs-canvas>md-pagination-wrapper>md-tab-item:not([disabled]).md-focused,md-tabs.md-THEME_NAME-theme.md-primary>md-tabs-wrapper>md-tabs-canvas>md-pagination-wrapper>md-tab-item:not([disabled]).md-focused md-icon{color:\"{{primary-contrast}}\"}md-tabs.md-THEME_NAME-theme.md-primary>md-tabs-wrapper>md-tabs-canvas>md-pagination-wrapper>md-tab-item:not([disabled]).md-focused{background:\"{{primary-contrast-0.1}}\"}md-tabs.md-THEME_NAME-theme.md-warn>md-tabs-wrapper{background-color:\"{{warn-color}}\"}md-tabs.md-THEME_NAME-theme.md-warn>md-tabs-wrapper>md-tabs-canvas>md-pagination-wrapper>md-tab-item:not([disabled]),md-tabs.md-THEME_NAME-theme.md-warn>md-tabs-wrapper>md-tabs-canvas>md-pagination-wrapper>md-tab-item:not([disabled]) md-icon{color:\"{{warn-100}}\"}md-tabs.md-THEME_NAME-theme.md-warn>md-tabs-wrapper>md-tabs-canvas>md-pagination-wrapper>md-tab-item:not([disabled]).md-active,md-tabs.md-THEME_NAME-theme.md-warn>md-tabs-wrapper>md-tabs-canvas>md-pagination-wrapper>md-tab-item:not([disabled]).md-active md-icon,md-tabs.md-THEME_NAME-theme.md-warn>md-tabs-wrapper>md-tabs-canvas>md-pagination-wrapper>md-tab-item:not([disabled]).md-focused,md-tabs.md-THEME_NAME-theme.md-warn>md-tabs-wrapper>md-tabs-canvas>md-pagination-wrapper>md-tab-item:not([disabled]).md-focused md-icon{color:\"{{warn-contrast}}\"}md-tabs.md-THEME_NAME-theme.md-warn>md-tabs-wrapper>md-tabs-canvas>md-pagination-wrapper>md-tab-item:not([disabled]).md-focused{background:\"{{warn-contrast-0.1}}\"}md-toolbar>md-tabs.md-THEME_NAME-theme>md-tabs-wrapper{background-color:\"{{primary-color}}\"}md-toolbar>md-tabs.md-THEME_NAME-theme>md-tabs-wrapper>md-tabs-canvas>md-pagination-wrapper>md-tab-item:not([disabled]),md-toolbar>md-tabs.md-THEME_NAME-theme>md-tabs-wrapper>md-tabs-canvas>md-pagination-wrapper>md-tab-item:not([disabled]) md-icon{color:\"{{primary-100}}\"}md-toolbar>md-tabs.md-THEME_NAME-theme>md-tabs-wrapper>md-tabs-canvas>md-pagination-wrapper>md-tab-item:not([disabled]).md-active,md-toolbar>md-tabs.md-THEME_NAME-theme>md-tabs-wrapper>md-tabs-canvas>md-pagination-wrapper>md-tab-item:not([disabled]).md-active md-icon,md-toolbar>md-tabs.md-THEME_NAME-theme>md-tabs-wrapper>md-tabs-canvas>md-pagination-wrapper>md-tab-item:not([disabled]).md-focused,md-toolbar>md-tabs.md-THEME_NAME-theme>md-tabs-wrapper>md-tabs-canvas>md-pagination-wrapper>md-tab-item:not([disabled]).md-focused md-icon{color:\"{{primary-contrast}}\"}md-toolbar>md-tabs.md-THEME_NAME-theme>md-tabs-wrapper>md-tabs-canvas>md-pagination-wrapper>md-tab-item:not([disabled]).md-focused{background:\"{{primary-contrast-0.1}}\"}md-toolbar.md-accent>md-tabs.md-THEME_NAME-theme>md-tabs-wrapper{background-color:\"{{accent-color}}\"}md-toolbar.md-accent>md-tabs.md-THEME_NAME-theme>md-tabs-wrapper>md-tabs-canvas>md-pagination-wrapper>md-tab-item:not([disabled]),md-toolbar.md-accent>md-tabs.md-THEME_NAME-theme>md-tabs-wrapper>md-tabs-canvas>md-pagination-wrapper>md-tab-item:not([disabled]) md-icon{color:\"{{accent-A100}}\"}md-toolbar.md-accent>md-tabs.md-THEME_NAME-theme>md-tabs-wrapper>md-tabs-canvas>md-pagination-wrapper>md-tab-item:not([disabled]).md-active,md-toolbar.md-accent>md-tabs.md-THEME_NAME-theme>md-tabs-wrapper>md-tabs-canvas>md-pagination-wrapper>md-tab-item:not([disabled]).md-active md-icon,md-toolbar.md-accent>md-tabs.md-THEME_NAME-theme>md-tabs-wrapper>md-tabs-canvas>md-pagination-wrapper>md-tab-item:not([disabled]).md-focused,md-toolbar.md-accent>md-tabs.md-THEME_NAME-theme>md-tabs-wrapper>md-tabs-canvas>md-pagination-wrapper>md-tab-item:not([disabled]).md-focused md-icon{color:\"{{accent-contrast}}\"}md-toolbar.md-accent>md-tabs.md-THEME_NAME-theme>md-tabs-wrapper>md-tabs-canvas>md-pagination-wrapper>md-tab-item:not([disabled]).md-focused{background:\"{{accent-contrast-0.1}}\"}md-toolbar.md-accent>md-tabs.md-THEME_NAME-theme>md-tabs-wrapper>md-tabs-canvas>md-pagination-wrapper>md-ink-bar{color:\"{{primary-600-1}}\";background:\"{{primary-600-1}}\"}md-toolbar.md-warn>md-tabs.md-THEME_NAME-theme>md-tabs-wrapper{background-color:\"{{warn-color}}\"}md-toolbar.md-warn>md-tabs.md-THEME_NAME-theme>md-tabs-wrapper>md-tabs-canvas>md-pagination-wrapper>md-tab-item:not([disabled]),md-toolbar.md-warn>md-tabs.md-THEME_NAME-theme>md-tabs-wrapper>md-tabs-canvas>md-pagination-wrapper>md-tab-item:not([disabled]) md-icon{color:\"{{warn-100}}\"}md-toolbar.md-warn>md-tabs.md-THEME_NAME-theme>md-tabs-wrapper>md-tabs-canvas>md-pagination-wrapper>md-tab-item:not([disabled]).md-active,md-toolbar.md-warn>md-tabs.md-THEME_NAME-theme>md-tabs-wrapper>md-tabs-canvas>md-pagination-wrapper>md-tab-item:not([disabled]).md-active md-icon,md-toolbar.md-warn>md-tabs.md-THEME_NAME-theme>md-tabs-wrapper>md-tabs-canvas>md-pagination-wrapper>md-tab-item:not([disabled]).md-focused,md-toolbar.md-warn>md-tabs.md-THEME_NAME-theme>md-tabs-wrapper>md-tabs-canvas>md-pagination-wrapper>md-tab-item:not([disabled]).md-focused md-icon{color:\"{{warn-contrast}}\"}md-toolbar.md-warn>md-tabs.md-THEME_NAME-theme>md-tabs-wrapper>md-tabs-canvas>md-pagination-wrapper>md-tab-item:not([disabled]).md-focused{background:\"{{warn-contrast-0.1}}\"}md-toolbar.md-THEME_NAME-theme:not(.md-menu-toolbar){background-color:\"{{primary-color}}\";color:\"{{primary-contrast}}\"}md-toolbar.md-THEME_NAME-theme:not(.md-menu-toolbar) md-icon{color:\"{{primary-contrast}}\";fill:\"{{primary-contrast}}\"}md-toolbar.md-THEME_NAME-theme:not(.md-menu-toolbar) .md-button[disabled] md-icon{color:\"{{primary-contrast-0.26}}\";fill:\"{{primary-contrast-0.26}}\"}md-toolbar.md-THEME_NAME-theme:not(.md-menu-toolbar).md-accent{background-color:\"{{accent-color}}\";color:\"{{accent-contrast}}\"}md-toolbar.md-THEME_NAME-theme:not(.md-menu-toolbar).md-accent .md-ink-ripple{color:\"{{accent-contrast}}\"}md-toolbar.md-THEME_NAME-theme:not(.md-menu-toolbar).md-accent md-icon{color:\"{{accent-contrast}}\";fill:\"{{accent-contrast}}\"}md-toolbar.md-THEME_NAME-theme:not(.md-menu-toolbar).md-accent .md-button[disabled] md-icon{color:\"{{accent-contrast-0.26}}\";fill:\"{{accent-contrast-0.26}}\"}md-toolbar.md-THEME_NAME-theme:not(.md-menu-toolbar).md-warn{background-color:\"{{warn-color}}\";color:\"{{warn-contrast}}\"}.md-panel.md-tooltip.md-THEME_NAME-theme{color:\"{{background-700-contrast}}\";background-color:\"{{background-700}}\"}body.md-THEME_NAME-theme,html.md-THEME_NAME-theme{color:\"{{foreground-1}}\";background-color:\"{{background-color}}\"}"); 
 })();
 
 
-})(window, window.angular);;window.ngMaterial={version:{full: "1.1.1"}};
+})(window, window.angular);;window.ngMaterial={version:{full: "1.1.3"}};
 /*! SVG Morpheus v0.3.2 License: MIT */!function(){"use strict";function t(t,e,r){var a,o={};for(a in t)switch(a){case"fill":case"stroke":o[a]=n(t[a]),o[a].r=t[a].r+(e[a].r-t[a].r)*r,o[a].g=t[a].g+(e[a].g-t[a].g)*r,o[a].b=t[a].b+(e[a].b-t[a].b)*r,o[a].opacity=t[a].opacity+(e[a].opacity-t[a].opacity)*r;break;case"opacity":case"fill-opacity":case"stroke-opacity":case"stroke-width":o[a]=t[a]+(e[a]-t[a])*r}return o}function e(t){var e,r={};for(e in t)switch(e){case"fill":case"stroke":r[e]=F(t[e]);break;case"opacity":case"fill-opacity":case"stroke-opacity":case"stroke-width":r[e]=t[e]}return r}function r(t,e){var r,a=[{},{}];for(r in t)switch(r){case"fill":case"stroke":a[0][r]=L(t[r]),void 0===e[r]&&(a[1][r]=L(t[r]),a[1][r].opacity=0);break;case"opacity":case"fill-opacity":case"stroke-opacity":case"stroke-width":a[0][r]=t[r],void 0===e[r]&&(a[1][r]=1)}for(r in e)switch(r){case"fill":case"stroke":a[1][r]=L(e[r]),void 0===t[r]&&(a[0][r]=L(e[r]),a[0][r].opacity=0);break;case"opacity":case"fill-opacity":case"stroke-opacity":case"stroke-width":a[1][r]=e[r],void 0===t[r]&&(a[0][r]=1)}return a}function a(t,e,r){var a={};for(var o in t)switch(o){case"rotate":a[o]=[0,0,0];for(var s=0;3>s;s++)a[o][s]=t[o][s]+(e[o][s]-t[o][s])*r}return a}function o(t){var e="";return t.rotate&&(e+="rotate("+t.rotate.join(" ")+")"),e}function s(t,e,r){for(var a=[],o=0,s=t.length;s>o;o++){a.push([t[o][0]]);for(var n=1,i=t[o].length;i>n;n++)a[o].push(t[o][n]+(e[o][n]-t[o][n])*r)}return a}function n(t){var e;if(t instanceof Array){e=[];for(var r=0,a=t.length;a>r;r++)e[r]=n(t[r]);return e}if(t instanceof Object){e={};for(var o in t)t.hasOwnProperty(o)&&(e[o]=n(t[o]));return e}return t}function i(t,e,r){if(!t)throw new Error('SVGMorpheus > "element" is required');if("string"==typeof t&&(t=document.querySelector(t),!t))throw new Error('SVGMorpheus > "element" query is not related to an existing DOM node');if(e&&typeof e!=typeof{})throw new Error('SVGMorpheus > "options" parameter must be an object');if(e=e||{},r&&"function"!=typeof r)throw new Error('SVGMorpheus > "callback" parameter must be a function');var a=this;this._icons={},this._curIconId=e.iconId||"",this._toIconId="",this._curIconItems=[],this._fromIconItems=[],this._toIconItems=[],this._morphNodes=[],this._morphG,this._startTime,this._defDuration=e.duration||750,this._defEasing=e.easing||"quad-in-out",this._defRotation=e.rotation||"clock",this._defCallback=r||function(){},this._duration=this._defDuration,this._easing=this._defEasing,this._rotation=this._defRotation,this._callback=this._defCallback,this._rafid,this._fnTick=function(t){a._startTime||(a._startTime=t);var e=Math.min((t-a._startTime)/a._duration,1);a._updateAnimationProgress(e),1>e?a._rafid=h(a._fnTick):""!=a._toIconId&&a._animationEnd()},this._svgDoc="SVG"===t.nodeName.toUpperCase()?t:t.getSVGDocument(),this._svgDoc?a._init():t.addEventListener("load",function(){a._svgDoc=t.getSVGDocument(),a._init()},!1)}var c={};c["circ-in"]=function(t){return-1*(Math.sqrt(1-t*t)-1)},c["circ-out"]=function(t){return Math.sqrt(1-(t-=1)*t)},c["circ-in-out"]=function(t){return(t/=.5)<1?-0.5*(Math.sqrt(1-t*t)-1):.5*(Math.sqrt(1-(t-=2)*t)+1)},c["cubic-in"]=function(t){return t*t*t},c["cubic-out"]=function(t){return--t*t*t+1},c["cubic-in-out"]=function(t){return.5>t?4*t*t*t:(t-1)*(2*t-2)*(2*t-2)+1},c["elastic-in"]=function(t){var e=1.70158,r=0,a=1;if(0==t)return 0;if(1==t)return 1;if(r||(r=.3),a<Math.abs(1)){a=1;var e=r/4}else var e=r/(2*Math.PI)*Math.asin(1/a);return-(a*Math.pow(2,10*(t-=1))*Math.sin(2*(t-e)*Math.PI/r))},c["elastic-out"]=function(t){var e=1.70158,r=0,a=1;if(0==t)return 0;if(1==t)return 1;if(r||(r=.3),a<Math.abs(1)){a=1;var e=r/4}else var e=r/(2*Math.PI)*Math.asin(1/a);return a*Math.pow(2,-10*t)*Math.sin(2*(t-e)*Math.PI/r)+1},c["elastic-in-out"]=function(t){var e=1.70158,r=0,a=1;if(0==t)return 0;if(2==(t/=.5))return 1;if(r||(r=.3*1.5),a<Math.abs(1)){a=1;var e=r/4}else var e=r/(2*Math.PI)*Math.asin(1/a);return 1>t?-.5*a*Math.pow(2,10*(t-=1))*Math.sin(2*(t-e)*Math.PI/r):a*Math.pow(2,-10*(t-=1))*Math.sin(2*(t-e)*Math.PI/r)*.5+1},c["expo-in"]=function(t){return 0==t?0:Math.pow(2,10*(t-1))},c["expo-out"]=function(t){return 1==t?1:1-Math.pow(2,-10*t)},c["expo-in-out"]=function(t){return 0==t?0:1==t?1:(t/=.5)<1?.5*Math.pow(2,10*(t-1)):.5*(-Math.pow(2,-10*--t)+2)},c.linear=function(t){return t},c["quad-in"]=function(t){return t*t},c["quad-out"]=function(t){return t*(2-t)},c["quad-in-out"]=function(t){return.5>t?2*t*t:-1+(4-2*t)*t},c["quart-in"]=function(t){return t*t*t*t},c["quart-out"]=function(t){return 1- --t*t*t*t},c["quart-in-out"]=function(t){return.5>t?8*t*t*t*t:1-8*--t*t*t*t},c["quint-in"]=function(t){return t*t*t*t*t},c["quint-out"]=function(t){return 1+--t*t*t*t*t},c["quint-in-out"]=function(t){return.5>t?16*t*t*t*t*t:1+16*--t*t*t*t*t},c["sine-in"]=function(t){return 1-Math.cos(t*(Math.PI/2))},c["sine-out"]=function(t){return Math.sin(t*(Math.PI/2))},c["sine-in-out"]=function(t){return.5*(1-Math.cos(Math.PI*t))};var h=window.requestAnimationFrame||window.mozRequestAnimationFrame||window.webkitRequestAnimationFrame||window.oRequestAnimationFrame,u=window.cancelAnimationFrame||window.mozCancelAnimationFrame||window.webkitCancelAnimationFrame||window.oCancelAnimationFrame,l="	\n\f\r   ᠎             　\u2028\u2029",p=new RegExp("([a-z])["+l+",]*((-?\\d*\\.?\\d*(?:e[\\-+]?\\d+)?["+l+"]*,?["+l+"]*)+)","ig"),f=new RegExp("(-?\\d*\\.?\\d*(?:e[\\-+]?\\d+)?)["+l+"]*,?["+l+"]*","ig"),m=function(t){if(!t)return null;if(typeof t==typeof[])return t;var e={a:7,c:6,o:2,h:1,l:2,m:2,r:4,q:4,s:4,t:2,v:1,u:3,z:0},r=[];return String(t).replace(p,function(t,a,o){var s=[],n=a.toLowerCase();if(o.replace(f,function(t,e){e&&s.push(+e)}),"m"==n&&s.length>2&&(r.push([a].concat(s.splice(0,2))),n="l",a="m"==a?"l":"L"),"o"==n&&1==s.length&&r.push([a,s[0]]),"r"==n)r.push([a].concat(s));else for(;s.length>=e[n]&&(r.push([a].concat(s.splice(0,e[n]))),e[n]););}),r},d=function(t,e){for(var r=[],a=0,o=t.length;o-2*!e>a;a+=2){var s=[{x:+t[a-2],y:+t[a-1]},{x:+t[a],y:+t[a+1]},{x:+t[a+2],y:+t[a+3]},{x:+t[a+4],y:+t[a+5]}];e?a?o-4==a?s[3]={x:+t[0],y:+t[1]}:o-2==a&&(s[2]={x:+t[0],y:+t[1]},s[3]={x:+t[2],y:+t[3]}):s[0]={x:+t[o-2],y:+t[o-1]}:o-4==a?s[3]=s[2]:a||(s[0]={x:+t[a],y:+t[a+1]}),r.push(["C",(-s[0].x+6*s[1].x+s[2].x)/6,(-s[0].y+6*s[1].y+s[2].y)/6,(s[1].x+6*s[2].x-s[3].x)/6,(s[1].y+6*s[2].y-s[3].y)/6,s[2].x,s[2].y])}return r},y=function(t,e,r,a,o){if(null==o&&null==a&&(a=r),t=+t,e=+e,r=+r,a=+a,null!=o)var s=Math.PI/180,n=t+r*Math.cos(-a*s),i=t+r*Math.cos(-o*s),c=e+r*Math.sin(-a*s),h=e+r*Math.sin(-o*s),u=[["M",n,c],["A",r,r,0,+(o-a>180),0,i,h]];else u=[["M",t,e],["m",0,-a],["a",r,a,0,1,1,0,2*a],["a",r,a,0,1,1,0,-2*a],["z"]];return u},I=function(t){if(t=m(t),!t||!t.length)return[["M",0,0]];var e,r=[],a=0,o=0,s=0,n=0,i=0;"M"==t[0][0]&&(a=+t[0][1],o=+t[0][2],s=a,n=o,i++,r[0]=["M",a,o]);for(var c,h,u=3==t.length&&"M"==t[0][0]&&"R"==t[1][0].toUpperCase()&&"Z"==t[2][0].toUpperCase(),l=i,p=t.length;p>l;l++){if(r.push(c=[]),h=t[l],e=h[0],e!=e.toUpperCase())switch(c[0]=e.toUpperCase(),c[0]){case"A":c[1]=h[1],c[2]=h[2],c[3]=h[3],c[4]=h[4],c[5]=h[5],c[6]=+h[6]+a,c[7]=+h[7]+o;break;case"V":c[1]=+h[1]+o;break;case"H":c[1]=+h[1]+a;break;case"R":for(var f=[a,o].concat(h.slice(1)),I=2,_=f.length;_>I;I++)f[I]=+f[I]+a,f[++I]=+f[I]+o;r.pop(),r=r.concat(d(f,u));break;case"O":r.pop(),f=y(a,o,h[1],h[2]),f.push(f[0]),r=r.concat(f);break;case"U":r.pop(),r=r.concat(y(a,o,h[1],h[2],h[3])),c=["U"].concat(r[r.length-1].slice(-2));break;case"M":s=+h[1]+a,n=+h[2]+o;default:for(I=1,_=h.length;_>I;I++)c[I]=+h[I]+(I%2?a:o)}else if("R"==e)f=[a,o].concat(h.slice(1)),r.pop(),r=r.concat(d(f,u)),c=["R"].concat(h.slice(-2));else if("O"==e)r.pop(),f=y(a,o,h[1],h[2]),f.push(f[0]),r=r.concat(f);else if("U"==e)r.pop(),r=r.concat(y(a,o,h[1],h[2],h[3])),c=["U"].concat(r[r.length-1].slice(-2));else for(var g=0,M=h.length;M>g;g++)c[g]=h[g];if(e=e.toUpperCase(),"O"!=e)switch(c[0]){case"Z":a=+s,o=+n;break;case"H":a=c[1];break;case"V":o=c[1];break;case"M":s=c[c.length-2],n=c[c.length-1];default:a=c[c.length-2],o=c[c.length-1]}}return r},_=function(t,e,r,a){return[t,e,r,a,r,a]},g=function(t,e,r,a,o,s){var n=1/3,i=2/3;return[n*t+i*r,n*e+i*a,n*o+i*r,n*s+i*a,o,s]},M=function(t,e,r,a,o,s,n,i,c,h){var u,l=120*Math.PI/180,p=Math.PI/180*(+o||0),f=[],m=function(t,e,r){var a=t*Math.cos(r)-e*Math.sin(r),o=t*Math.sin(r)+e*Math.cos(r);return{x:a,y:o}};if(h)w=h[0],k=h[1],v=h[2],x=h[3];else{u=m(t,e,-p),t=u.x,e=u.y,u=m(i,c,-p),i=u.x,c=u.y;var d=(Math.cos(Math.PI/180*o),Math.sin(Math.PI/180*o),(t-i)/2),y=(e-c)/2,I=d*d/(r*r)+y*y/(a*a);I>1&&(I=Math.sqrt(I),r=I*r,a=I*a);var _=r*r,g=a*a,b=(s==n?-1:1)*Math.sqrt(Math.abs((_*g-_*y*y-g*d*d)/(_*y*y+g*d*d))),v=b*r*y/a+(t+i)/2,x=b*-a*d/r+(e+c)/2,w=Math.asin(((e-x)/a).toFixed(9)),k=Math.asin(((c-x)/a).toFixed(9));w=v>t?Math.PI-w:w,k=v>i?Math.PI-k:k,0>w&&(w=2*Math.PI+w),0>k&&(k=2*Math.PI+k),n&&w>k&&(w-=2*Math.PI),!n&&k>w&&(k-=2*Math.PI)}var A=k-w;if(Math.abs(A)>l){var C=k,N=i,q=c;k=w+l*(n&&k>w?1:-1),i=v+r*Math.cos(k),c=x+a*Math.sin(k),f=M(i,c,r,a,o,0,n,N,q,[k,C,v,x])}A=k-w;var P=Math.cos(w),F=Math.sin(w),E=Math.cos(k),S=Math.sin(k),G=Math.tan(A/4),D=4/3*r*G,L=4/3*a*G,T=[t,e],V=[t+D*F,e-L*P],R=[i+D*S,c-L*E],U=[i,c];if(V[0]=2*T[0]-V[0],V[1]=2*T[1]-V[1],h)return[V,R,U].concat(f);f=[V,R,U].concat(f).join().split(",");for(var z=[],O=0,j=f.length;j>O;O++)z[O]=O%2?m(f[O-1],f[O],p).y:m(f[O],f[O+1],p).x;return z},b=function(t,e){for(var r=I(t),a=e&&I(e),o={x:0,y:0,bx:0,by:0,X:0,Y:0,qx:null,qy:null},s={x:0,y:0,bx:0,by:0,X:0,Y:0,qx:null,qy:null},n=(function(t,e,r){var a,o;if(!t)return["C",e.x,e.y,e.x,e.y,e.x,e.y];switch(!(t[0]in{T:1,Q:1})&&(e.qx=e.qy=null),t[0]){case"M":e.X=t[1],e.Y=t[2];break;case"A":t=["C"].concat(M.apply(0,[e.x,e.y].concat(t.slice(1))));break;case"S":"C"==r||"S"==r?(a=2*e.x-e.bx,o=2*e.y-e.by):(a=e.x,o=e.y),t=["C",a,o].concat(t.slice(1));break;case"T":"Q"==r||"T"==r?(e.qx=2*e.x-e.qx,e.qy=2*e.y-e.qy):(e.qx=e.x,e.qy=e.y),t=["C"].concat(g(e.x,e.y,e.qx,e.qy,t[1],t[2]));break;case"Q":e.qx=t[1],e.qy=t[2],t=["C"].concat(g(e.x,e.y,t[1],t[2],t[3],t[4]));break;case"L":t=["C"].concat(_(e.x,e.y,t[1],t[2]));break;case"H":t=["C"].concat(_(e.x,e.y,t[1],e.y));break;case"V":t=["C"].concat(_(e.x,e.y,e.x,t[1]));break;case"Z":t=["C"].concat(_(e.x,e.y,e.X,e.Y))}return t}),i=function(t,e){if(t[e].length>7){t[e].shift();for(var o=t[e];o.length;)h[e]="A",a&&(u[e]="A"),t.splice(e++,0,["C"].concat(o.splice(0,6)));t.splice(e,1),m=Math.max(r.length,a&&a.length||0)}},c=function(t,e,o,s,n){t&&e&&"M"==t[n][0]&&"M"!=e[n][0]&&(e.splice(n,0,["M",s.x,s.y]),o.bx=0,o.by=0,o.x=t[n][1],o.y=t[n][2],m=Math.max(r.length,a&&a.length||0))},h=[],u=[],l="",p="",f=0,m=Math.max(r.length,a&&a.length||0);m>f;f++){r[f]&&(l=r[f][0]),"C"!=l&&(h[f]=l,f&&(p=h[f-1])),r[f]=n(r[f],o,p),"A"!=h[f]&&"C"==l&&(h[f]="C"),i(r,f),a&&(a[f]&&(l=a[f][0]),"C"!=l&&(u[f]=l,f&&(p=u[f-1])),a[f]=n(a[f],s,p),"A"!=u[f]&&"C"==l&&(u[f]="C"),i(a,f)),c(r,a,o,s,f),c(a,r,s,o,f);var d=r[f],y=a&&a[f],b=d.length,v=a&&y.length;o.x=d[b-2],o.y=d[b-1],o.bx=parseFloat(d[b-4])||o.x,o.by=parseFloat(d[b-3])||o.y,s.bx=a&&(parseFloat(y[v-4])||s.x),s.by=a&&(parseFloat(y[v-3])||s.y),s.x=a&&y[v-2],s.y=a&&y[v-1]}return a?[r,a]:r},v=function(t,e,r,a){return null==t&&(t=e=r=a=0),null==e&&(e=t.y,r=t.width,a=t.height,t=t.x),{x:t,y:e,w:r,h:a,cx:t+r/2,cy:e+a/2}},x=function(t,e,r,a,o,s,n,i){for(var c,h,u,l,p,f,m,d,y=[],I=[[],[]],_=0;2>_;++_)if(0==_?(h=6*t-12*r+6*o,c=-3*t+9*r-9*o+3*n,u=3*r-3*t):(h=6*e-12*a+6*s,c=-3*e+9*a-9*s+3*i,u=3*a-3*e),Math.abs(c)<1e-12){if(Math.abs(h)<1e-12)continue;l=-u/h,l>0&&1>l&&y.push(l)}else m=h*h-4*u*c,d=Math.sqrt(m),0>m||(p=(-h+d)/(2*c),p>0&&1>p&&y.push(p),f=(-h-d)/(2*c),f>0&&1>f&&y.push(f));for(var g,M=y.length,b=M;M--;)l=y[M],g=1-l,I[0][M]=g*g*g*t+3*g*g*l*r+3*g*l*l*o+l*l*l*n,I[1][M]=g*g*g*e+3*g*g*l*a+3*g*l*l*s+l*l*l*i;return I[0][b]=t,I[1][b]=e,I[0][b+1]=n,I[1][b+1]=i,I[0].length=I[1].length=b+2,{min:{x:Math.min.apply(0,I[0]),y:Math.min.apply(0,I[1])},max:{x:Math.max.apply(0,I[0]),y:Math.max.apply(0,I[1])}}},w=function(t){for(var e,r=0,a=0,o=[],s=[],n=0,i=t.length;i>n;n++)if(e=t[n],"M"==e[0])r=e[1],a=e[2],o.push(r),s.push(a);else{var c=x(r,a,e[1],e[2],e[3],e[4],e[5],e[6]);o=o.concat(c.min.x,c.max.x),s=s.concat(c.min.y,c.max.y),r=e[5],a=e[6]}var h=Math.min.apply(0,o),u=Math.min.apply(0,s),l=Math.max.apply(0,o),p=Math.max.apply(0,s),f=v(h,u,l-h,p-u);return f},k=/,?([a-z]),?/gi,A=function(t){return t.join(",").replace(k,"$1")},C={hs:1,rg:1},N="hasOwnProperty",q=/^\s*((#[a-f\d]{6})|(#[a-f\d]{3})|rgba?\(\s*([\d\.]+%?\s*,\s*[\d\.]+%?\s*,\s*[\d\.]+%?(?:\s*,\s*[\d\.]+%?)?)\s*\)|hsba?\(\s*([\d\.]+(?:deg|\xb0|%)?\s*,\s*[\d\.]+%?\s*,\s*[\d\.]+(?:%?\s*,\s*[\d\.]+)?%?)\s*\)|hsla?\(\s*([\d\.]+(?:deg|\xb0|%)?\s*,\s*[\d\.]+%?\s*,\s*[\d\.]+(?:%?\s*,\s*[\d\.]+)?%?)\s*\))\s*$/i,P=new RegExp("["+l+"]*,["+l+"]*"),F=function(t){var e=Math.round;return"rgba("+[e(t.r),e(t.g),e(t.b),+t.opacity.toFixed(2)]+")"},E=function(t){var e=window.document.getElementsByTagName("head")[0]||window.document.getElementsByTagName("svg")[0],r="rgb(255, 0, 0)";return E=function(t){if("red"==t.toLowerCase())return r;e.style.color=r,e.style.color=t;var a=window.document.defaultView.getComputedStyle(e,"").getPropertyValue("color");return a==r?null:a},E(t)},S=function(t,e,r,a){t=Math.round(255*t),e=Math.round(255*e),r=Math.round(255*r);var o={r:t,g:e,b:r,opacity:isFinite(a)?a:1};return o},G=function(t,e,r,a){typeof t==typeof{}&&"h"in t&&"s"in t&&"b"in t&&(r=t.b,e=t.s,t=t.h,a=t.o),t*=360;var o,s,n,i,c;return t=t%360/60,c=r*e,i=c*(1-Math.abs(t%2-1)),o=s=n=r-c,t=~~t,o+=[c,i,0,0,i,c][t],s+=[i,c,c,i,0,0][t],n+=[0,0,i,c,c,i][t],S(o,s,n,a)},D=function(t,e,r,a){typeof t==typeof{}&&"h"in t&&"s"in t&&"l"in t&&(r=t.l,e=t.s,t=t.h),(t>1||e>1||r>1)&&(t/=360,e/=100,r/=100),t*=360;var o,s,n,i,c;return t=t%360/60,c=2*e*(.5>r?r:1-r),i=c*(1-Math.abs(t%2-1)),o=s=n=r-c/2,t=~~t,o+=[c,i,0,0,i,c][t],s+=[i,c,c,i,0,0][t],n+=[0,0,i,c,c,i][t],S(o,s,n,a)},L=function(t){if(!t||(t=String(t)).indexOf("-")+1)return{r:-1,g:-1,b:-1,opacity:-1,error:1};if("none"==t)return{r:-1,g:-1,b:-1,opacity:-1};if(!(C[N](t.toLowerCase().substring(0,2))||"#"==t.charAt())&&(t=E(t)),!t)return{r:-1,g:-1,b:-1,opacity:-1,error:1};var e,r,a,o,s,n,i=t.match(q);return i?(i[2]&&(a=parseInt(i[2].substring(5),16),r=parseInt(i[2].substring(3,5),16),e=parseInt(i[2].substring(1,3),16)),i[3]&&(a=parseInt((s=i[3].charAt(3))+s,16),r=parseInt((s=i[3].charAt(2))+s,16),e=parseInt((s=i[3].charAt(1))+s,16)),i[4]&&(n=i[4].split(P),e=parseFloat(n[0]),"%"==n[0].slice(-1)&&(e*=2.55),r=parseFloat(n[1]),"%"==n[1].slice(-1)&&(r*=2.55),a=parseFloat(n[2]),"%"==n[2].slice(-1)&&(a*=2.55),"rgba"==i[1].toLowerCase().slice(0,4)&&(o=parseFloat(n[3])),n[3]&&"%"==n[3].slice(-1)&&(o/=100)),i[5]?(n=i[5].split(P),e=parseFloat(n[0]),"%"==n[0].slice(-1)&&(e/=100),r=parseFloat(n[1]),"%"==n[1].slice(-1)&&(r/=100),a=parseFloat(n[2]),"%"==n[2].slice(-1)&&(a/=100),("deg"==n[0].slice(-3)||"°"==n[0].slice(-1))&&(e/=360),"hsba"==i[1].toLowerCase().slice(0,4)&&(o=parseFloat(n[3])),n[3]&&"%"==n[3].slice(-1)&&(o/=100),G(e,r,a,o)):i[6]?(n=i[6].split(P),e=parseFloat(n[0]),"%"==n[0].slice(-1)&&(e/=100),r=parseFloat(n[1]),"%"==n[1].slice(-1)&&(r/=100),a=parseFloat(n[2]),"%"==n[2].slice(-1)&&(a/=100),("deg"==n[0].slice(-3)||"°"==n[0].slice(-1))&&(e/=360),"hsla"==i[1].toLowerCase().slice(0,4)&&(o=parseFloat(n[3])),n[3]&&"%"==n[3].slice(-1)&&(o/=100),D(e,r,a,o)):(e=Math.min(Math.round(e),255),r=Math.min(Math.round(r),255),a=Math.min(Math.round(a),255),o=Math.min(Math.max(o,0),1),i={r:e,g:r,b:a},i.opacity=isFinite(o)?o:1,i)):{r:-1,g:-1,b:-1,opacity:-1,error:1}};i.prototype._init=function(){if("SVG"!==this._svgDoc.nodeName.toUpperCase()&&(this._svgDoc=this._svgDoc.getElementsByTagName("svg")[0]),this._svgDoc){var t,e,r,a,o,s,n,i,c="";for(t=this._svgDoc.childNodes.length-1;t>=0;t--){var h=this._svgDoc.childNodes[t];if("G"===h.nodeName.toUpperCase()&&(r=h.getAttribute("id"))){for(a=[],s=0,n=h.childNodes.length;n>s;s++){var u=h.childNodes[s];switch(o={path:"",attrs:{},style:{}},u.nodeName.toUpperCase()){case"PATH":o.path=u.getAttribute("d");break;case"CIRCLE":var l=1*u.getAttribute("cx"),p=1*u.getAttribute("cy"),f=1*u.getAttribute("r");o.path="M"+(l-f)+","+p+"a"+f+","+f+" 0 1,0 "+2*f+",0a"+f+","+f+" 0 1,0 -"+2*f+",0z";break;case"ELLIPSE":var l=1*u.getAttribute("cx"),p=1*u.getAttribute("cy"),m=1*u.getAttribute("rx"),d=1*u.getAttribute("ry");o.path="M"+(l-m)+","+p+"a"+m+","+d+" 0 1,0 "+2*m+",0a"+m+","+d+" 0 1,0 -"+2*m+",0z";break;case"RECT":var y=1*u.getAttribute("x"),I=1*u.getAttribute("y"),_=1*u.getAttribute("width"),g=1*u.getAttribute("height"),m=1*u.getAttribute("rx"),d=1*u.getAttribute("ry");o.path=m||d?"M"+(y+m)+","+I+"l"+(_-2*m)+",0a"+m+","+d+" 0 0,1 "+m+","+d+"l0,"+(g-2*d)+"a"+m+","+d+" 0 0,1 -"+m+","+d+"l"+(2*m-_)+",0a"+m+","+d+" 0 0,1 -"+m+",-"+d+"l0,"+(2*d-g)+"a"+m+","+d+" 0 0,1 "+m+",-"+d+"z":"M"+y+","+I+"l"+_+",0l0,"+g+"l-"+_+",0z";break;case"POLYGON":for(var M=u.getAttribute("points"),b=M.split(/\s+/),v="",x=0,e=b.length;e>x;x++)v+=(x&&"L"||"M")+b[x];o.path=v+"z";break;case"LINE":var w=1*u.getAttribute("x1"),k=1*u.getAttribute("y1"),A=1*u.getAttribute("x2"),C=1*u.getAttribute("y2");o.path="M"+w+","+k+"L"+A+","+C+"z"}if(""!=o.path){for(var x=0,N=u.attributes.length;N>x;x++){var q=u.attributes[x];if(q.specified){var P=q.name.toLowerCase();switch(P){case"fill":case"fill-opacity":case"opacity":case"stroke":case"stroke-opacity":case"stroke-width":o.attrs[P]=q.value}}}for(var F=0,E=u.style.length;E>F;F++){var S=u.style[F];switch(S){case"fill":case"fill-opacity":case"opacity":case"stroke":case"stroke-opacity":case"stroke-width":o.style[S]=u.style[S]}}a.push(o)}}a.length>0&&(i={id:r,items:a},this._icons[r]=i),this._morphG?this._svgDoc.removeChild(h):(c=r,this._morphG=document.createElementNS("http://www.w3.org/2000/svg","g"),this._svgDoc.replaceChild(this._morphG,h))}}var G=this._curIconId||c;""!==G&&(this._setupAnimation(G),this._updateAnimationProgress(1),this._animationEnd())}},i.prototype._setupAnimation=function(t){if(t&&this._icons[t]){this._toIconId=t,this._startTime=void 0;var a,o;for(this._fromIconItems=n(this._curIconItems),this._toIconItems=n(this._icons[t].items),a=0,o=this._morphNodes.length;o>a;a++){var s=this._morphNodes[a];s.fromIconItemIdx=a,s.toIconItemIdx=a}var i,c=Math.max(this._fromIconItems.length,this._toIconItems.length);for(a=0;c>a;a++)if(this._fromIconItems[a]||(this._toIconItems[a]?(i=w(b(this._toIconItems[a].path)),this._fromIconItems.push({path:"M"+i.cx+","+i.cy+"l0,0",attrs:{},style:{},trans:{rotate:[0,i.cx,i.cy]}})):this._fromIconItems.push({path:"M0,0l0,0",attrs:{},style:{},trans:{rotate:[0,0,0]}})),this._toIconItems[a]||(this._fromIconItems[a]?(i=w(b(this._fromIconItems[a].path)),this._toIconItems.push({path:"M"+i.cx+","+i.cy+"l0,0",attrs:{},style:{},trans:{rotate:[0,i.cx,i.cy]}})):this._toIconItems.push({path:"M0,0l0,0",attrs:{},style:{},trans:{rotate:[0,0,0]}})),!this._morphNodes[a]){var h=document.createElementNS("http://www.w3.org/2000/svg","path");this._morphG.appendChild(h),this._morphNodes.push({node:h,fromIconItemIdx:a,toIconItemIdx:a})}for(a=0;c>a;a++){var u=this._fromIconItems[a],l=this._toIconItems[a],p=b(this._fromIconItems[a].path,this._toIconItems[a].path);u.curve=p[0],l.curve=p[1];var f=r(this._fromIconItems[a].attrs,this._toIconItems[a].attrs);u.attrsNorm=f[0],l.attrsNorm=f[1],u.attrs=e(u.attrsNorm),l.attrs=e(l.attrsNorm);var m=r(this._fromIconItems[a].style,this._toIconItems[a].style);u.styleNorm=m[0],l.styleNorm=m[1],u.style=e(u.styleNorm),l.style=e(l.styleNorm),i=w(l.curve),l.trans={rotate:[0,i.cx,i.cy]};var d,y=this._rotation;switch("random"===y&&(y=Math.random()<.5?"counterclock":"clock"),y){case"none":u.trans.rotate&&(l.trans.rotate[0]=u.trans.rotate[0]);break;case"counterclock":u.trans.rotate?(l.trans.rotate[0]=u.trans.rotate[0]-360,d=-u.trans.rotate[0]%360,l.trans.rotate[0]+=180>d?d:d-360):l.trans.rotate[0]=-360;break;default:u.trans.rotate?(l.trans.rotate[0]=u.trans.rotate[0]+360,d=u.trans.rotate[0]%360,l.trans.rotate[0]+=180>d?-d:360-d):l.trans.rotate[0]=360}}this._curIconItems=n(this._fromIconItems)}},i.prototype._updateAnimationProgress=function(r){r=c[this._easing](r);var n,i,h,u;for(n=0,u=this._curIconItems.length;u>n;n++)this._curIconItems[n].curve=s(this._fromIconItems[n].curve,this._toIconItems[n].curve,r),this._curIconItems[n].path=A(this._curIconItems[n].curve),this._curIconItems[n].attrsNorm=t(this._fromIconItems[n].attrsNorm,this._toIconItems[n].attrsNorm,r),this._curIconItems[n].attrs=e(this._curIconItems[n].attrsNorm),this._curIconItems[n].styleNorm=t(this._fromIconItems[n].styleNorm,this._toIconItems[n].styleNorm,r),this._curIconItems[n].style=e(this._curIconItems[n].styleNorm),this._curIconItems[n].trans=a(this._fromIconItems[n].trans,this._toIconItems[n].trans,r),this._curIconItems[n].transStr=o(this._curIconItems[n].trans);for(n=0,u=this._morphNodes.length;u>n;n++){var l=this._morphNodes[n];l.node.setAttribute("d",this._curIconItems[n].path);var p=this._curIconItems[n].attrs;for(i in p)l.node.setAttribute(i,p[i]);var f=this._curIconItems[n].style;for(h in f)l.node.style[h]=f[h];l.node.setAttribute("transform",this._curIconItems[n].transStr)}},i.prototype._animationEnd=function(){for(var t=this._morphNodes.length-1;t>=0;t--){var e=this._morphNodes[t];this._icons[this._toIconId].items[t]?e.node.setAttribute("d",this._icons[this._toIconId].items[t].path):(e.node.parentNode.removeChild(e.node),this._morphNodes.splice(t,1))}this._curIconId=this._toIconId,this._toIconId="",this._callback()},i.prototype.to=function(t,e,r){if(t!==this._toIconId){if(e&&typeof e!=typeof{})throw new Error('SVGMorpheus.to() > "options" parameter must be an object');if(e=e||{},r&&"function"!=typeof r)throw new Error('SVGMorpheus.to() > "callback" parameter must be a function');u(this._rafid),this._duration=e.duration||this._defDuration,this._easing=e.easing||this._defEasing,this._rotation=e.rotation||this._defRotation,this._callback=r||this._defCallback,this._setupAnimation(t),this._rafid=h(this._fnTick)}},i.prototype.registerEasing=function(t,e){c[t]=e},"function"==typeof define&&define.amd?define(function(){return i}):"undefined"!=typeof module&&"undefined"!=typeof module.exports?module.exports=i:window.SVGMorpheus=i}();
 "use strict";angular.module("ngMdIcons",[]).directive("ngMdIcon",["ngMdIconService",function(h){var c=h.getShapes();return{restrict:"AE",link:function(v,a,z){var t,d,p,M=function(){if(void 0!==z.icon){t=z.icon;var v=t.match(/ic_(.*)_([0-9]+)px.svg/m);null!==v&&(t=v[1],d=v[2])}else t="help";void 0===c[t]&&(t="help"),void 0!==z.size?d=z.size:null!==d&&(d=24),p=void 0!==z.viewBox?z.viewBox:h.getViewBox(t)?h.getViewBox(t):"0 0 24 24",a.html('<svg xmlns="http://www.w3.org/2000/svg" viewBox="'+p+'" width="'+d+'" height="'+d+'">'+c[t]+"</svg>")},l=function(h){if(void 0===c[h]&&(h="help"),h!==t){a.html('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="'+d+'" height="'+d+'"><g id="'+h+'" style="display:none">'+c[h]+'</g><g id="'+t+'" style="display:none">'+c[t]+"</g></svg>");var v=JSON.parse(z.options||null);try{new SVGMorpheus(a.children()[0]).to(h,v)}catch(p){a.html('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="'+d+'" height="'+d+'">'+c[h]+"</svg>")}t=h}},H=function(h){h!==d&&(a.children()[0].setAttribute("width",h),a.children()[0].setAttribute("height",h),d=h)};M(),void 0!==z.icon&&z.$observe("icon",l),void 0!==z.size&&z.$observe("size",H)}}}]).provider("ngMdIconService",function(){function h(h,c){return s[h]=c,H}function c(h){return s=angular.extend(s,h),H}function v(h,c){return e[h]=c,H}function a(h){return e=angular.extend(e,h),H}function z(h){return s[h]}function t(){return s}function d(h){return e[h]}function p(){return e}function M(){return{amazon:'<path d="M13.23 10.56V10c-1.94 0-3.99.39-3.99 2.67 0 1.16.61 1.95 1.63 1.95.76 0 1.43-.47 1.86-1.22.52-.93.5-1.8.5-2.84m2.7 6.53c-.18.16-.43.17-.63.06-.89-.74-1.05-1.08-1.54-1.79-1.47 1.5-2.51 1.95-4.42 1.95-2.25 0-4.01-1.39-4.01-4.17 0-2.18 1.17-3.64 2.86-4.38 1.46-.64 3.49-.76 5.04-.93V7.5c0-.66.05-1.41-.33-1.96-.32-.49-.95-.7-1.5-.7-1.02 0-1.93.53-2.15 1.61-.05.24-.25.48-.47.49l-2.6-.28c-.22-.05-.46-.22-.4-.56.6-3.15 3.45-4.1 6-4.1 1.3 0 3 .35 4.03 1.33C17.11 4.55 17 6.18 17 7.95v4.17c0 1.25.5 1.81 1 2.48.17.25.21.54 0 .71l-2.06 1.78h-.01"/><path d="M20.16 19.54C18 21.14 14.82 22 12.1 22c-3.81 0-7.25-1.41-9.85-3.76-.2-.18-.02-.43.25-.29 2.78 1.63 6.25 2.61 9.83 2.61 2.41 0 5.07-.5 7.51-1.53.37-.16.66.24.32.51"/><path d="M21.07 18.5c-.28-.36-1.85-.17-2.57-.08-.19.02-.22-.16-.03-.3 1.24-.88 3.29-.62 3.53-.33.24.3-.07 2.35-1.24 3.32-.18.16-.35.07-.26-.11.26-.67.85-2.14.57-2.5z"/>',apple:'<path d="M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83"/>',"facebook-box":'<path d="M19 4v3h-2a1 1 0 0 0-1 1v2h3v3h-3v7h-3v-7h-2v-3h2V7.5C13 5.56 14.57 4 16.5 4M20 2H4a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V4c0-1.11-.9-2-2-2z"/>',"facebook-messenger":'<path d="M12 2C6.5 2 2 6.14 2 11.25c0 2.88 1.42 5.45 3.65 7.15l.06 3.6 3.45-1.88-.03-.01c.91.25 1.87.39 2.87.39 5.5 0 10-4.14 10-9.25S17.5 2 12 2m1.03 12.41l-2.49-2.63-5.04 2.63 5.38-5.63 2.58 2.47 4.85-2.47-5.28 5.63z"/>',facebook:'<path d="M17 2v4h-2c-.69 0-1 .81-1 1.5V10h3v4h-3v8h-4v-8H7v-4h3V6a4 4 0 0 1 4-4h3z"/>',"github-box":'<path d="M4 2h16a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2h-5.15c-.35-.08-.35-.76-.35-1v-2.74c0-.93-.33-1.54-.69-1.85 2.23-.25 4.57-1.09 4.57-4.91 0-1.11-.38-2-1.03-2.71.1-.25.45-1.29-.1-2.64 0 0-.84-.27-2.75 1.02-.79-.22-1.65-.33-2.5-.33-.85 0-1.71.11-2.5.33-1.91-1.29-2.75-1.02-2.75-1.02-.55 1.35-.2 2.39-.1 2.64-.65.71-1.03 1.6-1.03 2.71 0 3.81 2.33 4.67 4.55 4.92-.28.25-.54.69-.63 1.34-.57.24-2.04.69-2.91-.83 0 0-.53-.96-1.53-1.03 0 0-.98-.02-.1.6 0 0 .68.31 1.14 1.47 0 0 .59 1.94 3.36 1.34V21c0 .24 0 .92-.36 1H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z"/>',"github-circle":'<path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2z"/>',"google-plus-box":'<path d="M20 2H4a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V4c0-1.11-.9-2-2-2M9.07 19.2C6.27 19.2 5 17.64 5 16.18c0-.45.14-1.59 1.5-2.38.75-.47 1.83-.8 3.12-.91-.19-.25-.34-.55-.34-.99 0-.15.02-.31.06-.46h-.39C7 11.44 5.8 9.89 5.8 8.39c0-1.73 1.29-3.59 4.11-3.59h4.22l-.34.34-.71.71-.08.06h-.7c.41.42.9 1.09.9 2.16 0 1.4-.74 2.09-1.56 2.73-.14.12-.42.38-.42.7 0 .32.24.5.39.64.13.11.29.22.47.36.81.55 1.92 1.33 1.92 2.86 0 1.77-1.29 3.84-4.93 3.84M19 12h-2v2h-1v-2h-2v-1h2V9h1v2h2"/><path d="M10.57 13.81c-.11-.01-.19-.01-.32-.01h-.02c-.26 0-1.15.05-1.82.27-.64.24-1.41.72-1.41 1.7C7 16.85 8.04 18 9.96 18c1.54 0 2.44-1 2.44-2 0-.75-.46-1.21-1.83-2.19"/><path d="M11.2 8.87c0-1.02-.63-3.02-2.08-3.02-.62 0-1.32.44-1.32 1.65 0 1.2.62 2.95 1.97 2.95.06 0 1.43-.01 1.43-1.58z"/>',"google-plus":'<path d="M13.3 13.45l-1.08-.85c-.36-.3-.82-.69-.82-1.42s.55-1.29.97-1.62c1.31-1.02 2.57-2.1 2.57-4.34 0-2.07-1.27-3.26-2.04-3.92h1.75L15.9.05H9.67c-4.36 0-6.6 2.71-6.6 5.72 0 2.33 1.79 4.83 4.98 4.83h.8c-.13.35-.35.84-.35 1.3 0 1.01.42 1.43.92 2-1.42.1-4.01.43-5.92 1.6-1.86 1.1-2.3 2.63-2.3 3.75 0 2.3 2.06 4.5 6.57 4.5 5.35 0 8.03-2.96 8.03-5.88 0-2.16-1.13-3.27-2.5-4.42M5.65 4.31c0-2.21 1.31-3.21 2.69-3.21 2.66 0 4.01 3.45 4.01 5.53 0 2.57-2.07 3.07-2.89 3.07C7 9.7 5.65 6.64 5.65 4.31M9.3 22.3c-3.33 0-5.45-1.49-5.45-3.7 0-2.2 1.96-2.91 2.65-3.16 1.3-.44 3-.49 3.27-.49.3 0 .46 0 .73.02 2.34 1.69 3.35 2.44 3.35 4.03 0 1.77-1.82 3.3-4.55 3.3"/><path d="M21 10V7h-2v3h-3v2h3v3h2v-3h3v-2h-3z"/>',hangouts:'<path d="M15 11l-1 2h-1.5l1-2H12V8h3m-4 3l-1 2H8.5l1-2H8V8h3m.5-6A8.5 8.5 0 0 0 3 10.5a8.5 8.5 0 0 0 8.5 8.5h.5v3.5c4.86-2.35 8-7.5 8-12C20 5.8 16.19 2 11.5 2z"/>',"linkedin-box":'<path d="M19 19h-3v-5.3a1.5 1.5 0 0 0-1.5-1.5 1.5 1.5 0 0 0-1.5 1.5V19h-3v-9h3v1.2c.5-.84 1.59-1.4 2.5-1.4a3.5 3.5 0 0 1 3.5 3.5M6.5 8.31c-1 0-1.81-.81-1.81-1.81A1.81 1.81 0 0 1 6.5 4.69c1 0 1.81.81 1.81 1.81A1.81 1.81 0 0 1 6.5 8.31M8 19H5v-9h3m12-8H4c-1.11 0-2 .89-2 2v16a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V4c0-1.11-.9-2-2-2z"/>',linkedin:'<path d="M21 21h-4v-6.75c0-1.06-1.19-1.94-2.25-1.94S13 13.19 13 14.25V21H9V9h4v2c.66-1.07 2.36-1.76 3.5-1.76 2.5 0 4.5 2.04 4.5 4.51V21"/><path d="M7 21H3V9h4v12"/><path d="M5 3a2 2 0 0 1 2 2 2 2 0 0 1-2 2 2 2 0 0 1-2-2 2 2 0 0 1 2-2z"/>',login:'<path d="M10 17.25V14H3v-4h7V6.75L15.25 12 10 17.25"/><path d="M8 2h9a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2v-4h2v4h9V4H8v4H6V4a2 2 0 0 1 2-2z"/>',logout:'<path d="M17 17.25V14h-7v-4h7V6.75L22.25 12 17 17.25"/><path d="M13 2a2 2 0 0 1 2 2v4h-2V4H4v16h9v-4h2v4a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9z"/>',office:'<path d="M3 18l4-1.25V7l7-2v14.5L3.5 18.25 14 22l6-1.25V3.5L13.95 2 3 5.75V18z"/>',twitter:'<path d="M22.46 6c-.77.35-1.6.58-2.46.69.88-.53 1.56-1.37 1.88-2.38-.83.5-1.75.85-2.72 1.05C18.37 4.5 17.26 4 16 4c-2.35 0-4.27 1.92-4.27 4.29 0 .34.04.67.11.98C8.28 9.09 5.11 7.38 3 4.79c-.37.63-.58 1.37-.58 2.15 0 1.49.75 2.81 1.91 3.56-.71 0-1.37-.2-1.95-.5v.03c0 2.08 1.48 3.82 3.44 4.21-.36.1-.74.15-1.13.15-.27 0-.54-.03-.8-.08.54 1.69 2.11 2.95 4 2.98-1.46 1.16-3.31 1.84-5.33 1.84-.34 0-.68-.02-1.02-.06C3.44 20.29 5.7 21 8.12 21 16 21 20.33 14.46 20.33 8.79c0-.19 0-.37-.01-.56.84-.6 1.56-1.36 2.14-2.23z"/>',whatsapp:'<path d="M16.75 13.96c.25.13.41.2.46.3.06.11.04.61-.21 1.18-.2.56-1.24 1.1-1.7 1.12-.46.02-.47.36-2.96-.73-2.49-1.09-3.99-3.75-4.11-3.92-.12-.17-.96-1.38-.92-2.61.05-1.22.69-1.8.95-2.04.24-.26.51-.29.68-.26h.47c.15 0 .36-.06.55.45l.69 1.87c.06.13.1.28.01.44l-.27.41-.39.42c-.12.12-.26.25-.12.5.12.26.62 1.09 1.32 1.78.91.88 1.71 1.17 1.95 1.3.24.14.39.12.54-.04l.81-.94c.19-.25.35-.19.58-.11l1.67.88"/><path d="M12 4a8 8 0 0 0-8 8c0 1.72.54 3.31 1.46 4.61L4.5 19.5l2.89-.96C8.69 19.46 10.28 20 12 20a8 8 0 0 0 8-8 8 8 0 0 0-8-8zm0-2a10 10 0 0 1 10 10 10 10 0 0 1-10 10c-1.97 0-3.8-.57-5.35-1.55L2 22l1.55-4.65C2.57 15.8 2 13.97 2 12A10 10 0 0 1 12 2"/>',windows:'<path d="M3 12V6.75l6-1.32v6.48L3 12"/><path d="M20 3v8.75l-10 .15V5.21L20 3"/><path d="M3 13l6 .09v6.81l-6-1.15V13"/><path d="M20 13.25V22l-10-1.91V13.1l10 .15z"/>',signal_wifi_0_bar:'<path fill-opacity=".3" d="M12.01 21.49L23.64 7c-.45-.34-4.93-4-11.64-4C5.28 3 .81 6.66.36 7l11.63 14.49.01.01.01-.01z"/>',signal_wifi_1_bar:'<path fill-opacity=".3" d="M12.01 21.49L23.64 7c-.45-.34-4.93-4-11.64-4C5.28 3 .81 6.66.36 7l11.63 14.49.01.01.01-.01z"/><path d="M6.67 14.86L12 21.49v.01l.01-.01 5.33-6.63C17.06 14.65 15.03 13 12 13s-5.06 1.65-5.33 1.86z"/>',signal_wifi_2_bar:'<path fill-opacity=".3" d="M12.01 21.49L23.64 7c-.45-.34-4.93-4-11.64-4C5.28 3 .81 6.66.36 7l11.63 14.49.01.01.01-.01z"/><path d="M4.79 12.52l7.2 8.98H12l.01-.01 7.2-8.98C18.85 12.24 16.1 10 12 10s-6.85 2.24-7.21 2.52z"/>',signal_wifi_3_bar:'<path fill-opacity=".3" d="M12.01 21.49L23.64 7c-.45-.34-4.93-4-11.64-4C5.28 3 .81 6.66.36 7l11.63 14.49.01.01.01-.01z"/><path d="M3.53 10.95l8.46 10.54.01.01.01-.01 8.46-10.54C20.04 10.62 16.81 8 12 8c-4.81 0-8.04 2.62-8.47 2.95z"/>',signal_cellular_connected_no_internet_0_bar:'<path fill-opacity=".3" d="M22 8V2L2 22h16V8z"/><path d="M20 22h2v-2h-2v2zm0-12v8h2v-8h-2z"/>',signal_cellular_connected_no_internet_1_bar:'<path fill-opacity=".3" d="M22 8V2L2 22h16V8z"/><path d="M20 10v8h2v-8h-2zm-8 12V12L2 22h10zm8 0h2v-2h-2v2z"/>',signal_cellular_connected_no_internet_2_bar:'<path fill-opacity=".3" d="M22 8V2L2 22h16V8z"/><path d="M14 22V10L2 22h12zm6-12v8h2v-8h-2zm0 12h2v-2h-2v2z"/>',signal_cellular_connected_no_internet_3_bar:'<path fill-opacity=".3" d="M22 8V2L2 22h16V8z"/><path d="M17 22V7L2 22h15zm3-12v8h2v-8h-2zm0 12h2v-2h-2v2z"/>',signal_cellular_0_bar:'<path fill-opacity=".3" d="M2 22h20V2z"/>',signal_cellular_1_bar:'<path fill-opacity=".3" d="M2 22h20V2z"/><path d="M12 12L2 22h10z"/>',signal_cellular_2_bar:'<path fill-opacity=".3" d="M2 22h20V2z"/><path d="M14 10L2 22h12z"/>',signal_cellular_3_bar:'<path fill-opacity=".3" d="M2 22h20V2z"/><path d="M17 7L2 22h15z"/>',now_wallpaper:'<path d="M4 4h7V2H4c-1.1 0-2 .9-2 2v7h2V4z"/><path d="M10 13l-4 5h12l-3-4-2.03 2.71L10 13z"/><path d="M17 8.5c0-.83-.67-1.5-1.5-1.5S14 7.67 14 8.5s.67 1.5 1.5 1.5S17 9.33 17 8.5z"/><path d="M20 2h-7v2h7v7h2V4c0-1.1-.9-2-2-2z"/><path d="M20 20h-7v2h7c1.1 0 2-.9 2-2v-7h-2v7z"/><path d="M4 13H2v7c0 1.1.9 2 2 2h7v-2H4v-7z"/>',now_widgets:'<path d="M13 13v8h8v-8h-8z"/><path d="M3 21h8v-8H3v8z"/><path d="M3 3v8h8V3H3z"/><path d="M16.66 1.69L11 7.34 16.66 13l5.66-5.66-5.66-5.65z"/>',battery_20:'<path d="M7 17v3.67C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V17H7z"/><path fill-opacity=".3" d="M17 5.33C17 4.6 16.4 4 15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33V17h10V5.33z"/>',battery_30:'<path fill-opacity=".3" d="M17 5.33C17 4.6 16.4 4 15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33V15h10V5.33z"/><path d="M7 15v5.67C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V15H7z"/>',battery_50:'<path fill-opacity=".3" d="M17 5.33C17 4.6 16.4 4 15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33V13h10V5.33z"/><path d="M7 13v7.67C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V13H7z"/>',battery_60:'<path fill-opacity=".3" d="M17 5.33C17 4.6 16.4 4 15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33V11h10V5.33z"/><path d="M7 11v9.67C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V11H7z"/>',battery_80:'<path fill-opacity=".3" d="M17 5.33C17 4.6 16.4 4 15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33V9h10V5.33z"/><path d="M7 9v11.67C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V9H7z"/>',battery_90:'<path fill-opacity=".3" d="M17 5.33C17 4.6 16.4 4 15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33V8h10V5.33z"/><path d="M7 8v12.67C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V8H7z"/>',battery_alert:'<path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4zM13 18h-2v-2h2v2zm0-4h-2V9h2v5z"/>',battery_charging_20:'<path d="M11 20v-3H7v3.67C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V17h-4.4L11 20z"/><path fill-opacity=".3" d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33V17h4v-2.5H9L13 7v5.5h2L12.6 17H17V5.33C17 4.6 16.4 4 15.67 4z"/>',battery_charging_30:'<path fill-opacity=".3" d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v9.17h2L13 7v5.5h2l-1.07 2H17V5.33C17 4.6 16.4 4 15.67 4z"/><path d="M11 20v-5.5H7v6.17C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V14.5h-3.07L11 20z"/>',battery_charging_50:'<path d="M14.47 13.5L11 20v-5.5H9l.53-1H7v7.17C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V13.5h-2.53z"/><path fill-opacity=".3" d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v8.17h2.53L13 7v5.5h2l-.53 1H17V5.33C17 4.6 16.4 4 15.67 4z"/>',battery_charging_60:'<path fill-opacity=".3" d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33V11h3.87L13 7v4h4V5.33C17 4.6 16.4 4 15.67 4z"/><path d="M13 12.5h2L11 20v-5.5H9l1.87-3.5H7v9.67C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V11h-4v1.5z"/>',battery_charging_80:'<path fill-opacity=".3" d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33V9h4.93L13 7v2h4V5.33C17 4.6 16.4 4 15.67 4z"/><path d="M13 12.5h2L11 20v-5.5H9L11.93 9H7v11.67C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V9h-4v3.5z"/>',battery_charging_90:'<path fill-opacity=".3" d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33V8h5.47L13 7v1h4V5.33C17 4.6 16.4 4 15.67 4z"/><path d="M13 12.5h2L11 20v-5.5H9L12.47 8H7v12.67C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V8h-4v4.5z"/>',account_child:'<circle cx="12" cy="13.49" r="1.5"/><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 2.5c1.24 0 2.25 1.01 2.25 2.25S13.24 9 12 9 9.75 7.99 9.75 6.75 10.76 4.5 12 4.5zm5 10.56v2.5c-.45.41-.96.77-1.5 1.05v-.68c0-.34-.17-.65-.46-.92-.65-.62-1.89-1.02-3.04-1.02-.96 0-1.96.28-2.65.73l-.17.12-.21.17c.78.47 1.63.72 2.54.82l1.33.15c.37.04.66.36.66.75 0 .29-.16.53-.4.66-.28.15-.64.09-.95.09-.35 0-.69-.01-1.03-.05-.5-.06-.99-.17-1.46-.33-.49-.16-.97-.38-1.42-.64-.22-.13-.44-.27-.65-.43l-.31-.24c-.04-.02-.28-.18-.28-.23v-4.28c0-1.58 2.63-2.78 5-2.78s5 1.2 5 2.78v1.78z"/>',"3d_rotation":'<path d="M7.52 21.48C4.25 19.94 1.91 16.76 1.55 13H.05C.56 19.16 5.71 24 12 24l.66-.03-3.81-3.81-1.33 1.32z"/><path d="M16.57 12.2c0 .42-.05.79-.14 1.13-.1.33-.24.62-.43.85-.19.23-.43.41-.71.53-.29.12-.62.18-.99.18h-.91V9.12h.97c.72 0 1.27.23 1.64.69.38.46.57 1.12.57 1.99v.4zm.39-3.16c-.32-.33-.7-.59-1.14-.77-.43-.18-.92-.27-1.46-.27H12v8h2.3c.55 0 1.06-.09 1.51-.27.45-.18.84-.43 1.16-.76.32-.33.57-.73.74-1.19.17-.47.26-.99.26-1.57v-.4c0-.58-.09-1.1-.26-1.57-.18-.47-.43-.87-.75-1.2zm-8.55 5.92c-.19 0-.37-.03-.52-.08-.16-.06-.29-.13-.4-.24-.11-.1-.2-.22-.26-.37-.06-.14-.09-.3-.09-.47h-1.3c0 .36.07.68.21.95.14.27.33.5.56.69.24.18.51.32.82.41.3.1.62.15.96.15.37 0 .72-.05 1.03-.15.32-.1.6-.25.83-.44.23-.19.42-.43.55-.72.13-.29.2-.61.2-.97 0-.19-.02-.38-.07-.56-.05-.18-.12-.35-.23-.51-.1-.16-.24-.3-.4-.43-.17-.13-.37-.23-.61-.31.2-.09.37-.2.52-.33.15-.13.27-.27.37-.42.1-.15.17-.3.22-.46.05-.16.07-.32.07-.48 0-.36-.06-.68-.18-.96-.12-.28-.29-.51-.51-.69-.2-.19-.47-.33-.77-.43C9.1 8.05 8.76 8 8.39 8c-.36 0-.69.05-1 .16-.3.11-.57.26-.79.45-.21.19-.38.41-.51.67-.12.26-.18.54-.18.85h1.3c0-.17.03-.32.09-.45s.14-.25.25-.34c.11-.09.23-.17.38-.22.15-.05.3-.08.48-.08.4 0 .7.1.89.31.19.2.29.49.29.86 0 .18-.03.34-.08.49-.05.15-.14.27-.25.37-.11.1-.25.18-.41.24-.16.06-.36.09-.58.09H7.5v1.03h.77c.22 0 .42.02.6.07s.33.13.45.23c.12.11.22.24.29.4.07.16.1.35.1.57 0 .41-.12.72-.35.93-.23.23-.55.33-.95.33z"/><path d="M12 0l-.66.03 3.81 3.81 1.33-1.33c3.27 1.55 5.61 4.72 5.96 8.48h1.5C23.44 4.84 18.29 0 12 0z"/>',accessibility:'<path d="M12 2c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2z"/><path d="M21 9h-6v13h-2v-6h-2v6H9V9H3V7h18v2z"/>',accessible:'<circle cx="12" cy="4" r="2"/><path d="M19 13v-2c-1.54.02-3.09-.75-4.07-1.83l-1.29-1.43c-.17-.19-.38-.34-.61-.45-.01 0-.01-.01-.02-.01H13c-.35-.2-.75-.3-1.19-.26C10.76 7.11 10 8.04 10 9.09V15c0 1.1.9 2 2 2h5v5h2v-5.5c0-1.1-.9-2-2-2h-3v-3.45c1.29 1.07 3.25 1.94 5 1.95zm-6.17 5c-.41 1.16-1.52 2-2.83 2-1.66 0-3-1.34-3-3 0-1.31.84-2.41 2-2.83V12.1c-2.28.46-4 2.48-4 4.9 0 2.76 2.24 5 5 5 2.42 0 4.44-1.72 4.9-4h-2.07z"/>',account_balance:'<path d="M4 10v7h3v-7H4z"/><path d="M10 10v7h3v-7h-3z"/><path d="M2 22h19v-3H2v3z"/><path d="M16 10v7h3v-7h-3z"/><path d="M11.5 1L2 6v2h19V6l-9.5-5z"/>',account_balance_wallet:'<path d="M21 18v1c0 1.1-.9 2-2 2H5c-1.11 0-2-.9-2-2V5c0-1.1.89-2 2-2h14c1.1 0 2 .9 2 2v1h-9c-1.11 0-2 .9-2 2v8c0 1.1.89 2 2 2h9z"/><path d="M16 13.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM12 16h10V8H12v8z"/>',account_box:'<path d="M3 5v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2H5c-1.11 0-2 .9-2 2zm12 4c0 1.66-1.34 3-3 3s-3-1.34-3-3 1.34-3 3-3 3 1.34 3 3zm-9 8c0-2 4-3.1 6-3.1s6 1.1 6 3.1v1H6v-1z"/>',account_circle:'<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>',add_shopping_cart:'<path d="M11 9h2V6h3V4h-3V1h-2v3H8v2h3v3z"/><path d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2z"/><path d="M17 18c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z"/><path d="M7.17 14.75l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.86-7.01L19.42 4h-.01l-1.1 2-2.76 5H8.53l-.13-.27L6.16 6l-.95-2-.94-2H1v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.13 0-.25-.11-.25-.25z"/>',alarm:'<path d="M22 5.72l-4.6-3.86-1.29 1.53 4.6 3.86L22 5.72z"/><path d="M7.88 3.39L6.6 1.86 2 5.71l1.29 1.53 4.59-3.85z"/><path d="M12.5 8H11v6l4.75 2.85.75-1.23-4-2.37V8z"/><path d="M12 20c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7zm0-16c-4.97 0-9 4.03-9 9s4.02 9 9 9c4.97 0 9-4.03 9-9s-4.03-9-9-9z"/>',alarm_add:'<path d="M7.88 3.39L6.6 1.86 2 5.71l1.29 1.53 4.59-3.85z"/><path d="M22 5.72l-4.6-3.86-1.29 1.53 4.6 3.86L22 5.72z"/><path d="M12 20c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7zm0-16c-4.97 0-9 4.03-9 9s4.02 9 9 9c4.97 0 9-4.03 9-9s-4.03-9-9-9z"/><path d="M13 9h-2v3H8v2h3v3h2v-3h3v-2h-3V9z"/>',alarm_off:'<path d="M12 6c3.87 0 7 3.13 7 7 0 .84-.16 1.65-.43 2.4l1.52 1.52c.58-1.19.91-2.51.91-3.92a9 9 0 0 0-9-9c-1.41 0-2.73.33-3.92.91L9.6 6.43C10.35 6.16 11.16 6 12 6z"/><path d="M22 5.72l-4.6-3.86-1.29 1.53 4.6 3.86L22 5.72z"/><path d="M16.47 18.39C15.26 19.39 13.7 20 12 20c-3.87 0-7-3.13-7-7 0-1.7.61-3.26 1.61-4.47l9.86 9.86zM2.92 2.29L1.65 3.57 2.98 4.9l-1.11.93 1.42 1.42 1.11-.94.8.8A8.964 8.964 0 0 0 3 13c0 4.97 4.02 9 9 9 2.25 0 4.31-.83 5.89-2.2l2.2 2.2 1.27-1.27L3.89 3.27l-.97-.98z"/><path d="M8.02 3.28L6.6 1.86l-.86.71 1.42 1.42.86-.71z"/>',alarm_on:'<path d="M22 5.72l-4.6-3.86-1.29 1.53 4.6 3.86L22 5.72z"/><path d="M7.88 3.39L6.6 1.86 2 5.71l1.29 1.53 4.59-3.85z"/><path d="M12 20c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7zm0-16c-4.97 0-9 4.03-9 9s4.02 9 9 9c4.97 0 9-4.03 9-9s-4.03-9-9-9z"/><path d="M10.54 14.53L8.41 12.4l-1.06 1.06 3.18 3.18 6-6-1.06-1.06-4.93 4.95z"/>',all_out:'<path d="M16.21 4.16l4 4v-4z"/><path d="M20.21 16.16l-4 4h4z"/><path d="M8.21 20.16l-4-4v4z"/><path d="M4.21 8.16l4-4h-4z"/><path d="M16.06 16.01a5.438 5.438 0 0 1-7.7 0 5.438 5.438 0 0 1 0-7.7 5.438 5.438 0 0 1 7.7 0 5.438 5.438 0 0 1 0 7.7zm1.1-8.8a7.007 7.007 0 0 0-9.9 0 7.007 7.007 0 0 0 0 9.9 7.007 7.007 0 0 0 9.9 0c2.73-2.73 2.73-7.16 0-9.9z"/>',android:'<path d="M6 18c0 .55.45 1 1 1h1v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h2v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h1c.55 0 1-.45 1-1V8H6v10z"/><path d="M3.5 8C2.67 8 2 8.67 2 9.5v7c0 .83.67 1.5 1.5 1.5S5 17.33 5 16.5v-7C5 8.67 4.33 8 3.5 8z"/><path d="M20.5 8c-.83 0-1.5.67-1.5 1.5v7c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5v-7c0-.83-.67-1.5-1.5-1.5z"/><path d="M15 5h-1V4h1v1zm-5 0H9V4h1v1zm5.53-2.84l1.3-1.3c.2-.2.2-.51 0-.71-.2-.2-.51-.2-.71 0l-1.48 1.48C13.85 1.23 12.95 1 12 1c-.96 0-1.86.23-2.66.63L7.85.15c-.2-.2-.51-.2-.71 0-.2.2-.2.51 0 .71l1.31 1.31C6.97 3.26 6 5.01 6 7h12c0-1.99-.97-3.75-2.47-4.84z"/>',announcement:'<path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-7 9h-2V5h2v6zm0 4h-2v-2h2v2z"/>',aspect_ratio:'<path d="M19 12h-2v3h-3v2h5v-5z"/><path d="M7 9h3V7H5v5h2V9z"/><path d="M21 19.01H3V4.99h18v14.02zM21 3H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/>',assessment:'<path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>',assignment:'<path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>',assignment_ind:'<path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm0 4c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm6 12H6v-1.4c0-2 4-3.1 6-3.1s6 1.1 6 3.1V19z"/>',assignment_late:'<path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-6 15h-2v-2h2v2zm0-4h-2V8h2v6zm-1-9c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1z"/>',assignment_return:'<path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm4 12h-4v3l-5-5 5-5v3h4v4z"/>',assignment_returned:'<path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm0 15l-5-5h3V9h4v4h3l-5 5z"/>',assignment_turned_in:'<path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm-2 14l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/>',autorenew:'<path d="M12 6v3l4-4-4-4v3c-4.42 0-8 3.58-8 8 0 1.57.46 3.03 1.24 4.26L6.7 14.8c-.45-.83-.7-1.79-.7-2.8 0-3.31 2.69-6 6-6z"/><path d="M18.76 7.74L17.3 9.2c.44.84.7 1.79.7 2.8 0 3.31-2.69 6-6 6v-3l-4 4 4 4v-3c4.42 0 8-3.58 8-8 0-1.57-.46-3.03-1.24-4.26z"/>',backup:'<path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/>',book:'<path d="M18 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 4h5v8l-2.5-1.5L6 12V4z"/>',bookmark:'<path d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z"/>',bookmark_outline:'<path d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2zm0 15l-5-2.18L7 18V5h10v13z"/>',bug_report:'<path d="M20 8h-2.81c-.45-.78-1.07-1.45-1.82-1.96L17 4.41 15.59 3l-2.17 2.17C12.96 5.06 12.49 5 12 5c-.49 0-.96.06-1.41.17L8.41 3 7 4.41l1.62 1.63C7.88 6.55 7.26 7.22 6.81 8H4v2h2.09c-.05.33-.09.66-.09 1v1H4v2h2v1c0 .34.04.67.09 1H4v2h2.81c1.04 1.79 2.97 3 5.19 3s4.15-1.21 5.19-3H20v-2h-2.09c.05-.33.09-.66.09-1v-1h2v-2h-2v-1c0-.34-.04-.67-.09-1H20V8zm-6 8h-4v-2h4v2zm0-4h-4v-2h4v2z"/>',build:'<path d="M22.7 19l-9.1-9.1c.9-2.3.4-5-1.5-6.9-2-2-5-2.4-7.4-1.3L9 6 6 9 1.6 4.7C.4 7.1.9 10.1 2.9 12.1c1.9 1.9 4.6 2.4 6.9 1.5l9.1 9.1c.4.4 1 .4 1.4 0l2.3-2.3c.5-.4.5-1.1.1-1.4z"/>',cached:'<path d="M19 8l-4 4h3c0 3.31-2.69 6-6 6-1.01 0-1.97-.25-2.8-.7l-1.46 1.46C8.97 19.54 10.43 20 12 20c4.42 0 8-3.58 8-8h3l-4-4z"/><path d="M6 12c0-3.31 2.69-6 6-6 1.01 0 1.97.25 2.8.7l1.46-1.46C15.03 4.46 13.57 4 12 4c-4.42 0-8 3.58-8 8H1l4 4 4-4H6z"/>',camera_enhanced:'<path d="M9 3L7.17 5H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2h-3.17L15 3H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z"/> <path d="M12 17l1.25-2.75L16 13l-2.75-1.25L12 9l-1.25 2.75L8 13l2.75 1.25z"/>',card_giftcard:'<path d="M20 6h-2.18c.11-.31.18-.65.18-1 0-1.66-1.34-3-3-3-1.05 0-1.96.54-2.5 1.35l-.5.67-.5-.68C10.96 2.54 10.05 2 9 2 7.34 2 6 3.34 6 5c0 .35.07.69.18 1H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-5-2c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zM9 4c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm11 15H4v-2h16v2zm0-5H4V8h5.08L7 10.83 8.62 12 11 8.76l1-1.36 1 1.36L15.38 12 17 10.83 14.92 8H20v6z"/>',card_membership:'<path d="M20 2H4c-1.11 0-2 .89-2 2v11c0 1.11.89 2 2 2h4v5l4-2 4 2v-5h4c1.11 0 2-.89 2-2V4c0-1.11-.89-2-2-2zm0 13H4v-2h16v2zm0-5H4V4h16v6z"/>',card_travel:'<path d="M20 6h-3V4c0-1.11-.89-2-2-2H9c-1.11 0-2 .89-2 2v2H4c-1.11 0-2 .89-2 2v11c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zM9 4h6v2H9V4zm11 15H4v-2h16v2zm0-5H4V8h3v2h2V8h6v2h2V8h3v6z"/>',change_history:'<path d="M12 7.77L18.39 18H5.61L12 7.77M12 4L2 20h20L12 4z"/>',check_circle:'<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>',chrome_reader_mode:'<path d="M13 12h7v1.5h-7z"/><path d="M13 9.5h7V11h-7z"/><path d="M13 14.5h7V16h-7z"/><path d="M21 19h-9V6h9v13zm0-15H3c-1.1 0-2 .9-2 2v13c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2z"/>',"class":'<path d="M18 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 4h5v8l-2.5-1.5L6 12V4z"/>',code:'<path d="M9.4 16.6L4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4z"/><path d="M14.6 16.6l4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4z"/>',compare_arrows:'<path d="M9.01 14H2v2h7.01v3L13 15l-3.99-4v3z"/><path d="M14.99 13v-3H22V8h-7.01V5L11 9l3.99 4z"/>',copyright:'<path d="M10.08 10.86c.05-.33.16-.62.3-.87.14-.25.34-.46.59-.62.24-.15.54-.22.91-.23.23.01.44.05.63.13.2.09.38.21.52.36s.25.33.34.53c.09.2.13.42.14.64h1.79c-.02-.47-.11-.9-.28-1.29-.17-.39-.4-.73-.7-1.01-.3-.28-.66-.5-1.08-.66-.42-.16-.88-.23-1.39-.23-.65 0-1.22.11-1.7.34-.48.23-.88.53-1.2.92-.32.39-.56.84-.71 1.36-.15.52-.24 1.06-.24 1.64v.27c0 .58.08 1.12.23 1.64.15.52.39.97.71 1.35.32.38.72.69 1.2.91.48.22 1.05.34 1.7.34.47 0 .91-.08 1.32-.23.41-.15.77-.36 1.08-.63.31-.27.56-.58.74-.94.18-.36.29-.74.3-1.15h-1.79c-.01.21-.06.4-.15.58-.09.18-.21.33-.36.46s-.32.23-.52.3c-.19.07-.39.09-.6.1-.36-.01-.66-.08-.89-.23a1.75 1.75 0 0 1-.59-.62c-.14-.25-.25-.55-.3-.88a6.74 6.74 0 0 1-.08-1v-.27c0-.35.03-.68.08-1.01z"/><path d="M12 20c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-18C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/>',credit_card:'<path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/>',dashboard:'<path d="M3 13h8V3H3v10z"/><path d="M3 21h8v-6H3v6z"/><path d="M13 21h8V11h-8v10z"/><path d="M13 3v6h8V3h-8z"/>',date_range:'<path d="M9 11H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2zm2-7h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11z"/>',"delete":'<path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12z"/><path d="M19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>',delete_forever:'<path d="M8.46 11.88l1.41-1.41L12 12.59l2.12-2.12 1.41 1.41L13.41 14l2.12 2.12-1.41 1.41L12 15.41l-2.12 2.12-1.41-1.41L10.59 14l-2.13-2.12zM6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12z"/><path d="M15.5 4l-1-1h-5l-1 1H5v2h14V4z"/>',description:'<path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>',dns:'<path d="M7 19c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm13-6H4c-.55 0-1 .45-1 1v6c0 .55.45 1 1 1h16c.55 0 1-.45 1-1v-6c0-.55-.45-1-1-1z"/><path d="M7 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm13-6H4c-.55 0-1 .45-1 1v6c0 .55.45 1 1 1h16c.55 0 1-.45 1-1V4c0-.55-.45-1-1-1z"/>',done:'<path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>',done_all:'<path d="M18 7l-1.41-1.41-6.34 6.34 1.41 1.41L18 7z"/><path d="M22.24 5.59L11.66 16.17 7.48 12l-1.41 1.41L11.66 19l12-12-1.42-1.41z"/><path d="M.41 13.41L6 19l1.41-1.41L1.83 12 .41 13.41z"/>',donut_large:'<path d="M11 5.08V2c-5 .5-9 4.81-9 10s4 9.5 9 10v-3.08c-3-.48-6-3.4-6-6.92s3-6.44 6-6.92z"/><path d="M18.97 11H22c-.47-5-4-8.53-9-9v3.08C16 5.51 18.54 8 18.97 11z"/><path d="M13 18.92V22c5-.47 8.53-4 9-9h-3.03c-.43 3-2.97 5.49-5.97 5.92z"/>',donut_small:'<path d="M11 9.16V2c-5 .5-9 4.79-9 10s4 9.5 9 10v-7.16c-1-.41-2-1.52-2-2.84 0-1.32 1-2.43 2-2.84z"/><path d="M14.86 11H22c-.48-4.75-4-8.53-9-9v7.16c1 .3 1.52.98 1.86 1.84z"/><path d="M13 14.84V22c5-.47 8.52-4.25 9-9h-7.14c-.34.86-.86 1.54-1.86 1.84z"/>',eject:'<path d="M5 17h14v2H5z"/><path d="M12 5L5.33 15h13.34z"/>',euro_symbol:'<path d="M15 18.5c-2.51 0-4.68-1.42-5.76-3.5H15v-2H8.58c-.05-.33-.08-.66-.08-1s.03-.67.08-1H15V9H9.24C10.32 6.92 12.5 5.5 15 5.5c1.61 0 3.09.59 4.23 1.57L21 5.3C19.41 3.87 17.3 3 15 3c-3.92 0-7.24 2.51-8.48 6H3v2h3.06c-.04.33-.06.66-.06 1 0 .34.02.67.06 1H3v2h3.52c1.24 3.49 4.56 6 8.48 6 2.31 0 4.41-.87 6-2.3l-1.78-1.77c-1.13.98-2.6 1.57-4.22 1.57z"/>',event:'<path d="M17 12h-5v5h5v-5z"/><path d="M19 19H5V8h14v11zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2z"/>',event_seat:'<path d="M4 18v3h3v-3h10v3h3v-6H4z"/><path d="M19 10h3v3h-3z"/><path d="M2 10h3v3H2z"/><path d="M17 13H7V5c0-1.1.9-2 2-2h6c1.1 0 2 .9 2 2v8z"/>',exit_to_app:'<path d="M10.09 15.59L11.5 17l5-5-5-5-1.41 1.41L12.67 11H3v2h9.67l-2.58 2.59z"/><path d="M19 3H5c-1.11 0-2 .9-2 2v4h2V5h14v14H5v-4H3v4c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/>',explore:'<path d="M12 10.9c-.61 0-1.1.49-1.1 1.1 0 .61.49 1.1 1.1 1.1.61 0 1.1-.49 1.1-1.1 0-.61-.49-1.1-1.1-1.1z"/><path d="M14.19 14.19L6 18l3.81-8.19L18 6l-3.81 8.19zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/>',extension:'<path d="M20.5 11H19V7c0-1.1-.9-2-2-2h-4V3.5C13 2.12 11.88 1 10.5 1S8 2.12 8 3.5V5H4c-1.1 0-1.99.9-1.99 2v3.8H3.5c1.49 0 2.7 1.21 2.7 2.7s-1.21 2.7-2.7 2.7H2V20c0 1.1.9 2 2 2h3.8v-1.5c0-1.49 1.21-2.7 2.7-2.7 1.49 0 2.7 1.21 2.7 2.7V22H17c1.1 0 2-.9 2-2v-4h1.5c1.38 0 2.5-1.12 2.5-2.5S21.88 11 20.5 11z"/>',face:'<path d="M14.69 17.1c-.74.58-1.7.9-2.69.9s-1.95-.32-2.69-.9c-.22-.17-.53-.13-.7.09-.17.22-.13.53.09.7.91.72 2.09 1.11 3.3 1.11s2.39-.39 3.31-1.1c.22-.17.26-.48.09-.7-.17-.23-.49-.26-.71-.1z"/><path d="M19.96 14.82c-1.09 3.74-4.27 6.46-8.04 6.46-3.78 0-6.96-2.72-8.04-6.47-1.19-.11-2.13-1.18-2.13-2.52 0-1.27.85-2.31 1.97-2.5 2.09-1.46 3.8-3.49 4.09-5.05v-.01c1.35 2.63 6.3 5.19 11.83 5.06l.3-.03c1.28 0 2.31 1.14 2.31 2.54 0 1.38-1.02 2.51-2.29 2.52zM12 0C5.37 0 0 5.37 0 12s5.37 12 12 12 12-5.37 12-12S18.63 0 12 0z"/><path d="M16.5 12.5c0 .552-.448 1-1 1s-1-.448-1-1 .448-1 1-1 1 .448 1 1zm-7 0c0 .552-.448 1-1 1s-1-.448-1-1 .448-1 1-1 1 .448 1 1z"/>',favorite:'<path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>',favorite_border:'<path d="M16.5 3c-1.74 0-3.41.81-4.5 2.09C10.91 3.81 9.24 3 7.5 3 4.42 3 2 5.42 2 8.5c0 3.78 3.4 6.86 8.55 11.54L12 21.35l1.45-1.32C18.6 15.36 22 12.28 22 8.5 22 5.42 19.58 3 16.5 3zm-4.4 15.55l-.1.1-.1-.1C7.14 14.24 4 11.39 4 8.5 4 6.5 5.5 5 7.5 5c1.54 0 3.04.99 3.57 2.36h1.87C13.46 5.99 14.96 5 16.5 5c2 0 3.5 1.5 3.5 3.5 0 2.89-3.14 5.74-7.9 10.05z"/>',feedback:'<path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-7 12h-2v-2h2v2zm0-4h-2V6h2v4z"/>',find_in_page:'<path d="M20 19.59V8l-6-6H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c.45 0 .85-.15 1.19-.4l-4.43-4.43c-.8.52-1.74.83-2.76.83-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5c0 1.02-.31 1.96-.83 2.75L20 19.59z"/><path d="M9 13c0 1.66 1.34 3 3 3s3-1.34 3-3-1.34-3-3-3-3 1.34-3 3z"/>',
 find_replace:'<path d="M11 6c1.38 0 2.63.56 3.54 1.46L12 10h6V4l-2.05 2.05C14.68 4.78 12.93 4 11 4c-3.53 0-6.43 2.61-6.92 6H6.1c.46-2.28 2.48-4 4.9-4z"/><path d="M16.64 15.14c.66-.9 1.12-1.97 1.28-3.14H15.9c-.46 2.28-2.48 4-4.9 4-1.38 0-2.63-.56-3.54-1.46L10 12H4v6l2.05-2.05C7.32 17.22 9.07 18 11 18c1.55 0 2.98-.51 4.14-1.36L20 21.49 21.49 20l-4.85-4.86z"/>',fingerprint:'<path d="M17.81 4.47c-.08 0-.16-.02-.23-.06C15.66 3.42 14 3 12.01 3c-1.98 0-3.86.47-5.57 1.41-.24.13-.54.04-.68-.2a.506.506 0 0 1 .2-.68C7.82 2.52 9.86 2 12.01 2c2.13 0 3.99.47 6.03 1.52.25.13.34.43.21.67a.49.49 0 0 1-.44.28z"/><path d="M3.5 9.72a.499.499 0 0 1-.41-.79c.99-1.4 2.25-2.5 3.75-3.27C9.98 4.04 14 4.03 17.15 5.65c1.5.77 2.76 1.86 3.75 3.25a.5.5 0 0 1-.12.7c-.23.16-.54.11-.7-.12a9.388 9.388 0 0 0-3.39-2.94c-2.87-1.47-6.54-1.47-9.4.01-1.36.7-2.5 1.7-3.4 2.96-.08.14-.23.21-.39.21z"/><path d="M9.75 21.79a.47.47 0 0 1-.35-.15c-.87-.87-1.34-1.43-2.01-2.64-.69-1.23-1.05-2.73-1.05-4.34 0-2.97 2.54-5.39 5.66-5.39s5.66 2.42 5.66 5.39c0 .28-.22.5-.5.5s-.5-.22-.5-.5c0-2.42-2.09-4.39-4.66-4.39-2.57 0-4.66 1.97-4.66 4.39 0 1.44.32 2.77.93 3.85.64 1.15 1.08 1.64 1.85 2.42.19.2.19.51 0 .71-.11.1-.24.15-.37.15z"/><path d="M16.92 19.94c-1.19 0-2.24-.3-3.1-.89-1.49-1.01-2.38-2.65-2.38-4.39 0-.28.22-.5.5-.5s.5.22.5.5c0 1.41.72 2.74 1.94 3.56.71.48 1.54.71 2.54.71.24 0 .64-.03 1.04-.1.27-.05.53.13.58.41.05.27-.13.53-.41.58-.57.11-1.07.12-1.21.12z"/><path d="M14.91 22c-.04 0-.09-.01-.13-.02-1.59-.44-2.63-1.03-3.72-2.1a7.297 7.297 0 0 1-2.17-5.22c0-1.62 1.38-2.94 3.08-2.94 1.7 0 3.08 1.32 3.08 2.94 0 1.07.93 1.94 2.08 1.94s2.08-.87 2.08-1.94c0-3.77-3.25-6.83-7.25-6.83-2.84 0-5.44 1.58-6.61 4.03-.39.81-.59 1.76-.59 2.8 0 .78.07 2.01.67 3.61.1.26-.03.55-.29.64-.26.1-.55-.04-.64-.29a11.14 11.14 0 0 1-.73-3.96c0-1.2.23-2.29.68-3.24 1.33-2.79 4.28-4.6 7.51-4.6 4.55 0 8.25 3.51 8.25 7.83 0 1.62-1.38 2.94-3.08 2.94-1.7 0-3.08-1.32-3.08-2.94 0-1.07-.93-1.94-2.08-1.94s-2.08.87-2.08 1.94c0 1.71.66 3.31 1.87 4.51.95.94 1.86 1.46 3.27 1.85.27.07.42.35.35.61-.05.23-.26.38-.47.38z"/>',flight_land:'<path d="M2.5 19h19v2h-19z"/><path d="M9.68 13.27l4.35 1.16 5.31 1.42c.8.21 1.62-.26 1.84-1.06.21-.8-.26-1.62-1.06-1.84l-5.31-1.42-2.76-9.02L10.12 2v8.28L5.15 8.95l-.93-2.32-1.45-.39v5.17l1.6.43 5.31 1.43z"/>',flight_takeoff:'<path d="M2.5 19h19v2h-19z"/><path d="M22.07 9.64c-.21-.8-1.04-1.28-1.84-1.06L14.92 10l-6.9-6.43-1.93.51 4.14 7.17-4.97 1.33-1.97-1.54-1.45.39 1.82 3.16.77 1.33 1.6-.43 5.31-1.42 4.35-1.16L21 11.49c.81-.23 1.28-1.05 1.07-1.85z"/>',flip_to_back:'<path d="M9 7H7v2h2V7z"/><path d="M9 11H7v2h2v-2z"/><path d="M9 3a2 2 0 0 0-2 2h2V3z"/><path d="M13 15h-2v2h2v-2z"/><path d="M19 3v2h2c0-1.1-.9-2-2-2z"/><path d="M13 3h-2v2h2V3z"/><path d="M9 17v-2H7a2 2 0 0 0 2 2z"/><path d="M19 13h2v-2h-2v2z"/><path d="M19 9h2V7h-2v2z"/><path d="M19 17c1.1 0 2-.9 2-2h-2v2z"/><path d="M5 7H3v12a2 2 0 0 0 2 2h12v-2H5V7z"/><path d="M15 5h2V3h-2v2z"/><path d="M15 17h2v-2h-2v2z"/>',flip_to_front:'<path d="M3 13h2v-2H3v2z"/><path d="M3 17h2v-2H3v2z"/><path d="M5 21v-2H3a2 2 0 0 0 2 2z"/><path d="M3 9h2V7H3v2z"/><path d="M15 21h2v-2h-2v2z"/><path d="M19 15H9V5h10v10zm0-12H9a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/><path d="M11 21h2v-2h-2v2z"/><path d="M7 21h2v-2H7v2z"/>',g_translate:'<path d="M20 5h-9.12L10 2H4c-1.1 0-2 .9-2 2v13c0 1.1.9 2 2 2h7l1 3h8c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zM7.17 14.59c-2.25 0-4.09-1.83-4.09-4.09s1.83-4.09 4.09-4.09c1.04 0 1.99.37 2.74 1.07l.07.06-1.23 1.18-.06-.05c-.29-.27-.78-.59-1.52-.59-1.31 0-2.38 1.09-2.38 2.42s1.07 2.42 2.38 2.42c1.37 0 1.96-.87 2.12-1.46H7.08V9.91h3.95l.01.07c.04.21.05.4.05.61 0 2.35-1.61 4-3.92 4zm6.03-1.71c.33.6.74 1.18 1.19 1.7l-.54.53-.65-2.23zm.77-.76h-.99l-.31-1.04h3.99s-.34 1.31-1.56 2.74c-.52-.62-.89-1.23-1.13-1.7zM21 20c0 .55-.45 1-1 1h-7l2-2-.81-2.77.92-.92L17.79 18l.73-.73-2.71-2.68c.9-1.03 1.6-2.25 1.92-3.51H19v-1.04h-3.64V9h-1.04v1.04h-1.96L11.18 6H20c.55 0 1 .45 1 1v13z"/>',gavel:'<path d="M1 21h12v2H1z"/><path d="M5.245 8.07l2.83-2.827 14.14 14.142-2.828 2.828z"/><path d="M12.317 1l5.657 5.656-2.83 2.83-5.654-5.66z"/><path d="M3.825 9.485l5.657 5.657-2.828 2.828-5.657-5.657z"/>',get_app:'<path d="M19 9h-4V3H9v6H5l7 7 7-7z"/><path d="M5 18v2h14v-2H5z"/>',gif:'<path d="M11.5 9H13v6h-1.5z"/><path d="M9 9H6c-.6 0-1 .5-1 1v4c0 .5.4 1 1 1h3c.6 0 1-.5 1-1v-2H8.5v1.5h-2v-3H10V10c0-.5-.4-1-1-1z"/><path d="M19 10.5V9h-4.5v6H16v-2h2v-1.5h-2v-1z"/>',grade:'<path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>',group_work:'<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM8 17.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5zM9.5 8c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5S9.5 9.38 9.5 8zm6.5 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>',help:'<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z"/>',help_outline:'<path d="M11 18h2v-2h-2v2z"/><path d="M12 20c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-18C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path d="M12 6c-2.21 0-4 1.79-4 4h2c0-1.1.9-2 2-2s2 .9 2 2c0 2-3 1.75-3 5h2c0-2.25 3-2.5 3-5 0-2.21-1.79-4-4-4z"/>',highlight_off:'<path d="M14.59 8L12 10.59 9.41 8 8 9.41 10.59 12 8 14.59 9.41 16 12 13.41 14.59 16 16 14.59 13.41 12 16 9.41 14.59 8z"/><path d="M12 20c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-18C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2z"/>',history:'<path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9z"/><path d="M12 8v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/>',home:'<path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>',hourglass_empty:'<path d="M6 2v6h.01L6 8.01 10 12l-4 4 .01.01H6V22h12v-5.99h-.01L18 16l-4-4 4-3.99-.01-.01H18V2H6zm10 14.5V20H8v-3.5l4-4 4 4zm-4-5l-4-4V4h8v3.5l-4 4z"/>',hourglass_full:'<path d="M6 2v6h.01L6 8.01 10 12l-4 4 .01.01H6V22h12v-5.99h-.01L18 16l-4-4 4-3.99-.01-.01H18V2H6z"/>',http:'<path d="M4.5 11h-2V9H1v6h1.5v-2.5h2V15H6V9H4.5v2z"/><path d="M7 10.5h1.5V15H10v-4.5h1.5V9H7v1.5z"/><path d="M12.5 10.5H14V15h1.5v-4.5H17V9h-4.5v1.5z"/><path d="M21.5 11.5h-2v-1h2v1zm0-2.5H18v6h1.5v-2h2c.8 0 1.5-.7 1.5-1.5v-1c0-.8-.7-1.5-1.5-1.5z"/>',https:'<path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>',important_devices:'<path d="M23 20h-5v-7h5v7zm0-8.99L18 11c-.55 0-1 .45-1 1v9c0 .55.45 1 1 1h5c.55 0 1-.45 1-1v-9c0-.55-.45-.99-1-.99z"/><path d="M20 2H2C.89 2 0 2.89 0 4v12a2 2 0 0 0 2 2h7v2H7v2h8v-2h-2v-2h2v-2H2V4h18v5h2V4a2 2 0 0 0-2-2z"/><path d="M11.97 9L11 6l-.97 3H7l2.47 1.76-.94 2.91 2.47-1.8 2.47 1.8-.94-2.91L15 9h-3.03z"/>',info:'<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>',info_outline:'<path d="M12 20c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-18C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path d="M11 9h2V7h-2v2zm0 8h2v-6h-2v6z"/>',input:'<path d="M21 3.01H3c-1.1 0-2 .9-2 2V9h2V4.99h18v14.03H3V15H1v4.01c0 1.1.9 1.98 2 1.98h18c1.1 0 2-.88 2-1.98v-14c0-1.11-.9-2-2-2z"/><path d="M11 16l4-4-4-4v3H1v2h10v3z"/>',invert_colors:'<path d="M17.66 7.93L12 2.27 6.34 7.93c-3.12 3.12-3.12 8.19 0 11.31C7.9 20.8 9.95 21.58 12 21.58c2.05 0 4.1-.78 5.66-2.34 3.12-3.12 3.12-8.19 0-11.31zM12 19.59c-1.6 0-3.11-.62-4.24-1.76C6.62 16.69 6 15.19 6 13.59s.62-3.11 1.76-4.24L12 5.1v14.49z"/>',label:'<path d="M17.63 5.84C17.27 5.33 16.67 5 16 5L5 5.01C3.9 5.01 3 5.9 3 7v10c0 1.1.9 1.99 2 1.99L16 19c.67 0 1.27-.33 1.63-.84L22 12l-4.37-6.16z"/>',label_outline:'<path d="M17.63 5.84C17.27 5.33 16.67 5 16 5L5 5.01C3.9 5.01 3 5.9 3 7v10c0 1.1.9 1.99 2 1.99L16 19c.67 0 1.27-.33 1.63-.84L22 12l-4.37-6.16zM16 17H5V7h11l3.55 5L16 17z"/>',language:'<path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zm6.93 6h-2.95c-.32-1.25-.78-2.45-1.38-3.56 1.84.63 3.37 1.91 4.33 3.56zM12 4.04c.83 1.2 1.48 2.53 1.91 3.96h-3.82c.43-1.43 1.08-2.76 1.91-3.96zM4.26 14C4.1 13.36 4 12.69 4 12s.1-1.36.26-2h3.38c-.08.66-.14 1.32-.14 2 0 .68.06 1.34.14 2H4.26zm.82 2h2.95c.32 1.25.78 2.45 1.38 3.56-1.84-.63-3.37-1.9-4.33-3.56zm2.95-8H5.08c.96-1.66 2.49-2.93 4.33-3.56C8.81 5.55 8.35 6.75 8.03 8zM12 19.96c-.83-1.2-1.48-2.53-1.91-3.96h3.82c-.43 1.43-1.08 2.76-1.91 3.96zM14.34 14H9.66c-.09-.66-.16-1.32-.16-2 0-.68.07-1.35.16-2h4.68c.09.65.16 1.32.16 2 0 .68-.07 1.34-.16 2zm.25 5.56c.6-1.11 1.06-2.31 1.38-3.56h2.95c-.96 1.65-2.49 2.93-4.33 3.56zM16.36 14c.08-.66.14-1.32.14-2 0-.68-.06-1.34-.14-2h3.38c.16.64.26 1.31.26 2s-.1 1.36-.26 2h-3.38z"/>',launch:'<path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7z"/><path d="M14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/>',lightbulb_outline:'<path d="M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1z"/><path d="M14.85 13.1l-.85.6V16h-4v-2.3l-.85-.6A4.997 4.997 0 0 1 7 9c0-2.76 2.24-5 5-5s5 2.24 5 5c0 1.63-.8 3.16-2.15 4.1zM12 2C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7z"/>',line_style:'<path d="M3 16h5v-2H3v2z"/><path d="M9.5 16h5v-2h-5v2z"/><path d="M16 16h5v-2h-5v2z"/><path d="M3 20h2v-2H3v2z"/><path d="M7 20h2v-2H7v2z"/><path d="M11 20h2v-2h-2v2z"/><path d="M15 20h2v-2h-2v2z"/><path d="M19 20h2v-2h-2v2z"/><path d="M3 12h8v-2H3v2z"/><path d="M13 12h8v-2h-8v2z"/><path d="M3 4v4h18V4H3z"/>',line_weight:'<path d="M3 17h18v-2H3v2z"/><path d="M3 20h18v-1H3v1z"/><path d="M3 13h18v-3H3v3z"/><path d="M3 4v4h18V4H3z"/>',list:'<path d="M3 9h2V7H3v2zm0 8h2v-2H3v2zm0-4h2v-2H3v2z"/><path d="M7 13h14v-2H7v2z"/><path d="M7 17h14v-2H7v2z"/><path d="M7 7v2h14V7H7z"/>',lock:'<path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>',lock_open:'<path d="M12 17c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z"/><path d="M18 20H6V10h12v10zm0-12h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6h1.9c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2z"/>',lock_outline:'<path d="M18 20H6V10h12zM12 2.9c1.71 0 3.1 1.39 3.1 3.1v2H9V6l-.002-.008C8.998 4.282 10.29 2.9 12 2.9zM18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2z"/><path d="M12 17c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z"/>',loyalty:'<path d="M21.41 11.58l-9-9C12.05 2.22 11.55 2 11 2H4c-1.1 0-2 .9-2 2v7c0 .55.22 1.05.59 1.42l9 9c.36.36.86.58 1.41.58.55 0 1.05-.22 1.41-.59l7-7c.37-.36.59-.86.59-1.41 0-.55-.23-1.06-.59-1.42zM5.5 7C4.67 7 4 6.33 4 5.5S4.67 4 5.5 4 7 4.67 7 5.5 6.33 7 5.5 7zm11.77 8.27L13 19.54l-4.27-4.27C8.28 14.81 8 14.19 8 13.5c0-1.38 1.12-2.5 2.5-2.5.69 0 1.32.28 1.77.74l.73.72.73-.73c.45-.45 1.08-.73 1.77-.73 1.38 0 2.5 1.12 2.5 2.5 0 .69-.28 1.32-.73 1.77z"/>',markunread_mailbox:'<path d="M20 6H10v6H8V4h6V0H6v6H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2z"/>',motorcycle:'<path d="M19.44 9.03L15.41 5H11v2h3.59l2 2H5c-2.8 0-5 2.2-5 5s2.2 5 5 5c2.46 0 4.45-1.69 4.9-4h1.65l2.77-2.77c-.21.54-.32 1.14-.32 1.77 0 2.8 2.2 5 5 5s5-2.2 5-5c0-2.65-1.97-4.77-4.56-4.97zM7.82 15C7.4 16.15 6.28 17 5 17c-1.63 0-3-1.37-3-3s1.37-3 3-3c1.28 0 2.4.85 2.82 2H5v2h2.82zM19 17c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3z"/>',note_add:'<path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 14h-3v3h-2v-3H8v-2h3v-3h2v3h3v2zm-3-7V3.5L18.5 9H13z"/>',offline_pin:'<path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm5 16H7v-2h10v2zm-6.7-4L7 10.7l1.4-1.4 1.9 1.9 5.3-5.3L17 7.3 10.3 14z"/>',opacity:'<path d="M17.66 8L12 2.35 6.34 8C4.78 9.56 4 11.64 4 13.64s.78 4.11 2.34 5.67 3.61 2.35 5.66 2.35 4.1-.79 5.66-2.35S20 15.64 20 13.64 19.22 9.56 17.66 8zM6 14c.01-2 .62-3.27 1.76-4.4L12 5.27l4.24 4.38C17.38 10.77 17.99 12 18 14H6z"/>',open_in_browser:'<path d="M19 4H5c-1.11 0-2 .9-2 2v12c0 1.1.89 2 2 2h4v-2H5V8h14v10h-4v2h4c1.1 0 2-.9 2-2V6c0-1.1-.89-2-2-2z"/><path d="M12 10l-4 4h3v6h2v-6h3l-4-4z"/>',open_in_new:'<path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7z"/><path d="M14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/>',open_with:'<path d="M10 9h4V6h3l-5-5-5 5h3v3z"/><path d="M9 10H6V7l-5 5 5 5v-3h3v-4z"/><path d="M23 12l-5-5v3h-3v4h3v3l5-5z"/><path d="M14 15h-4v3H7l5 5 5-5h-3v-3z"/>',pageview:'<path d="M11 8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/><path d="M17.59 19l-3.83-3.83c-.8.52-1.74.83-2.76.83-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5c0 1.02-.31 1.96-.83 2.75L19 17.59 17.59 19zM19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/>',pan_tool:'<path d="M23 5.5V20c0 2.2-1.8 4-4 4h-7.3c-1.08 0-2.1-.43-2.85-1.19L1 14.83s1.26-1.23 1.3-1.25c.22-.19.49-.29.79-.29.22 0 .42.06.6.16.04.01 4.31 2.46 4.31 2.46V4c0-.83.67-1.5 1.5-1.5S11 3.17 11 4v7h1V1.5c0-.83.67-1.5 1.5-1.5S15 .67 15 1.5V11h1V2.5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5V11h1V5.5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5z"/>',payment:'<path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/>',perm_camera_mic:'<path d="M20 5h-3.17L15 3H9L7.17 5H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h7v-2.09c-2.83-.48-5-2.94-5-5.91h2c0 2.21 1.79 4 4 4s4-1.79 4-4h2c0 2.97-2.17 5.43-5 5.91V21h7c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm-6 8c0 1.1-.9 2-2 2s-2-.9-2-2V9c0-1.1.9-2 2-2s2 .9 2 2v4z"/>',perm_contact_calendar:'<path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm6 12H6v-1c0-2 4-3.1 6-3.1s6 1.1 6 3.1v1z"/>',perm_data_setting:'<path d="M18.99 11.5c.34 0 .67.03 1 .07L20 0 0 20h11.56c-.04-.33-.07-.66-.07-1 0-4.14 3.36-7.5 7.5-7.5z"/><path d="M18.99 20.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm3.71-1.01c.02-.16.04-.32.04-.49 0-.17-.01-.33-.04-.49l1.06-.83c.09-.08.12-.21.06-.32l-1-1.73c-.06-.11-.19-.15-.31-.11l-1.24.5c-.26-.2-.54-.37-.85-.49l-.19-1.32c-.01-.12-.12-.21-.24-.21h-2c-.12 0-.23.09-.25.21l-.19 1.32c-.3.13-.59.29-.85.49l-1.24-.5c-.11-.04-.24 0-.31.11l-1 1.73c-.06.11-.04.24.06.32l1.06.83c-.02.16-.03.32-.03.49 0 .17.01.33.03.49l-1.06.83c-.09.08-.12.21-.06.32l1 1.73c.06.11.19.15.31.11l1.24-.5c.26.2.54.37.85.49l.19 1.32c.02.12.12.21.25.21h2c.12 0 .23-.09.25-.21l.19-1.32c.3-.13.59-.29.84-.49l1.25.5c.11.04.24 0 .31-.11l1-1.73c.06-.11.03-.24-.06-.32l-1.07-.83z"/>',perm_device_information:'<path d="M13 11h-2v6h2v-6zm0-4h-2v2h2V7z"/><path d="M17 19H7V5h10v14zm0-17.99L7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99z"/>',perm_identity:'<path d="M12 4C9.79 4 8 5.79 8 8s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm0 1.9c1.16 0 2.1.94 2.1 2.1 0 1.16-.94 2.1-2.1 2.1-1.16 0-2.1-.94-2.1-2.1 0-1.16.94-2.1 2.1-2.1"/><path d="M12 13c-2.67 0-8 1.34-8 4v3h16v-3c0-2.66-5.33-4-8-4zm0 1.9c2.97 0 6.1 1.46 6.1 2.1v1.1H5.9V17c0-.64 3.13-2.1 6.1-2.1"/>',perm_media:'<path d="M2 6H0v5h.01L0 20c0 1.1.9 2 2 2h18v-2H2V6z"/><path d="M7 15l4.5-6 3.5 4.51 2.5-3.01L21 15H7zM22 4h-8l-2-2H6c-1.1 0-1.99.9-1.99 2L4 16c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2z"/>',perm_phone_msg:'<path d="M20 15.5c-1.25 0-2.45-.2-3.57-.57-.35-.11-.74-.03-1.02.24l-2.2 2.2c-2.83-1.44-5.15-3.75-6.59-6.58l2.2-2.21c.28-.27.36-.66.25-1.01C8.7 6.45 8.5 5.25 8.5 4c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1 0 9.39 7.61 17 17 17 .55 0 1-.45 1-1v-3.5c0-.55-.45-1-1-1z"/><path d="M12 3v10l3-3h6V3h-9z"/>',perm_scan_wifi:'<path d="M12 3C6.95 3 3.15 4.85 0 7.23L12 22 24 7.25C20.85 4.87 17.05 3 12 3zm1 13h-2v-6h2v6zm-2-8V6h2v2h-2z"/>',pets:'<circle cx="4.5" cy="9.5" r="2.5"/> <circle cx="9" cy="5.5" r="2.5"/> <circle cx="15" cy="5.5" r="2.5"/> <circle cx="19.5" cy="9.5" r="2.5"/> <path d="M17.34 14.86c-.87-1.02-1.6-1.89-2.48-2.91-.46-.54-1.05-1.08-1.75-1.32-.11-.04-.22-.07-.33-.09-.25-.04-.52-.04-.78-.04s-.53 0-.79.05c-.11.02-.22.05-.33.09-.7.24-1.28.78-1.75 1.32-.87 1.02-1.6 1.89-2.48 2.91-1.31 1.31-2.92 2.76-2.62 4.79.29 1.02 1.02 2.03 2.33 2.32.73.15 3.06-.44 5.54-.44h.18c2.48 0 4.81.58 5.54.44 1.31-.29 2.04-1.31 2.33-2.32.31-2.04-1.3-3.49-2.61-4.8z"/>',picture_in_picture:'<path d="M19 7h-8v6h8V7z"/><path d="M21 19.01H3V4.98h18v14.03zM21 3H3c-1.1 0-2 .9-2 2v14c0 1.1.9 1.98 2 1.98h18c1.1 0 2-.88 2-1.98V5c0-1.1-.9-2-2-2z"/>',picture_in_picture_alt:'<path d="M19 11h-8v6h8v-6z"/><path d="M21 19.02H3V4.97h18v14.05zm2-.02V4.98C23 3.88 22.1 3 21 3H3c-1.1 0-2 .88-2 1.98V19c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2z"/>',play_for_work:'<path d="M11 5v5.59H7.5l4.5 4.5 4.5-4.5H13V5h-2z"/><path d="M6 14c0 3.31 2.69 6 6 6s6-2.69 6-6h-2c0 2.21-1.79 4-4 4s-4-1.79-4-4H6z"/>',polymer:'<path d="M19 4h-4L7.11 16.63 4.5 12 9 4H5L.5 12 5 20h4l7.89-12.63L19.5 12 15 20h4l4.5-8z"/>',power_settings_new:'<path d="M13 3h-2v10h2V3z"/><path d="M17.83 5.17l-1.42 1.42A6.92 6.92 0 0 1 19 12c0 3.87-3.13 7-7 7A6.995 6.995 0 0 1 7.58 6.58L6.17 5.17A8.932 8.932 0 0 0 3 12a9 9 0 0 0 18 0c0-2.74-1.23-5.18-3.17-6.83z"/>',pregnant_woman:'<path d="M9 4c0-1.11.89-2 2-2s2 .89 2 2-.89 2-2 2-2-.89-2-2zm7 9c-.01-1.34-.83-2.51-2-3 0-1.66-1.34-3-3-3s-3 1.34-3 3v7h2v5h3v-5h3v-4z"/>',print:'<path d="M19 12c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-3 7H8v-5h8v5zm3-11H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3z"/><path d="M18 3H6v4h12V3z"/>',query_builder:'<path d="M12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm-.01-18C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2z"/><path d="M12.5 7H11v6l5.25 3.15.75-1.23-4.5-2.67z"/>',question_answer:'<path d="M21 6h-2v9H6v2c0 .55.45 1 1 1h11l4 4V7c0-.55-.45-1-1-1z"/><path d="M17 12V3c0-.55-.45-1-1-1H3c-.55 0-1 .45-1 1v14l4-4h10c.55 0 1-.45 1-1z"/>',receipt:'<path d="M18 17H6v-2h12v2zm0-4H6v-2h12v2zm0-4H6V7h12v2zM3 22l1.5-1.5L6 22l1.5-1.5L9 22l1.5-1.5L12 22l1.5-1.5L15 22l1.5-1.5L18 22l1.5-1.5L21 22V2l-1.5 1.5L18 2l-1.5 1.5L15 2l-1.5 1.5L12 2l-1.5 1.5L9 2 7.5 3.5 6 2 4.5 3.5 3 2v20z"/>',record_voice_over:'<circle cx="9" cy="9" r="4"/><path d="M9 15c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4zm7.76-9.64l-1.68 1.69c.84 1.18.84 2.71 0 3.89l1.68 1.69c2.02-2.02 2.02-5.07 0-7.27zM20.07 2l-1.63 1.63c2.77 3.02 2.77 7.56 0 10.74L20.07 16c3.9-3.89 3.91-9.95 0-14z"/>',redeem:'<path d="M20 6h-2.18c.11-.31.18-.65.18-1 0-1.66-1.34-3-3-3-1.05 0-1.96.54-2.5 1.35l-.5.67-.5-.68C10.96 2.54 10.05 2 9 2 7.34 2 6 3.34 6 5c0 .35.07.69.18 1H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-5-2c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zM9 4c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm11 15H4v-2h16v2zm0-5H4V8h5.08L7 10.83 8.62 12 11 8.76l1-1.36 1 1.36L15.38 12 17 10.83 14.92 8H20v6z"/>',remove_shopping_cart:'<path d="M7.42 15c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63h2.36l2 2H7.42zm15.31 7.73L2.77 2.77 2 2l-.73-.73L0 2.54l4.39 4.39 2.21 4.66-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h7.46l1.38 1.38A1.997 1.997 0 0 0 17 22c.67 0 1.26-.33 1.62-.84L21.46 24l1.27-1.27z"/><path d="M15.55 13c.75 0 1.41-.41 1.75-1.03l3.58-6.49A1.003 1.003 0 0 0 20 4H6.54l9.01 9z"/><path d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2z"/>',reorder:'<path d="M3 15h18v-2H3v2z"/><path d="M3 19h18v-2H3v2z"/><path d="M3 11h18V9H3v2z"/><path d="M3 5v2h18V5H3z"/>',report_problem:'<path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>',restore:'<path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9z"/><path d="M12 8v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/>',restore_page:'<path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm-2 16c-2.05 0-3.81-1.24-4.58-3h1.71c.63.9 1.68 1.5 2.87 1.5 1.93 0 3.5-1.57 3.5-3.5S13.93 9.5 12 9.5c-1.35 0-2.52.78-3.1 1.9l1.6 1.6h-4V9l1.3 1.3C8.69 8.92 10.23 8 12 8c2.76 0 5 2.24 5 5s-2.24 5-5 5z"/>',room:'<path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>',rounded_corner:'<path d="M19 19h2v2h-2v-2z"/><path d="M19 17h2v-2h-2v2z"/><path d="M3 13h2v-2H3v2z"/><path d="M3 17h2v-2H3v2z"/><path d="M3 9h2V7H3v2z"/><path d="M3 5h2V3H3v2z"/><path d="M7 5h2V3H7v2z"/><path d="M15 21h2v-2h-2v2z"/><path d="M11 21h2v-2h-2v2z"/><path d="M15 21h2v-2h-2v2z"/><path d="M7 21h2v-2H7v2z"/><path d="M3 21h2v-2H3v2z"/><path d="M21 8c0-2.76-2.24-5-5-5h-5v2h5c1.65 0 3 1.35 3 3v5h2V8z"/>',rowing:'<path d="M8.5 14.5L4 19l1.5 1.5L9 17h2l-2.5-2.5z"/><path d="M15 1c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/><path d="M21 21.01L18 24l-2.99-3.01V19.5l-7.1-7.09c-.31.05-.61.07-.91.07v-2.16c1.66.03 3.61-.87 4.67-2.04l1.4-1.55c.19-.21.43-.38.69-.5.29-.14.62-.23.96-.23h.03C15.99 6.01 17 7.02 17 8.26v5.75c0 .84-.35 1.61-.92 2.16l-3.58-3.58v-2.27c-.63.52-1.43 1.02-2.29 1.39L16.5 18H18l3 3.01z"/>',schedule:'<path d="M12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm-.01-18C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2z"/><path d="M12.5 7H11v6l5.25 3.15.75-1.23-4.5-2.67z"/>',search:'<path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>',settings:'<path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.23.09.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"/>',settings_applications:'<path d="M12 10c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/><path d="M17.25 12c0 .23-.02.46-.05.68l1.48 1.16c.13.11.17.3.08.45l-1.4 2.42c-.09.15-.27.21-.43.15l-1.74-.7c-.36.28-.76.51-1.18.69l-.26 1.85c-.03.17-.18.3-.35.3h-2.8c-.17 0-.32-.13-.35-.29l-.26-1.85c-.43-.18-.82-.41-1.18-.69l-1.74.7c-.16.06-.34 0-.43-.15l-1.4-2.42c-.09-.15-.05-.34.08-.45l1.48-1.16c-.03-.23-.05-.46-.05-.69 0-.23.02-.46.05-.68l-1.48-1.16c-.13-.11-.17-.3-.08-.45l1.4-2.42c.09-.15.27-.21.43-.15l1.74.7c.36-.28.76-.51 1.18-.69l.26-1.85c.03-.17.18-.3.35-.3h2.8c.17 0 .32.13.35.29l.26 1.85c.43.18.82.41 1.18.69l1.74-.7c.16-.06.34 0 .43.15l1.4 2.42c.09.15.05.34-.08.45l-1.48 1.16c.03.23.05.46.05.69zM19 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.11 0 2-.9 2-2V5c0-1.1-.89-2-2-2z"/>',settings_backup_restore:'<path d="M14 12c0-1.1-.9-2-2-2s-2 .9-2 2 .9 2 2 2 2-.9 2-2z"/><path d="M12 3c-4.97 0-9 4.03-9 9H0l4 4 4-4H5c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.51 0-2.91-.49-4.06-1.3l-1.42 1.44C8.04 20.3 9.94 21 12 21c4.97 0 9-4.03 9-9s-4.03-9-9-9z"/>',settings_bluetooth:'<path d="M15 24h2v-2h-2v2zm-8 0h2v-2H7v2zm4 0h2v-2h-2v2z"/><path d="M14.88 14.29L13 16.17v-3.76l1.88 1.88zM13 3.83l1.88 1.88L13 7.59V3.83zm4.71 1.88L12 0h-1v7.59L6.41 3 5 4.41 10.59 10 5 15.59 6.41 17 11 12.41V20h1l5.71-5.71-4.3-4.29 4.3-4.29z"/>',settings_brightness:'<path d="M21 19.01H3V4.99h18v14.02zM21 3H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/><path d="M12 9c1.66 0 3 1.34 3 3s-1.34 3-3 3V9zm-4 7h2.5l1.5 1.5 1.5-1.5H16v-2.5l1.5-1.5-1.5-1.5V8h-2.5L12 6.5 10.5 8H8v2.5L6.5 12 8 13.5V16z"/>',settings_cell:'<path d="M15 24h2v-2h-2v2zm-4 0h2v-2h-2v2zm-4 0h2v-2H7v2z"/><path d="M16 16H8V4h8v12zM16 .01L8 0C6.9 0 6 .9 6 2v16c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V2c0-1.1-.9-1.99-2-1.99z"/>',settings_ethernet:'<path d="M7.77 6.76L6.23 5.48.82 12l5.41 6.52 1.54-1.28L3.42 12l4.35-5.24z"/><path d="M11 13h2v-2h-2v2zm6-2h-2v2h2v-2zM7 13h2v-2H7v2z"/><path d="M17.77 5.48l-1.54 1.28L20.58 12l-4.35 5.24 1.54 1.28L23.18 12l-5.41-6.52z"/>',settings_input_antenna:'<path d="M12 5c-3.87 0-7 3.13-7 7h2c0-2.76 2.24-5 5-5s5 2.24 5 5h2c0-3.87-3.13-7-7-7z"/><path d="M13 14.29c.88-.39 1.5-1.26 1.5-2.29 0-1.38-1.12-2.5-2.5-2.5S9.5 10.62 9.5 12c0 1.02.62 1.9 1.5 2.29v3.3L7.59 21 9 22.41l3-3 3 3L16.41 21 13 17.59v-3.3z"/><path d="M12 1C5.93 1 1 5.93 1 12h2c0-4.97 4.03-9 9-9s9 4.03 9 9h2c0-6.07-4.93-11-11-11z"/>',settings_input_component:'<path d="M1 16c0 1.3.84 2.4 2 2.82V23h2v-4.18C6.16 18.4 7 17.3 7 16v-2H1v2zM5 2c0-.55-.45-1-1-1s-1 .45-1 1v4H1v6h6V6H5V2z"/><path d="M13 2c0-.55-.45-1-1-1s-1 .45-1 1v4H9v6h6V6h-2V2zM9 16c0 1.3.84 2.4 2 2.82V23h2v-4.18c1.16-.41 2-1.51 2-2.82v-2H9v2z"/><path d="M17 16c0 1.3.84 2.4 2 2.82V23h2v-4.18c1.16-.41 2-1.51 2-2.82v-2h-6v2zm4-10V2c0-.55-.45-1-1-1s-1 .45-1 1v4h-2v6h6V6h-2z"/>',settings_input_composite:'<path d="M1 16c0 1.3.84 2.4 2 2.82V23h2v-4.18C6.16 18.4 7 17.3 7 16v-2H1v2zM5 2c0-.55-.45-1-1-1s-1 .45-1 1v4H1v6h6V6H5V2z"/><path d="M13 2c0-.55-.45-1-1-1s-1 .45-1 1v4H9v6h6V6h-2V2zM9 16c0 1.3.84 2.4 2 2.82V23h2v-4.18c1.16-.41 2-1.51 2-2.82v-2H9v2z"/><path d="M17 16c0 1.3.84 2.4 2 2.82V23h2v-4.18c1.16-.41 2-1.51 2-2.82v-2h-6v2zm4-10V2c0-.55-.45-1-1-1s-1 .45-1 1v4h-2v6h6V6h-2z"/>',settings_input_hdmi:'<path d="M18 7V4c0-1.1-.9-2-2-2H8c-1.1 0-2 .9-2 2v3H5v6l3 6v3h8v-3l3-6V7h-1zM8 4h8v3h-2V5h-1v2h-2V5h-1v2H8V4z"/>',settings_input_svideo:'<path d="M15 6.5c0-.83-.67-1.5-1.5-1.5h-3C9.67 5 9 5.67 9 6.5S9.67 8 10.5 8h3c.83 0 1.5-.67 1.5-1.5z"/><path d="M8.5 15c-.83 0-1.5.67-1.5 1.5S7.67 18 8.5 18s1.5-.67 1.5-1.5S9.33 15 8.5 15zM8 11.5c0-.83-.67-1.5-1.5-1.5S5 10.67 5 11.5 5.67 13 6.5 13 8 12.33 8 11.5z"/><path d="M12 21c-4.96 0-9-4.04-9-9s4.04-9 9-9 9 4.04 9 9-4.04 9-9 9zm0-20C5.93 1 1 5.93 1 12s4.93 11 11 11 11-4.93 11-11S18.07 1 12 1z"/><path d="M15.5 15c-.83 0-1.5.67-1.5 1.5s.67 1.5 1.5 1.5 1.5-.67 1.5-1.5-.67-1.5-1.5-1.5zm2-5c-.83 0-1.5.67-1.5 1.5s.67 1.5 1.5 1.5 1.5-.67 1.5-1.5-.67-1.5-1.5-1.5z"/>',settings_overscan:'<path d="M14 16h-4l2.01 2.5L14 16zm-8-6l-2.5 2.01L6 14v-4zm12 0v4l2.5-1.99L18 10zm-5.99-4.5L10 8h4l-1.99-2.5z"/><path d="M21 19.01H3V4.99h18v14.02zM21 3H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/>',settings_phone:'<path d="M20 15.5c-1.25 0-2.45-.2-3.57-.57-.35-.11-.74-.03-1.02.24l-2.2 2.2c-2.83-1.44-5.15-3.75-6.59-6.58l2.2-2.21c.28-.27.36-.66.25-1.01C8.7 6.45 8.5 5.25 8.5 4c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1 0 9.39 7.61 17 17 17 .55 0 1-.45 1-1v-3.5c0-.55-.45-1-1-1z"/><path d="M19 9v2h2V9h-2zm-2 0h-2v2h2V9zm-4 0h-2v2h2V9z"/>',settings_power:'<path d="M13 2h-2v10h2V2z"/><path d="M16.56 4.44l-1.45 1.45C16.84 6.94 18 8.83 18 11c0 3.31-2.69 6-6 6s-6-2.69-6-6c0-2.17 1.16-4.06 2.88-5.12L7.44 4.44C5.36 5.88 4 8.28 4 11c0 4.42 3.58 8 8 8s8-3.58 8-8c0-2.72-1.36-5.12-3.44-6.56z"/><path d="M15 24h2v-2h-2v2zm-4 0h2v-2h-2v2zm-4 0h2v-2H7v2z"/>',settings_remote:'<path d="M12 15c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3-6H9c-.55 0-1 .45-1 1v12c0 .55.45 1 1 1h6c.55 0 1-.45 1-1V10c0-.55-.45-1-1-1z"/><path d="M7.05 6.05l1.41 1.41C9.37 6.56 10.62 6 12 6s2.63.56 3.54 1.46l1.41-1.41C15.68 4.78 13.93 4 12 4c-1.93 0-3.68.78-4.95 2.05z"/><path d="M12 0C8.96 0 6.21 1.23 4.22 3.22l1.41 1.41C7.26 3.01 9.51 2 12 2s4.74 1.01 6.36 2.64l1.41-1.41C17.79 1.23 15.04 0 12 0z"/>',settings_voice:'<path d="M12 13c1.66 0 2.99-1.34 2.99-3L15 4c0-1.66-1.34-3-3-3S9 2.34 9 4v6c0 1.66 1.34 3 3 3z"/><path d="M15 24h2v-2h-2v2zm-4 0h2v-2h-2v2zm-4 0h2v-2H7v2z"/><path d="M19 10h-1.7c0 3-2.54 5.1-5.3 5.1S6.7 13 6.7 10H5c0 3.41 2.72 6.23 6 6.72V20h2v-3.28c3.28-.49 6-3.31 6-6.72z"/>',shop:'<path d="M16 6V4c0-1.11-.89-2-2-2h-4c-1.11 0-2 .89-2 2v2H2v13c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6h-6zm-6-2h4v2h-4V4zM9 18V9l7.5 4L9 18z"/>',shop_two:'<path d="M3 9H1v11c0 1.11.89 2 2 2h14c1.11 0 2-.89 2-2H3V9z"/><path d="M12 15V8l5.5 3-5.5 4zm0-12h4v2h-4V3zm6 2V3c0-1.11-.89-2-2-2h-4c-1.11 0-2 .89-2 2v2H5v11c0 1.11.89 2 2 2h14c1.11 0 2-.89 2-2V5h-5z"/>',shopping_basket:'<path d="M17.21 9l-4.38-6.56c-.19-.28-.51-.42-.83-.42-.32 0-.64.14-.83.43L6.79 9H2c-.55 0-1 .45-1 1 0 .09.01.18.04.27l2.54 9.27c.23.84 1 1.46 1.92 1.46h13c.92 0 1.69-.62 1.93-1.46l2.54-9.27L23 10c0-.55-.45-1-1-1h-4.79zM9 9l3-4.4L15 9H9zm3 8c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/>',shopping_cart:'<path d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2z"/><path d="M1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49c.08-.14.12-.31.12-.48 0-.55-.45-1-1-1H5.21l-.94-2H1z"/><path d="M17 18c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z"/>',speaker_notes:'<path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM8 14H6v-2h2v2zm0-3H6V9h2v2zm0-3H6V6h2v2zm7 6h-5v-2h5v2zm3-3h-8V9h8v2zm0-3h-8V6h8v2z"/>',speaker_notes_off:'<path d="M6 11V9l2 2H6zm2 3H6v-2h2v2zm2.54-3l-.54-.54L7.54 8 6 6.46 2.38 2.84 1.27 1.73 0 3l2.01 2.01L2 22l4-4h9l5.73 5.73L22 22.46 17.54 18l-7-7z"/><path d="M20 2H4.08L10 7.92V6h8v2h-7.92l1 1H18v2h-4.92l6.99 6.99C21.14 17.95 22 17.08 22 16V4c0-1.1-.9-2-2-2z"/>',spellcheck:'<path d="M6.43 11L8.5 5.48 10.57 11H6.43zm6.02 5h2.09L9.43 3H7.57L2.46 16h2.09l1.12-3h5.64l1.14 3z"/><path d="M21.59 11.59l-8.09 8.09L9.83 16l-1.41 1.41 5.09 5.09L23 13l-1.41-1.41z"/>',star_rate:'<path d="M12 14.3l3.71 2.7-1.42-4.36L18 10h-4.55L12 5.5 10.55 10H6l3.71 2.64L8.29 17z"/>',stars:'<path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zm4.24 16L12 15.45 7.77 18l1.12-4.81-3.73-3.23 4.92-.42L12 5l1.92 4.53 4.92.42-3.73 3.23L16.23 18z"/>',store:'<path d="M20 4H4v2h16V4z"/><path d="M12 18H6v-4h6v4zm9-4v-2l-1-5H4l-1 5v2h1v6h10v-6h4v6h2v-6h1z"/>',subject:'<path d="M14 17H4v2h10v-2z"/><path d="M20 9H4v2h16V9z"/><path d="M4 15h16v-2H4v2z"/><path d="M4 5v2h16V5H4z"/>',supervisor_account:'<path d="M16.5 12c1.38 0 2.49-1.12 2.49-2.5S17.88 7 16.5 7C15.12 7 14 8.12 14 9.5s1.12 2.5 2.5 2.5z"/><path d="M9 11c1.66 0 2.99-1.34 2.99-3S10.66 5 9 5C7.34 5 6 6.34 6 8s1.34 3 3 3z"/><path d="M16.5 14c-1.83 0-5.5.92-5.5 2.75V19h11v-2.25c0-1.83-3.67-2.75-5.5-2.75z"/><path d="M9 13c-2.33 0-7 1.17-7 3.5V19h7v-2.25c0-.85.33-2.34 2.37-3.47C10.5 13.1 9.66 13 9 13z"/>',swap_horiz:'<path d="M6.99 11L3 15l3.99 4v-3H14v-2H6.99v-3z"/><path d="M21 9l-3.99-4v3H10v2h7.01v3L21 9z"/>',swap_vert:'<path d="M16 17.01V10h-2v7.01h-3L15 21l4-3.99h-3z"/><path d="M9 3L5 6.99h3V14h2V6.99h3L9 3z"/>',swap_vertial_circle:'<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM6.5 9L10 5.5 13.5 9H11v4H9V9H6.5zm11 6L14 18.5 10.5 15H13v-4h2v4h2.5z"/>',system_update_alt:'<path d="M12 16.5l4-4h-3v-9h-2v9H8l4 4z"/><path d="M21 3.5h-6v1.99h6v14.03H3V5.49h6V3.5H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2v-14c0-1.1-.9-2-2-2z"/>',tab:'<path d="M21 3H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H3V5h10v4h8v10z"/>',tab_unselected:'<path d="M1 9h2V7H1v2z"/><path d="M1 13h2v-2H1v2z"/><path d="M1 5h2V3c-1.1 0-2 .9-2 2z"/><path d="M9 21h2v-2H9v2z"/><path d="M1 17h2v-2H1v2z"/><path d="M3 21v-2H1c0 1.1.9 2 2 2z"/><path d="M21 3h-8v6h10V5c0-1.1-.9-2-2-2z"/><path d="M21 17h2v-2h-2v2z"/><path d="M9 5h2V3H9v2z"/><path d="M5 21h2v-2H5v2z"/><path d="M5 5h2V3H5v2z"/><path d="M21 21c1.1 0 2-.9 2-2h-2v2z"/><path d="M21 13h2v-2h-2v2z"/><path d="M13 21h2v-2h-2v2z"/><path d="M17 21h2v-2h-2v2z"/>',
@@ -34992,15 +37791,6 @@ border_vertical:'<path d="M3 9h2V7H3v2z"/><path d="M3 5h2V3H3v2z"/><path d="M7 2
 center_focus_strong:'<path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4z"/><path d="M5 15H3v4c0 1.1.9 2 2 2h4v-2H5v-4z"/><path d="M5 5h4V3H5c-1.1 0-2 .9-2 2v4h2V5z"/><path d="M19 3h-4v2h4v4h2V5c0-1.1-.9-2-2-2z"/><path d="M19 19h-4v2h4c1.1 0 2-.9 2-2v-4h-2v4z"/>',center_focus_weak:'<path d="M5 15H3v4c0 1.1.9 2 2 2h4v-2H5v-4z"/><path d="M5 5h4V3H5c-1.1 0-2 .9-2 2v4h2V5z"/><path d="M19 3h-4v2h4v4h2V5c0-1.1-.9-2-2-2z"/><path d="M19 19h-4v2h4c1.1 0 2-.9 2-2v-4h-2v4z"/><path d="M12 14c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm0-6c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4z"/>',collections:'<path d="M11 12l2.03 2.71L16 11l4 5H8l3-4zm11 4V4c0-1.1-.9-2-2-2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2z"/><path d="M2 6v14c0 1.1.9 2 2 2h14v-2H4V6H2z"/>',collections_bookmark:'<path d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 10l-2.5-1.5L15 12V4h5v8z"/>',color_lens:'<path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8zm-5.5 9c-.83 0-1.5-.67-1.5-1.5S5.67 9 6.5 9 8 9.67 8 10.5 7.33 12 6.5 12zm3-4C8.67 8 8 7.33 8 6.5S8.67 5 9.5 5s1.5.67 1.5 1.5S10.33 8 9.5 8zm5 0c-.83 0-1.5-.67-1.5-1.5S13.67 5 14.5 5s1.5.67 1.5 1.5S15.33 8 14.5 8zm3 4c-.83 0-1.5-.67-1.5-1.5S16.67 9 17.5 9s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>',colorize:'<path d="M20.71 5.63l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-3.12 3.12-1.93-1.91-1.41 1.41 1.42 1.42L3 16.25V21h4.75l8.92-8.92 1.42 1.42 1.41-1.41-1.92-1.92 3.12-3.12c.4-.4.4-1.03.01-1.42zM6.92 19L5 17.08l8.06-8.06 1.92 1.92L6.92 19z"/>',compare:'<path d="M10 18H5l5-6v6zm0-15H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h5v2h2V1h-2v2z"/><path d="M19 3h-5v2h5v13l-5-6v9h5c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/>',control_point:'<path d="M13 7h-2v4H7v2h4v4h2v-4h4v-2h-4V7z"/><path d="M12 20c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-18C6.49 2 2 6.49 2 12s4.49 10 10 10 10-4.49 10-10S17.51 2 12 2z"/>',control_point_duplicate:'<path d="M16 8h-2v3h-3v2h3v3h2v-3h3v-2h-3z"/><path d="M2 12c0-2.79 1.64-5.2 4.01-6.32V3.52C2.52 4.76 0 8.09 0 12s2.52 7.24 6.01 8.48v-2.16C3.64 17.2 2 14.79 2 12z"/><path d="M15 19c-3.86 0-7-3.14-7-7s3.14-7 7-7 7 3.14 7 7-3.14 7-7 7zm0-16c-4.96 0-9 4.04-9 9s4.04 9 9 9 9-4.04 9-9-4.04-9-9-9z"/>',crop:'<path d="M17 15h2V7c0-1.1-.9-2-2-2H9v2h8v8z"/><path d="M7 17V1H5v4H1v2h4v10c0 1.1.9 2 2 2h10v4h2v-4h4v-2H7z"/>',crop_16_9:'<path d="M19 6H5c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 10H5V8h14v8z"/>',crop_3_2:'<path d="M19 4H5c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H5V6h14v12z"/>',crop_5_4:'<path d="M19 5H5c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 12H5V7h14v10z"/>',crop_7_5:'<path d="M19 7H5c-1.1 0-2 .9-2 2v6c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V9c0-1.1-.9-2-2-2zm0 8H5V9h14v6z"/>',crop_din:'<path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14z"/>',crop_free:'<path d="M3 5v4h2V5h4V3H5c-1.1 0-2 .9-2 2z"/><path d="M5 15H3v4c0 1.1.9 2 2 2h4v-2H5v-4z"/><path d="M19 19h-4v2h4c1.1 0 2-.9 2-2v-4h-2v4z"/><path d="M19 3h-4v2h4v4h2V5c0-1.1-.9-2-2-2z"/>',crop_landscape:'<path d="M19 5H5c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 12H5V7h14v10z"/>',crop_original:'<path d="M19 19H5V5h14v14zm0-16H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/><path d="M13.96 12.29l-2.75 3.54-1.96-2.36L6.5 17h11l-3.54-4.71z"/>',crop_portrait:'<path d="M17 3H7c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H7V5h10v14z"/>',crop_rotate:'<path d="M7.47 21.49C4.2 19.93 1.86 16.76 1.5 13H0c.51 6.16 5.66 11 11.95 11 .23 0 .44-.02.66-.03L8.8 20.15l-1.33 1.34z"/><path d="M12.05 0c-.23 0-.44.02-.66.04l3.81 3.81 1.33-1.33C19.8 4.07 22.14 7.24 22.5 11H24c-.51-6.16-5.66-11-11.95-11z"/><path d="M16 14h2V8a2 2 0 0 0-2-2h-6v2h6v6z"/><path d="M8 16V4H6v2H4v2h2v8a2 2 0 0 0 2 2h8v2h2v-2h2v-2H8z"/>',crop_square:'<path d="M18 4H6c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H6V6h12v12z"/>',dehaze:'<path d="M2 15.5v2h20v-2H2z"/><path d="M2 10.5v2h20v-2H2z"/><path d="M2 5.5v2h20v-2H2z"/>',details:'<path d="M3 4l9 16 9-16H3zm3.38 2h11.25L12 16 6.38 6z"/>',edit:'<path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"/><path d="M20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>',exposure:'<path d="M15 17v2h2v-2h2v-2h-2v-2h-2v2h-2v2h2z"/><path d="M20 20H4L20 4v16zM5 5h6v2H5V5zm15-3H4c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>',exposure_neg_1:'<path d="M4 11v2h8v-2H4z"/><path d="M19 18h-2V7.38L14 8.4V6.7L18.7 5h.3v13z"/>',exposure_neg_2:'<path d="M15.05 16.29l2.86-3.07c.38-.39.72-.79 1.04-1.18.32-.39.59-.78.82-1.17.23-.39.41-.78.54-1.17.13-.39.19-.79.19-1.18 0-.53-.09-1.02-.27-1.46-.18-.44-.44-.81-.78-1.11-.34-.31-.77-.54-1.26-.71A5.72 5.72 0 0 0 16.47 5c-.69 0-1.31.11-1.85.32-.54.21-1 .51-1.36.88-.37.37-.65.8-.84 1.3-.18.47-.27.97-.28 1.5h2.14c.01-.31.05-.6.13-.87.09-.29.23-.54.4-.75.18-.21.41-.37.68-.49.27-.12.6-.18.96-.18.31 0 .58.05.81.15.23.1.43.25.59.43.16.18.28.4.37.65.08.25.13.52.13.81 0 .22-.03.43-.08.65-.06.22-.15.45-.29.7-.14.25-.32.53-.56.83-.23.3-.52.65-.88 1.03l-4.17 4.55V18H21v-1.71h-5.95z"/><path d="M2 11v2h8v-2H2z"/>',exposure_plus_1:'<path d="M10 7H8v4H4v2h4v4h2v-4h4v-2h-4V7z"/><path d="M20 18h-2V7.38L15 8.4V6.7L19.7 5h.3v13z"/>',exposure_plus_2:'<path d="M16.05 16.29l2.86-3.07c.38-.39.72-.79 1.04-1.18.32-.39.59-.78.82-1.17.23-.39.41-.78.54-1.17.13-.39.19-.79.19-1.18 0-.53-.09-1.02-.27-1.46-.18-.44-.44-.81-.78-1.11-.34-.31-.77-.54-1.26-.71A5.72 5.72 0 0 0 17.47 5c-.69 0-1.31.11-1.85.32-.54.21-1 .51-1.36.88-.37.37-.65.8-.84 1.3-.18.47-.27.97-.28 1.5h2.14c.01-.31.05-.6.13-.87.09-.29.23-.54.4-.75.18-.21.41-.37.68-.49.27-.12.6-.18.96-.18.31 0 .58.05.81.15.23.1.43.25.59.43.16.18.28.4.37.65.08.25.13.52.13.81 0 .22-.03.43-.08.65-.06.22-.15.45-.29.7-.14.25-.32.53-.56.83-.23.3-.52.65-.88 1.03l-4.17 4.55V18H22v-1.71h-5.95z"/><path d="M8 7H6v4H2v2h4v4h2v-4h4v-2H8V7z"/>',exposure_zero:'<path d="M16.14 12.5c0 1-.1 1.85-.3 2.55-.2.7-.48 1.27-.83 1.7-.36.44-.79.75-1.3.95-.51.2-1.07.3-1.7.3-.62 0-1.18-.1-1.69-.3-.51-.2-.95-.51-1.31-.95-.36-.44-.65-1.01-.85-1.7-.2-.7-.3-1.55-.3-2.55v-2.04c0-1 .1-1.85.3-2.55.2-.7.48-1.26.84-1.69.36-.43.8-.74 1.31-.93C10.81 5.1 11.38 5 12 5c.63 0 1.19.1 1.7.29.51.19.95.5 1.31.93.36.43.64.99.84 1.69.2.7.3 1.54.3 2.55v2.04zm-2.11-2.36c0-.64-.05-1.18-.13-1.62-.09-.44-.22-.79-.4-1.06-.17-.27-.39-.46-.64-.58-.25-.13-.54-.19-.86-.19-.32 0-.61.06-.86.18s-.47.31-.64.58c-.17.27-.31.62-.4 1.06s-.13.98-.13 1.62v2.67c0 .64.05 1.18.14 1.62.09.45.23.81.4 1.09s.39.48.64.61.54.19.87.19c.33 0 .62-.06.87-.19s.46-.33.63-.61c.17-.28.3-.64.39-1.09.09-.45.13-.99.13-1.62v-2.66z"/>',filter:'<path d="M15.96 10.29l-2.75 3.54-1.96-2.36L8.5 15h11l-3.54-4.71z"/><path d="M3 5H1v16c0 1.1.9 2 2 2h16v-2H3V5z"/><path d="M21 17H7V3h14v14zm0-16H7c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V3c0-1.1-.9-2-2-2z"/>',filter_1:'<path d="M3 5H1v16c0 1.1.9 2 2 2h16v-2H3V5z"/><path d="M14 15h2V5h-4v2h2v8z"/><path d="M21 17H7V3h14v14zm0-16H7c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V3c0-1.1-.9-2-2-2z"/>',filter_2:'<path d="M3 5H1v16c0 1.1.9 2 2 2h16v-2H3V5z"/><path d="M21 17H7V3h14v14zm0-16H7c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V3c0-1.1-.9-2-2-2z"/><path d="M17 13h-4v-2h2a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-4v2h4v2h-2a2 2 0 0 0-2 2v4h6v-2z"/>',filter_3:'<path d="M21 17H7V3h14v14zm0-16H7c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V3c0-1.1-.9-2-2-2z"/><path d="M3 5H1v16c0 1.1.9 2 2 2h16v-2H3V5z"/><path d="M17 13v-1.5c0-.83-.67-1.5-1.5-1.5.83 0 1.5-.67 1.5-1.5V7a2 2 0 0 0-2-2h-4v2h4v2h-2v2h2v2h-4v2h4a2 2 0 0 0 2-2z"/>',filter_4:'<path d="M3 5H1v16c0 1.1.9 2 2 2h16v-2H3V5z"/><path d="M15 15h2V5h-2v4h-2V5h-2v6h4v4z"/><path d="M21 17H7V3h14v14zm0-16H7c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V3c0-1.1-.9-2-2-2z"/>',filter_5:'<path d="M21 17H7V3h14v14zm0-16H7c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V3c0-1.1-.9-2-2-2z"/><path d="M3 5H1v16c0 1.1.9 2 2 2h16v-2H3V5z"/><path d="M17 13v-2a2 2 0 0 0-2-2h-2V7h4V5h-6v6h4v2h-4v2h4a2 2 0 0 0 2-2z"/>',filter_6:'<path d="M3 5H1v16c0 1.1.9 2 2 2h16v-2H3V5z"/><path d="M21 17H7V3h14v14zm0-16H7c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V3c0-1.1-.9-2-2-2z"/><path d="M13 11h2v2h-2v-2zm0 4h2a2 2 0 0 0 2-2v-2a2 2 0 0 0-2-2h-2V7h4V5h-4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2z"/>',filter_7:'<path d="M3 5H1v16c0 1.1.9 2 2 2h16v-2H3V5z"/><path d="M21 17H7V3h14v14zm0-16H7c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V3c0-1.1-.9-2-2-2z"/><path d="M13 15l4-8V5h-6v2h4l-4 8h2z"/>',filter_8:'<path d="M3 5H1v16c0 1.1.9 2 2 2h16v-2H3V5z"/><path d="M21 17H7V3h14v14zm0-16H7c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V3c0-1.1-.9-2-2-2z"/><path d="M13 11h2v2h-2v-2zm0-4h2v2h-2V7zm0 8h2a2 2 0 0 0 2-2v-1.5c0-.83-.67-1.5-1.5-1.5.83 0 1.5-.67 1.5-1.5V7a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v1.5c0 .83.67 1.5 1.5 1.5-.83 0-1.5.67-1.5 1.5V13a2 2 0 0 0 2 2z"/>',filter_9:'<path d="M3 5H1v16c0 1.1.9 2 2 2h16v-2H3V5z"/><path d="M21 17H7V3h14v14zm0-16H7c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V3c0-1.1-.9-2-2-2z"/><path d="M15 9h-2V7h2v2zm0-4h-2a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h2v2h-4v2h4a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2z"/>',filter_9_plus:'<path d="M3 5H1v16c0 1.1.9 2 2 2h16v-2H3V5z"/><path d="M11 9V8h1v1h-1zm3 3V8a2 2 0 0 0-2-2h-1a2 2 0 0 0-2 2v1a2 2 0 0 0 2 2h1v1H9v2h3a2 2 0 0 0 2-2z"/><path d="M21 9h-2V7h-2v2h-2v2h2v2h2v-2h2v6H7V3h14v6zm0-8H7c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V3c0-1.1-.9-2-2-2z"/>',filter_b_and_w:'<path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16l-7-8v8H5l7-8V5h7v14z"/>',filter_center_focus:'<path d="M5 15H3v4c0 1.1.9 2 2 2h4v-2H5v-4z"/><path d="M5 5h4V3H5c-1.1 0-2 .9-2 2v4h2V5z"/><path d="M19 3h-4v2h4v4h2V5c0-1.1-.9-2-2-2z"/><path d="M19 19h-4v2h4c1.1 0 2-.9 2-2v-4h-2v4z"/><path d="M12 9c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>',filter_drama:'<path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.61 5.64 5.36 8.04 2.35 8.36 0 10.9 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM19 18H6c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4h2c0-2.76-1.86-5.08-4.4-5.78C8.61 6.88 10.2 6 12 6c3.03 0 5.5 2.47 5.5 5.5v.5H19c1.65 0 3 1.35 3 3s-1.35 3-3 3z"/>',filter_frames:'<path d="M20 20H4V6h4.52l3.52-3.5L15.52 6H20v14zm0-16h-4l-4-4-4 4H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2z"/><path d="M18 8H6v10h12"/>',filter_hdr:'<path d="M14 6l-3.75 5 2.85 3.8-1.6 1.2C9.81 13.75 7 10 7 10l-6 8h22L14 6z"/>',filter_none:'<path d="M3 5H1v16c0 1.1.9 2 2 2h16v-2H3V5z"/><path d="M21 17H7V3h14v14zm0-16H7c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V3c0-1.1-.9-2-2-2z"/>',filter_tilt_shift:'<path d="M11 4.07V2.05c-2.01.2-3.84 1-5.32 2.21L7.1 5.69A7.941 7.941 0 0 1 11 4.07z"/><path d="M18.32 4.26A9.949 9.949 0 0 0 13 2.05v2.02c1.46.18 2.79.76 3.9 1.62l1.42-1.43z"/><path d="M19.93 11h2.02c-.2-2.01-1-3.84-2.21-5.32L18.31 7.1a7.941 7.941 0 0 1 1.62 3.9z"/><path d="M5.69 7.1L4.26 5.68A9.949 9.949 0 0 0 2.05 11h2.02c.18-1.46.76-2.79 1.62-3.9z"/><path d="M4.07 13H2.05c.2 2.01 1 3.84 2.21 5.32l1.43-1.43A7.868 7.868 0 0 1 4.07 13z"/><path d="M15 12c0-1.66-1.34-3-3-3s-3 1.34-3 3 1.34 3 3 3 3-1.34 3-3z"/><path d="M18.31 16.9l1.43 1.43a9.981 9.981 0 0 0 2.21-5.32h-2.02a7.945 7.945 0 0 1-1.62 3.89z"/><path d="M13 19.93v2.02c2.01-.2 3.84-1 5.32-2.21l-1.43-1.43c-1.1.86-2.43 1.44-3.89 1.62z"/><path d="M5.68 19.74A9.981 9.981 0 0 0 11 21.95v-2.02a7.941 7.941 0 0 1-3.9-1.62l-1.42 1.43z"/>',filter_vintage:'<path d="M18.7 12.4c-.28-.16-.57-.29-.86-.4.29-.11.58-.24.86-.4 1.92-1.11 2.99-3.12 3-5.19-1.79-1.03-4.07-1.11-6 0-.28.16-.54.35-.78.54.05-.31.08-.63.08-.95 0-2.22-1.21-4.15-3-5.19C10.21 1.85 9 3.78 9 6c0 .32.03.64.08.95-.24-.2-.5-.39-.78-.55-1.92-1.11-4.2-1.03-6 0 0 2.07 1.07 4.08 3 5.19.28.16.57.29.86.4-.29.11-.58.24-.86.4-1.92 1.11-2.99 3.12-3 5.19 1.79 1.03 4.07 1.11 6 0 .28-.16.54-.35.78-.54-.05.32-.08.64-.08.96 0 2.22 1.21 4.15 3 5.19 1.79-1.04 3-2.97 3-5.19 0-.32-.03-.64-.08-.95.24.2.5.38.78.54 1.92 1.11 4.2 1.03 6 0-.01-2.07-1.08-4.08-3-5.19zM12 16c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4z"/>',flare:'<path d="M7 11H1v2h6v-2z"/><path d="M9.17 7.76L7.05 5.64 5.64 7.05l2.12 2.12 1.41-1.41z"/><path d="M13 1h-2v6h2V1z"/><path d="M18.36 7.05l-1.41-1.41-2.12 2.12 1.41 1.41 2.12-2.12z"/><path d="M17 11v2h6v-2h-6z"/><path d="M12 9c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/><path d="M14.83 16.24l2.12 2.12 1.41-1.41-2.12-2.12-1.41 1.41z"/><path d="M5.64 16.95l1.41 1.41 2.12-2.12-1.41-1.41-2.12 2.12z"/><path d="M11 23h2v-6h-2v6z"/>',flash_auto:'<path d="M3 2v12h3v9l7-12H9l4-9H3z"/><path d="M16.85 7.65L18 4l1.15 3.65h-2.3zM19 2h-2l-3.2 9h1.9l.7-2h3.2l.7 2h1.9L19 2z"/>',flash_off:'<path d="M3.27 3L2 4.27l5 5V13h3v9l3.58-6.14L17.73 20 19 18.73 3.27 3z"/><path d="M17 10h-4l4-8H7v2.18l8.46 8.46L17 10z"/>',flash_on:'<path d="M7 2v11h3v9l7-12h-4l4-8z"/>',flip:'<path d="M15 21h2v-2h-2v2z"/><path d="M19 9h2V7h-2v2z"/><path d="M3 5v14c0 1.1.9 2 2 2h4v-2H5V5h4V3H5c-1.1 0-2 .9-2 2z"/><path d="M19 3v2h2c0-1.1-.9-2-2-2z"/><path d="M11 23h2V1h-2v22z"/><path d="M19 17h2v-2h-2v2z"/><path d="M15 5h2V3h-2v2z"/><path d="M19 13h2v-2h-2v2z"/><path d="M19 21c1.1 0 2-.9 2-2h-2v2z"/>',gradient:'<path d="M11 9h2v2h-2zm-2 2h2v2H9zm4 0h2v2h-2zm2-2h2v2h-2zM7 9h2v2H7zm12-6H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 18H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2zm2-7h-2v2h2v2h-2v-2h-2v2h-2v-2h-2v2H9v-2H7v2H5v-2h2v-2H5V5h14v6z"/>',grain:'<path d="M10 12c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/><path d="M6 8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/><path d="M6 16c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/><path d="M18 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z"/><path d="M14 16c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/><path d="M18 12c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/><path d="M14 8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/><path d="M10 4c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>',grid_off:'<path d="M16 4h4v4h-4V4zM8 4v1.45l2 2V4h4v4h-3.45l2 2H14v1.45l2 2V10h4v4h-3.45l2 2H20v1.45l2 2V4c0-1.1-.9-2-2-2H4.55l2 2H8z"/><path d="M16 20v-1.46L17.46 20H16zm-2 0h-4v-4h3.45l.55.54V20zm-6-6H4v-4h3.45l.55.55V14zm0 6H4v-4h4v4zM4 6.55L5.45 8H4V6.55zm6 6L11.45 14H10v-1.45zM1.27 1.27L0 2.55l2 2V20c0 1.1.9 2 2 2h15.46l2 2 1.27-1.27L1.27 1.27z"/>',grid_on:'<path d="M20 2H4c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM8 20H4v-4h4v4zm0-6H4v-4h4v4zm0-6H4V4h4v4zm6 12h-4v-4h4v4zm0-6h-4v-4h4v4zm0-6h-4V4h4v4zm6 12h-4v-4h4v4zm0-6h-4v-4h4v4zm0-6h-4V4h4v4z"/>',hdr_off:'<path d="M13 15h-2v-2.45l2 2V15zm5 2L3.27 2.27 2 3.55l4 4V11H4V7H2v10h2v-4h2v4h2V9.55l1 1V17h4c.67 0 1.26-.33 1.62-.84l6.34 6.34 1.27-1.27L18 17z"/><path d="M18 9h2v2h-2V9zm0 4h1l.82 3.27.73.73H22l-1.19-4.17c.7-.31 1.19-1.01 1.19-1.83V9c0-1.1-.9-2-2-2h-4v5.45l2 2V13z"/><path d="M15 11.45V9c0-1.1-.9-2-2-2h-2.45L15 11.45z"/>',hdr_on:'<path d="M6 11H4V7H2v10h2v-4h2v4h2V7H6v4z"/><path d="M13 15h-2V9h2v6zm0-8H9v10h4c1.1 0 2-.9 2-2V9c0-1.1-.9-2-2-2z"/><path d="M20 11h-2V9h2v2zm2 0V9c0-1.1-.9-2-2-2h-4v10h2v-4h1l1 4h2l-1.19-4.17c.7-.31 1.19-1.01 1.19-1.83z"/>',hdr_strong:'<path d="M17 6c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6z"/><path d="M5 14c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm0-6c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4z"/>',hdr_weak:'<path d="M5 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4z"/><path d="M17 16c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4zm0-10c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6z"/>',healing:'<path d="M17.73 12.02l3.98-3.98c.39-.39.39-1.02 0-1.41l-4.34-4.34c-.39-.39-1.02-.39-1.41 0l-3.98 3.98L8 2.29C7.8 2.1 7.55 2 7.29 2c-.25 0-.51.1-.7.29L2.25 6.63c-.39.39-.39 1.02 0 1.41l3.98 3.98L2.25 16c-.39.39-.39 1.02 0 1.41l4.34 4.34c.39.39 1.02.39 1.41 0l3.98-3.98 3.98 3.98c.2.2.45.29.71.29.26 0 .51-.1.71-.29l4.34-4.34c.39-.39.39-1.02 0-1.41l-3.99-3.98zM12 9c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm-4.71 1.96L3.66 7.34l3.63-3.63 3.62 3.62-3.62 3.63zM10 13c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm2 2c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm2-4c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2.66 9.34l-3.63-3.62 3.63-3.63 3.62 3.62-3.62 3.63z"/>',image:'<path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>',image_aspect_ratio:'<path d="M16 10h-2v2h2v-2z"/><path d="M16 14h-2v2h2v-2z"/><path d="M8 10H6v2h2v-2z"/><path d="M12 10h-2v2h2v-2z"/><path d="M20 18H4V6h16v12zm0-14H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2z"/>',iso:'<path d="M19 19H5L19 5v14zM5.5 7.5h2v-2H9v2h2V9H9v2H7.5V9h-2V7.5zM19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/><path d="M17 17v-1.5h-5V17h5z"/>',landscape:'<path d="M14 6l-3.75 5 2.85 3.8-1.6 1.2C9.81 13.75 7 10 7 10l-6 8h22L14 6z"/>',leak_add:'<path d="M6 3H3v3c1.66 0 3-1.34 3-3z"/><path d="M14 3h-2a9 9 0 0 1-9 9v2c6.08 0 11-4.93 11-11z"/><path d="M10 3H8c0 2.76-2.24 5-5 5v2c3.87 0 7-3.13 7-7z"/><path d="M10 21h2a9 9 0 0 1 9-9v-2c-6.07 0-11 4.93-11 11z"/><path d="M18 21h3v-3c-1.66 0-3 1.34-3 3z"/><path d="M14 21h2c0-2.76 2.24-5 5-5v-2c-3.87 0-7 3.13-7 7z"/>',leak_remove:'<path d="M10 3H8c0 .37-.04.72-.12 1.06l1.59 1.59C9.81 4.84 10 3.94 10 3z"/><path d="M3 4.27l2.84 2.84C5.03 7.67 4.06 8 3 8v2c1.61 0 3.09-.55 4.27-1.46L8.7 9.97A8.99 8.99 0 0 1 3 12v2c2.71 0 5.19-.99 7.11-2.62l2.5 2.5A11.044 11.044 0 0 0 10 21h2c0-2.16.76-4.14 2.03-5.69l1.43 1.43A6.922 6.922 0 0 0 14 21h2c0-1.06.33-2.03.89-2.84L19.73 21 21 19.73 4.27 3 3 4.27z"/><path d="M14 3h-2c0 1.5-.37 2.91-1.02 4.16l1.46 1.46C13.42 6.98 14 5.06 14 3z"/><path d="M19.94 16.12c.34-.08.69-.12 1.06-.12v-2c-.94 0-1.84.19-2.66.52l1.6 1.6z"/><path d="M15.38 11.56l1.46 1.46A8.98 8.98 0 0 1 21 12v-2c-2.06 0-3.98.58-5.62 1.56z"/>',lens:'<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/>',linked_camera:'<circle cx="12" cy="14" r="3.2"/><path d="M16 3.33c2.58 0 4.67 2.09 4.67 4.67H22c0-3.31-2.69-6-6-6v1.33M16 6c1.11 0 2 .89 2 2h1.33c0-1.84-1.49-3.33-3.33-3.33V6"/><path d="M17 9c0-1.11-.89-2-2-2V4H9L7.17 6H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V9h-5zm-5 10c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z"/>',looks:'<path d="M12 10c-3.86 0-7 3.14-7 7h2c0-2.76 2.24-5 5-5s5 2.24 5 5h2c0-3.86-3.14-7-7-7z"/><path d="M12 6C5.93 6 1 10.93 1 17h2c0-4.96 4.04-9 9-9s9 4.04 9 9h2c0-6.07-4.93-11-11-11z"/>',looks_3:'<path d="M19.01 3h-14c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-4 7.5c0 .83-.67 1.5-1.5 1.5.83 0 1.5.67 1.5 1.5V15c0 1.11-.9 2-2 2h-4v-2h4v-2h-2v-2h2V9h-4V7h4c1.1 0 2 .89 2 2v1.5z"/>',looks_4:'<path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-4 14h-2v-4H9V7h2v4h2V7h2v10z"/>',looks_5:'<path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-4 6h-4v2h2c1.1 0 2 .89 2 2v2c0 1.11-.9 2-2 2H9v-2h4v-2H9V7h6v2z"/>',looks_6:'<path d="M11 15h2v-2h-2v2zm8-12H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-4 6h-4v2h2c1.1 0 2 .89 2 2v2c0 1.11-.9 2-2 2h-2c-1.1 0-2-.89-2-2V9c0-1.11.9-2 2-2h4v2z"/>',looks_one:'<path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14h-2V9h-2V7h4v10z"/>',looks_two:'<path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-4 8c0 1.11-.9 2-2 2h-2v2h4v2H9v-4c0-1.11.9-2 2-2h2V9H9V7h4c1.1 0 2 .89 2 2v2z"/>',loupe:'<path d="M13 7h-2v4H7v2h4v4h2v-4h4v-2h-4V7z"/><path d="M12 20c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-18C6.49 2 2 6.49 2 12s4.49 10 10 10h8c1.1 0 2-.9 2-2v-8c0-5.51-4.49-10-10-10z"/>',monochrome_photos:'<path d="M20 19h-8v-1c-2.8 0-5-2.2-5-5s2.2-5 5-5V7h8v12zm0-14h-3.2L15 3H9L7.2 5H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2z"/><path d="M17 13c0-2.8-2.2-5-5-5v1.8c1.8 0 3.2 1.4 3.2 3.2 0 1.8-1.4 3.2-3.2 3.2V18c2.8 0 5-2.2 5-5z"/><path d="M8.8 13c0 1.8 1.4 3.2 3.2 3.2V9.8c-1.8 0-3.2 1.4-3.2 3.2z"/>',movie_creation:'<path d="M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4h-4z"/>',movie_filter:'<path d="M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4h-4zm-6.58 11.68L10.37 18l-1.05-2.32L7 14.63l2.32-1.05 1.05-2.32 1.05 2.32 2.32 1.05-2.32 1.05zm3.69-3.47l-.53 1.16-.53-1.16-1.16-.53 1.16-.53.53-1.15.53 1.16 1.16.53-1.16.52z"/>',music_note:'<path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>',nature:'<path d="M13 16.12c3.47-.41 6.17-3.36 6.17-6.95 0-3.87-3.13-7-7-7s-7 3.13-7 7c0 3.47 2.52 6.34 5.83 6.89V20H5v2h14v-2h-6v-3.88z"/>',nature_people:'<path d="M22.17 9.17c0-3.87-3.13-7-7-7s-7 3.13-7 7c0 3.47 2.52 6.34 5.83 6.89V20H6v-3h1v-4c0-.55-.45-1-1-1H3c-.55 0-1 .45-1 1v4h1v5h16v-2h-3v-3.88c3.47-.41 6.17-3.36 6.17-6.95zM4.5 11c.83 0 1.5-.67 1.5-1.5S5.33 8 4.5 8 3 8.67 3 9.5 3.67 11 4.5 11z"/>',navigate_before:'<path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>',navigate_next:'<path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>',palette:'<path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8zm-5.5 9c-.83 0-1.5-.67-1.5-1.5S5.67 9 6.5 9 8 9.67 8 10.5 7.33 12 6.5 12zm3-4C8.67 8 8 7.33 8 6.5S8.67 5 9.5 5s1.5.67 1.5 1.5S10.33 8 9.5 8zm5 0c-.83 0-1.5-.67-1.5-1.5S13.67 5 14.5 5s1.5.67 1.5 1.5S15.33 8 14.5 8zm3 4c-.83 0-1.5-.67-1.5-1.5S16.67 9 17.5 9s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>',panorama:'<path d="M23 18V6c0-1.1-.9-2-2-2H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2zM8.5 12.5l2.5 3.01L14.5 11l4.5 6H5l3.5-4.5z"/>',panorama_fisheye:'<path d="M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/>',panorama_horizontal:'<path d="M20 6.54v10.91c-2.6-.77-5.28-1.16-8-1.16-2.72 0-5.4.39-8 1.16V6.54c2.6.77 5.28 1.16 8 1.16 2.72.01 5.4-.38 8-1.16M21.43 4c-.1 0-.2.02-.31.06C18.18 5.16 15.09 5.7 12 5.7c-3.09 0-6.18-.55-9.12-1.64-.11-.04-.22-.06-.31-.06-.34 0-.57.23-.57.63v14.75c0 .39.23.62.57.62.1 0 .2-.02.31-.06 2.94-1.1 6.03-1.64 9.12-1.64 3.09 0 6.18.55 9.12 1.64.11.04.21.06.31.06.33 0 .57-.23.57-.63V4.63c0-.4-.24-.63-.57-.63z"/>',panorama_vertical:'<path d="M19.94 21.12c-1.1-2.94-1.64-6.03-1.64-9.12 0-3.09.55-6.18 1.64-9.12.04-.11.06-.22.06-.31 0-.34-.23-.57-.63-.57H4.63c-.4 0-.63.23-.63.57 0 .1.02.2.06.31C5.16 5.82 5.71 8.91 5.71 12c0 3.09-.55 6.18-1.64 9.12-.05.11-.07.22-.07.31 0 .33.23.57.63.57h14.75c.39 0 .63-.24.63-.57-.01-.1-.03-.2-.07-.31zM6.54 20c.77-2.6 1.16-5.28 1.16-8 0-2.72-.39-5.4-1.16-8h10.91c-.77 2.6-1.16 5.28-1.16 8 0 2.72.39 5.4 1.16 8H6.54z"/>',panorama_wide_angle:'<path d="M12 6c2.45 0 4.71.2 7.29.64.47 1.78.71 3.58.71 5.36 0 1.78-.24 3.58-.71 5.36-2.58.44-4.84.64-7.29.64s-4.71-.2-7.29-.64C4.24 15.58 4 13.78 4 12c0-1.78.24-3.58.71-5.36C7.29 6.2 9.55 6 12 6m0-2c-2.73 0-5.22.24-7.95.72l-.93.16-.25.9C2.29 7.85 2 9.93 2 12s.29 4.15.87 6.22l.25.89.93.16c2.73.49 5.22.73 7.95.73s5.22-.24 7.95-.72l.93-.16.25-.89c.58-2.08.87-4.16.87-6.23s-.29-4.15-.87-6.22l-.25-.89-.93-.16C17.22 4.24 14.73 4 12 4z"/>',photo:'<path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>',photo_album:'<path d="M18 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 4h5v8l-2.5-1.5L6 12V4zm0 15l3-3.86 2.14 2.58 3-3.86L18 19H6z"/>',photo_camera:'<circle cx="12" cy="12" r="3.2"/><path d="M12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zM9 2L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9z"/>',photo_filter:'<path d="M17.13 8.9l.59-1.3 1.3-.6-1.3-.59-.59-1.3-.59 1.3-1.31.59 1.31.6z"/><path d="M12.39 6.53l-1.18 2.61-2.61 1.18 2.61 1.18 1.18 2.61 1.19-2.61 2.6-1.18-2.6-1.18z"/><path d="M19.02 10v9H5V5h9V3H5.02c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-9h-2z"/>',photo_library:'<path d="M11 12l2.03 2.71L16 11l4 5H8l3-4zm11 4V4c0-1.1-.9-2-2-2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2z"/><path d="M2 6v14c0 1.1.9 2 2 2h14v-2H4V6H2z"/>',photo_size_select_actual:'<path d="M21 3H3C2 3 1 4 1 5v14c0 1.1.9 2 2 2h18c1 0 2-1 2-2V5c0-1-1-2-2-2zM5 17l3.5-4.5 2.5 3.01L14.5 11l4.5 6H5z"/>',photo_size_select_large:'<path d="M21 15h2v2h-2v-2z"/><path d="M21 11h2v2h-2v-2z"/><path d="M23 19h-2v2c1 0 2-1 2-2z"/><path d="M13 3h2v2h-2V3z"/><path d="M21 7h2v2h-2V7z"/><path d="M21 3v2h2c0-1-1-2-2-2z"/><path d="M1 7h2v2H1V7z"/><path d="M17 3h2v2h-2V3z"/><path d="M17 19h2v2h-2v-2z"/><path d="M3 3C2 3 1 4 1 5h2V3z"/><path d="M9 3h2v2H9V3z"/><path d="M5 3h2v2H5V3z"/><path d="M3 19l2.5-3.21 1.79 2.15 2.5-3.22L13 19H3zm-2-8v8c0 1.1.9 2 2 2h12V11H1z"/>',photo_size_select_small:'<path d="M23 15h-2v2h2v-2z"/><path d="M23 11h-2v2h2v-2z"/><path d="M23 19h-2v2c1 0 2-1 2-2z"/><path d="M15 3h-2v2h2V3z"/><path d="M23 7h-2v2h2V7z"/><path d="M21 3v2h2c0-1-1-2-2-2z"/><path d="M3 21h8v-6H1v4c0 1.1.9 2 2 2z"/><path d="M3 7H1v2h2V7z"/><path d="M15 19h-2v2h2v-2z"/><path d="M19 3h-2v2h2V3z"/><path d="M19 19h-2v2h2v-2z"/><path d="M3 3C2 3 1 4 1 5h2V3z"/><path d="M3 11H1v2h2v-2z"/><path d="M11 3H9v2h2V3z"/><path d="M7 3H5v2h2V3z"/>',picture_as_pdf:'<path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6z"/><path d="M14 11.5h1v-3h-1v3zm-5-2h1v-1H9v1zm11.5-1H19v1h1.5V11H19v2h-1.5V7h3v1.5zm-4 3c0 .83-.67 1.5-1.5 1.5h-2.5V7H15c.83 0 1.5.67 1.5 1.5v3zm-5-2c0 .83-.67 1.5-1.5 1.5H9v2H7.5V7H10c.83 0 1.5.67 1.5 1.5v1zM20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>',portrait:'<path d="M16.5 16.25c0-1.5-3-2.25-4.5-2.25s-4.5.75-4.5 2.25V17h9v-.75zm-4.5-4c1.24 0 2.25-1.01 2.25-2.25S13.24 7.75 12 7.75 9.75 8.76 9.75 10s1.01 2.25 2.25 2.25z"/><path d="M19 19H5V5h14v14zm0-16H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/>',remove_red_eye:'<path d="M12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-12.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5z"/><path d="M12 9c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>',rotate_90_degrees_ccw:'<path d="M3.69 12.9l3.66-3.66L11 12.9l-3.66 3.66-3.65-3.66zm3.65-6.49L.86 12.9l6.49 6.48 6.49-6.48-6.5-6.49z"/><path d="M19.36 6.64A8.95 8.95 0 0 0 13 4V.76L8.76 5 13 9.24V6c1.79 0 3.58.68 4.95 2.05a7.007 7.007 0 0 1 0 9.9 6.973 6.973 0 0 1-7.79 1.44l-1.49 1.49C10.02 21.62 11.51 22 13 22c2.3 0 4.61-.88 6.36-2.64a8.98 8.98 0 0 0 0-12.72z"/>',rotate_left:'<path d="M7.11 8.53L5.7 7.11C4.8 8.27 4.24 9.61 4.07 11h2.02c.14-.87.49-1.72 1.02-2.47z"/><path d="M6.09 13H4.07c.17 1.39.72 2.73 1.62 3.89l1.41-1.42c-.52-.75-.87-1.59-1.01-2.47z"/><path d="M7.1 18.32c1.16.9 2.51 1.44 3.9 1.61V17.9c-.87-.15-1.71-.49-2.46-1.03L7.1 18.32z"/><path d="M13 4.07V1L8.45 5.55 13 10V6.09c2.84.48 5 2.94 5 5.91s-2.16 5.43-5 5.91v2.02c3.95-.49 7-3.85 7-7.93s-3.05-7.44-7-7.93z"/>',rotate_right:'<path d="M15.55 5.55L11 1v3.07C7.06 4.56 4 7.92 4 12s3.05 7.44 7 7.93v-2.02c-2.84-.48-5-2.94-5-5.91s2.16-5.43 5-5.91V10l4.55-4.45z"/><path d="M19.93 11c-.17-1.39-.72-2.73-1.62-3.89l-1.42 1.42c.54.75.88 1.6 1.02 2.47h2.02z"/><path d="M13 17.9v2.02c1.39-.17 2.74-.71 3.9-1.61l-1.44-1.44c-.75.54-1.59.89-2.46 1.03z"/><path d="M16.89 15.48l1.42 1.41c.9-1.16 1.45-2.5 1.62-3.89h-2.02c-.14.87-.48 1.72-1.02 2.48z"/>',slideshow:'<path d="M10 8v8l5-4-5-4z"/><path d="M19 19H5V5h14v14zm0-16H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/>',straighten:'<path d="M21 6H3c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 10H3V8h2v4h2V8h2v4h2V8h2v4h2V8h2v4h2V8h2v8z"/>',style:'<path d="M2.53 19.65l1.34.56v-9.03l-2.43 5.86c-.41 1.02.08 2.19 1.09 2.61z"/><path d="M7.88 8.75c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm14.15 7.2L17.07 3.98a2.013 2.013 0 0 0-1.81-1.23c-.26 0-.53.04-.79.15L7.1 5.95a1.999 1.999 0 0 0-1.08 2.6l4.96 11.97a1.998 1.998 0 0 0 2.6 1.08l7.36-3.05a1.994 1.994 0 0 0 1.09-2.6z"/><path d="M5.88 19.75c0 1.1.9 2 2 2h1.45l-3.45-8.34v6.34z"/>',switch_camera:'<path d="M20 4h-3.17L15 2H9L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-5 11.5V13H9v2.5L5.5 12 9 8.5V11h6V8.5l3.5 3.5-3.5 3.5z"/>',switch_video:'<path d="M18 9.5V6c0-.55-.45-1-1-1H3c-.55 0-1 .45-1 1v12c0 .55.45 1 1 1h14c.55 0 1-.45 1-1v-3.5l4 4v-13l-4 4zm-5 6V13H7v2.5L3.5 12 7 8.5V11h6V8.5l3.5 3.5-3.5 3.5z"/>',tag_faces:'<path d="M12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm-.01-18C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2z"/><path d="M15.5 11c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5z"/><path d="M8.5 11c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 11 8.5 11z"/><path d="M12 17.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"/>',texture:'<path d="M19.51 3.08L3.08 19.51c.09.34.27.65.51.9.25.24.56.42.9.51L20.93 4.49c-.19-.69-.73-1.23-1.42-1.41z"/><path d="M11.88 3L3 11.88v2.83L14.71 3h-2.83z"/><path d="M5 3c-1.1 0-2 .9-2 2v2l4-4H5z"/><path d="M19 21c.55 0 1.05-.22 1.41-.59.37-.36.59-.86.59-1.41v-2l-4 4h2z"/><path d="M9.29 21h2.83L21 12.12V9.29L9.29 21z"/>',timelapse:'<path d="M16.24 7.76C15.07 6.59 13.54 6 12 6v6l-4.24 4.24c2.34 2.34 6.14 2.34 8.49 0 2.34-2.34 2.34-6.14-.01-8.48z"/><path d="M12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm0-18C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/>',timer:'<path d="M15 1H9v2h6V1z"/><path d="M11 14h2V8h-2v6z"/><path d="M12 20c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7zm7.03-12.61l1.42-1.42c-.43-.51-.9-.99-1.41-1.41l-1.42 1.42C16.07 4.74 14.12 4 12 4c-4.97 0-9 4.03-9 9s4.02 9 9 9 9-4.03 9-9c0-2.12-.74-4.07-1.97-5.61z"/>',timer_10:'<path d="M0 7.72V9.4l3-1V18h2V6h-.25L0 7.72z"/><path d="M23.78 14.37c-.14-.28-.35-.53-.63-.74-.28-.21-.61-.39-1.01-.53s-.85-.27-1.35-.38a6.64 6.64 0 0 1-.87-.23 2.61 2.61 0 0 1-.55-.25.717.717 0 0 1-.28-.3.978.978 0 0 1 .01-.8c.06-.13.15-.25.27-.34.12-.1.27-.18.45-.24s.4-.09.64-.09c.25 0 .47.04.66.11.19.07.35.17.48.29.13.12.22.26.29.42.06.16.1.32.1.49h1.95a2.517 2.517 0 0 0-.93-1.97c-.3-.25-.66-.44-1.09-.59C21.49 9.07 21 9 20.46 9c-.51 0-.98.07-1.39.21-.41.14-.77.33-1.06.57-.29.24-.51.52-.67.84a2.2 2.2 0 0 0-.23 1.01c0 .36.08.69.23.96.15.28.36.52.64.73.27.21.6.38.98.53.38.14.81.26 1.27.36.39.08.71.17.95.26s.43.19.57.29c.13.1.22.22.27.34.05.12.07.25.07.39 0 .32-.13.57-.4.77-.27.2-.66.29-1.17.29-.22 0-.43-.02-.64-.08-.21-.05-.4-.13-.56-.24a1.333 1.333 0 0 1-.59-1.11h-1.89c0 .36.08.71.24 1.05.16.34.39.65.7.93.31.27.69.49 1.15.66.46.17.98.25 1.58.25.53 0 1.01-.06 1.44-.19.43-.13.8-.31 1.11-.54.31-.23.54-.51.71-.83.17-.32.25-.67.25-1.06-.02-.4-.09-.74-.24-1.02z"/><path d="M12.9 13.22c0 .6-.04 1.11-.12 1.53-.08.42-.2.76-.36 1.02-.16.26-.36.45-.59.57-.23.12-.51.18-.82.18-.3 0-.58-.06-.82-.18s-.44-.31-.6-.57c-.16-.26-.29-.6-.38-1.02-.09-.42-.13-.93-.13-1.53v-2.5c0-.6.04-1.11.13-1.52.09-.41.21-.74.38-1 .16-.25.36-.43.6-.55.24-.11.51-.17.81-.17.31 0 .58.06.81.17.24.11.44.29.6.55.16.25.29.58.37.99.08.41.13.92.13 1.52v2.51zm.92-6.17c-.34-.4-.75-.7-1.23-.88-.47-.18-1.01-.27-1.59-.27-.58 0-1.11.09-1.59.27-.48.18-.89.47-1.23.88-.34.41-.6.93-.79 1.59-.18.65-.28 1.45-.28 2.39v1.92c0 .94.09 1.74.28 2.39.19.66.45 1.19.8 1.6.34.41.75.71 1.23.89.48.18 1.01.28 1.59.28.59 0 1.12-.09 1.59-.28.48-.18.88-.48 1.22-.89.34-.41.6-.94.78-1.6.18-.65.28-1.45.28-2.39v-1.92c0-.94-.09-1.74-.28-2.39-.18-.66-.44-1.19-.78-1.59z"/>',timer_3:'<path d="M11.61 12.97c-.16-.24-.36-.46-.62-.65a3.38 3.38 0 0 0-.93-.48c.3-.14.57-.3.8-.5.23-.2.42-.41.57-.64.15-.23.27-.46.34-.71.08-.24.11-.49.11-.73 0-.55-.09-1.04-.28-1.46-.18-.42-.44-.77-.78-1.06-.33-.28-.73-.5-1.2-.64-.45-.13-.97-.2-1.53-.2-.55 0-1.06.08-1.52.24-.47.17-.87.4-1.2.69-.33.29-.6.63-.78 1.03-.2.39-.29.83-.29 1.29h1.98c0-.26.05-.49.14-.69.09-.2.22-.38.38-.52.17-.14.36-.25.58-.33.22-.08.46-.12.73-.12.61 0 1.06.16 1.36.47.3.31.44.75.44 1.32 0 .27-.04.52-.12.74-.08.22-.21.41-.38.57-.17.16-.38.28-.63.37-.25.09-.55.13-.89.13H6.72v1.57H7.9c.34 0 .64.04.91.11.27.08.5.19.69.35.19.16.34.36.44.61.1.24.16.54.16.87 0 .62-.18 1.09-.53 1.42-.35.33-.84.49-1.45.49-.29 0-.56-.04-.8-.13-.24-.08-.44-.2-.61-.36-.17-.16-.3-.34-.39-.56-.09-.22-.14-.46-.14-.72H4.19c0 .55.11 1.03.32 1.45.21.42.5.77.86 1.05s.77.49 1.24.63.96.21 1.48.21c.57 0 1.09-.08 1.58-.23.49-.15.91-.38 1.26-.68.36-.3.64-.66.84-1.1.2-.43.3-.93.3-1.48 0-.29-.04-.58-.11-.86-.08-.25-.19-.51-.35-.76z"/><path d="M20.87 14.37c-.14-.28-.35-.53-.63-.74-.28-.21-.61-.39-1.01-.53s-.85-.27-1.35-.38a6.64 6.64 0 0 1-.87-.23 2.61 2.61 0 0 1-.55-.25.717.717 0 0 1-.28-.3.935.935 0 0 1-.08-.39.946.946 0 0 1 .36-.75c.12-.1.27-.18.45-.24s.4-.09.64-.09c.25 0 .47.04.66.11.19.07.35.17.48.29.13.12.22.26.29.42.06.16.1.32.1.49h1.95a2.517 2.517 0 0 0-.93-1.97c-.3-.25-.66-.44-1.09-.59-.43-.15-.92-.22-1.46-.22-.51 0-.98.07-1.39.21-.41.14-.77.33-1.06.57-.29.24-.51.52-.67.84a2.2 2.2 0 0 0-.23 1.01c0 .36.08.68.23.96.15.28.37.52.64.73.27.21.6.38.98.53.38.14.81.26 1.27.36.39.08.71.17.95.26s.43.19.57.29c.13.1.22.22.27.34.05.12.07.25.07.39 0 .32-.13.57-.4.77-.27.2-.66.29-1.17.29-.22 0-.43-.02-.64-.08-.21-.05-.4-.13-.56-.24a1.333 1.333 0 0 1-.59-1.11h-1.89c0 .36.08.71.24 1.05.16.34.39.65.7.93.31.27.69.49 1.15.66.46.17.98.25 1.58.25.53 0 1.01-.06 1.44-.19.43-.13.8-.31 1.11-.54.31-.23.54-.51.71-.83.17-.32.25-.67.25-1.06-.02-.4-.09-.74-.24-1.02z"/>',
 timer_off:'<path d="M19.04 4.55l-1.42 1.42a9.012 9.012 0 0 0-10.57-.49l1.46 1.46C9.53 6.35 10.73 6 12 6c3.87 0 7 3.13 7 7 0 1.27-.35 2.47-.94 3.49l1.45 1.45A8.878 8.878 0 0 0 21 13c0-2.12-.74-4.07-1.97-5.61l1.42-1.42-1.41-1.42z"/><path d="M15 1H9v2h6V1z"/><path d="M11 9.44l2 2V8h-2v1.44z"/><path d="M12 20c-3.87 0-7-3.13-7-7 0-1.28.35-2.48.95-3.52l9.56 9.56c-1.03.61-2.23.96-3.51.96zM3.02 4L1.75 5.27 4.5 8.03A8.905 8.905 0 0 0 3 13c0 4.97 4.02 9 9 9 1.84 0 3.55-.55 4.98-1.5l2.5 2.5 1.27-1.27-7.71-7.71L3.02 4z"/>',tonality:'<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.94-.49-7-3.85-7-7.93s3.05-7.44 7-7.93v15.86zm2-15.86c1.03.13 2 .45 2.87.93H13v-.93zM13 7h5.24c.25.31.48.65.68 1H13V7zm0 3h6.74c.08.33.15.66.19 1H13v-1zm0 9.93V19h2.87c-.87.48-1.84.8-2.87.93zM18.24 17H13v-1h5.92c-.2.35-.43.69-.68 1zm1.5-3H13v-1h6.93c-.04.34-.11.67-.19 1z"/>',transform:'<path d="M22 18v-2H8V4h2L7 1 4 4h2v2H2v2h4v8c0 1.1.9 2 2 2h8v2h-2l3 3 3-3h-2v-2h4z"/><path d="M10 8h6v6h2V8c0-1.1-.9-2-2-2h-6v2z"/>',tune:'<path d="M13 21v-2h8v-2h-8v-2h-2v6h2zM3 17v2h6v-2H3z"/><path d="M21 13v-2H11v2h10zM7 9v2H3v2h4v2h2V9H7z"/><path d="M15 9h2V7h4V5h-4V3h-2v6zM3 5v2h10V5H3z"/>',view_comfy:'<path d="M3 9h4V5H3v4z"/><path d="M3 14h4v-4H3v4z"/><path d="M8 14h4v-4H8v4z"/><path d="M13 14h4v-4h-4v4z"/><path d="M8 9h4V5H8v4z"/><path d="M13 5v4h4V5h-4z"/><path d="M18 14h4v-4h-4v4z"/><path d="M3 19h4v-4H3v4z"/><path d="M8 19h4v-4H8v4z"/><path d="M13 19h4v-4h-4v4z"/><path d="M18 19h4v-4h-4v4z"/><path d="M18 5v4h4V5h-4z"/>',view_compact:'<path d="M3 19h6v-7H3v7z"/><path d="M10 19h12v-7H10v7z"/><path d="M3 5v6h19V5H3z"/>',vignette:'<path d="M21 3H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-9 15c-4.42 0-8-2.69-8-6s3.58-6 8-6 8 2.69 8 6-3.58 6-8 6z"/>',wb_auto:'<path d="M6.85 12.65h2.3L8 9l-1.15 3.65zM22 7l-1.2 6.29L19.3 7h-1.6l-1.49 6.29L15 7h-.76C12.77 5.17 10.53 4 8 4c-4.42 0-8 3.58-8 8s3.58 8 8 8c3.13 0 5.84-1.81 7.15-4.43l.1.43H17l1.5-6.1L20 16h1.75l2.05-9H22zm-11.7 9l-.7-2H6.4l-.7 2H3.8L7 7h2l3.2 9h-1.9z"/>',wb_cloudy:'<path d="M19.36 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.64-4.96z"/>',wb_incandescent:'<path d="M3.55 18.54l1.41 1.41 1.79-1.8-1.41-1.41-1.79 1.8z"/><path d="M11 22.45h2V19.5h-2v2.95z"/><path d="M4 10.5H1v2h3v-2z"/><path d="M15 6.31V1.5H9v4.81C7.21 7.35 6 9.28 6 11.5c0 3.31 2.69 6 6 6s6-2.69 6-6c0-2.22-1.21-4.15-3-5.19z"/><path d="M20 10.5v2h3v-2h-3z"/><path d="M17.24 18.16l1.79 1.8 1.41-1.41-1.8-1.79-1.4 1.4z"/>',wb_irradescent:'<path d="M5 14.5h14v-6H5v6z"/><path d="M11 .55V3.5h2V.55h-2z"/><path d="M19.04 3.05l-1.79 1.79 1.41 1.41 1.8-1.79-1.42-1.41z"/><path d="M13 22.45V19.5h-2v2.95h2z"/><path d="M20.45 18.54l-1.8-1.79-1.41 1.41 1.79 1.8 1.42-1.42z"/><path d="M3.55 4.46l1.79 1.79 1.41-1.41-1.79-1.79-1.41 1.41z"/><path d="M4.96 19.95l1.79-1.8-1.41-1.41-1.79 1.79 1.41 1.42z"/>',wb_sunny:'<path d="M6.76 4.84l-1.8-1.79-1.41 1.41 1.79 1.79 1.42-1.41z"/><path d="M4 10.5H1v2h3v-2z"/><path d="M13 .55h-2V3.5h2V.55z"/><path d="M20.45 4.46l-1.41-1.41-1.79 1.79 1.41 1.41 1.79-1.79z"/><path d="M17.24 18.16l1.79 1.8 1.41-1.41-1.8-1.79-1.4 1.4z"/><path d="M20 10.5v2h3v-2h-3z"/><path d="M12 5.5c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6z"/><path d="M11 22.45h2V19.5h-2v2.95z"/><path d="M3.55 18.54l1.41 1.41 1.79-1.8-1.41-1.41-1.79 1.8z"/>',add_location:'<path d="M12 2C8.14 2 5 5.14 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.86-3.14-7-7-7zm4 8h-3v3h-2v-3H8V8h3V5h2v3h3v2z"/>',beenhere:'<path d="M19 1H5c-1.1 0-1.99.9-1.99 2L3 15.93c0 .69.35 1.3.88 1.66L12 23l8.11-5.41c.53-.36.88-.97.88-1.66L21 3c0-1.1-.9-2-2-2zm-9 15l-5-5 1.41-1.41L10 13.17l7.59-7.59L19 7l-9 9z"/>',directions:'<path d="M21.71 11.29l-9-9c-.39-.39-1.02-.39-1.41 0l-9 9c-.39.39-.39 1.02 0 1.41l9 9c.39.39 1.02.39 1.41 0l9-9c.39-.38.39-1.01 0-1.41zM14 14.5V12h-4v3H8v-4c0-.55.45-1 1-1h5V7.5l3.5 3.5-3.5 3.5z"/>',directions_bike:'<path d="M16 4.8c.99 0 1.8-.81 1.8-1.8s-.81-1.8-1.8-1.8c-1 0-1.8.81-1.8 1.8S15 4.8 16 4.8z"/><path d="M19 20.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5zm0-8.5c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5z"/><path d="M14.8 10H19V8.2h-3.2l-1.93-3.27c-.3-.5-.84-.83-1.46-.83-.47 0-.89.19-1.2.5l-3.7 3.7c-.32.3-.51.73-.51 1.2 0 .63.33 1.16.85 1.47L11.2 13v5H13v-6.48l-2.25-1.67 2.32-2.33L14.8 10z"/><path d="M5 20.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5zM5 12c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5z"/>',directions_bus:'<path d="M4 16c0 .88.39 1.67 1 2.22V20c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h8v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-3.5-3.58-4-8-4s-8 .5-8 4v10zm3.5 1c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm1.5-6H6V6h12v5z"/>',directions_car:'<path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/>',directions_ferry:'<path d="M20 21c-1.39 0-2.78-.47-4-1.32-2.44 1.71-5.56 1.71-8 0C6.78 20.53 5.39 21 4 21H2v2h2c1.38 0 2.74-.35 4-.99 2.52 1.29 5.48 1.29 8 0 1.26.65 2.62.99 4 .99h2v-2h-2z"/><path d="M6 6h12v3.97L12 8 6 9.97V6zM3.95 19H4c1.6 0 3.02-.88 4-2 .98 1.12 2.4 2 4 2s3.02-.88 4-2c.98 1.12 2.4 2 4 2h.05l1.89-6.68c.08-.26.06-.54-.06-.78s-.34-.42-.6-.5L20 10.62V6c0-1.1-.9-2-2-2h-3V1H9v3H6c-1.1 0-2 .9-2 2v4.62l-1.29.42c-.26.08-.48.26-.6.5s-.15.52-.06.78L3.95 19z"/>',directions_subway:'<path d="M12 2c-4.42 0-8 .5-8 4v9.5C4 17.43 5.57 19 7.5 19L6 20.5v.5h12v-.5L16.5 19c1.93 0 3.5-1.57 3.5-3.5V6c0-3.5-3.58-4-8-4zM7.5 17c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm3.5-6H6V6h5v5zm5.5 6c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm1.5-6h-5V6h5v5z"/>',directions_train:'<path d="M4 15.5C4 17.43 5.57 19 7.5 19L6 20.5v.5h12v-.5L16.5 19c1.93 0 3.5-1.57 3.5-3.5V5c0-3.5-3.58-4-8-4s-8 .5-8 4v10.5zm8 1.5c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm6-7H6V5h12v5z"/>',directions_transit:'<path d="M12 2c-4.42 0-8 .5-8 4v9.5C4 17.43 5.57 19 7.5 19L6 20.5v.5h12v-.5L16.5 19c1.93 0 3.5-1.57 3.5-3.5V6c0-3.5-3.58-4-8-4zM7.5 17c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm3.5-6H6V6h5v5zm5.5 6c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm1.5-6h-5V6h5v5z"/>',directions_walk:'<path d="M14 3.8c.99 0 1.8-.81 1.8-1.8 0-1-.81-1.8-1.8-1.8-1 0-1.8.81-1.8 1.8S13 3.8 14 3.8z"/><path d="M14.12 10H19V8.2h-3.62l-2-3.33c-.3-.5-.84-.83-1.46-.83-.17 0-.34.03-.49.07L6 5.8V11h1.8V7.33l2.11-.66L6 22h1.8l2.87-8.11L13 17v5h1.8v-6.41l-2.49-4.54.73-2.87L14.12 10z"/>',edit_location:'<path d="M12 2C8.14 2 5 5.14 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.86-3.14-7-7-7zm-1.56 10H9v-1.44l3.35-3.34 1.43 1.43L10.44 12zm4.45-4.45l-.7.7-1.44-1.44.7-.7c.15-.15.39-.15.54 0l.9.9c.15.15.15.39 0 .54z"/>',ev_station:'<path d="M19.77 7.23l.01-.01-3.72-3.72L15 4.56l2.11 2.11c-.94.36-1.61 1.26-1.61 2.33 0 1.38 1.12 2.5 2.5 2.5.36 0 .69-.08 1-.21v7.21c0 .55-.45 1-1 1s-1-.45-1-1V14c0-1.1-.9-2-2-2h-1V5c0-1.1-.9-2-2-2H6c-1.1 0-2 .9-2 2v16h10v-7.5h1.5v5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5V9c0-.69-.28-1.32-.73-1.77zM18 10c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zM8 18v-4.5H6L10 6v5h2l-4 7z"/>',flight:'<path d="M10.18 9"/><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/>',hotel:'<path d="M7 13c1.66 0 3-1.34 3-3S8.66 7 7 7s-3 1.34-3 3 1.34 3 3 3z"/><path d="M19 7h-8v7H3V5H1v15h2v-3h18v3h2v-9c0-2.21-1.79-4-4-4z"/>',layers:'<path d="M11.99 18.54l-7.37-5.73L3 14.07l9 7 9-7-1.63-1.27-7.38 5.74z"/><path d="M12 16l7.36-5.73L21 9l-9-7-9 7 1.63 1.27L12 16z"/>',layers_clear:'<path d="M19.81 14.99l1.19-.92-1.43-1.43-1.19.92 1.43 1.43z"/><path d="M19.36 10.27L21 9l-9-7-2.91 2.27 7.87 7.88 2.4-1.88z"/><path d="M3.27 1L2 2.27l4.22 4.22L3 9l1.63 1.27L12 16l2.1-1.63 1.43 1.43L12 18.54l-7.37-5.73L3 14.07l9 7 4.95-3.85L20.73 21 22 19.73 3.27 1z"/>',local_activity:'<path d="M20 12c0-1.1.9-2 2-2V6c0-1.1-.9-2-2-2H4c-1.1 0-1.99.9-1.99 2v4c1.1 0 1.99.9 1.99 2s-.89 2-2 2v4c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2v-4c-1.1 0-2-.9-2-2zm-4.42 4.8L12 14.5l-3.58 2.3 1.08-4.12-3.29-2.69 4.24-.25L12 5.8l1.54 3.95 4.24.25-3.29 2.69 1.09 4.11z"/>',local_airport:'<path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/>',local_atm:'<path d="M11 17h2v-1h1c.55 0 1-.45 1-1v-3c0-.55-.45-1-1-1h-3v-1h4V8h-2V7h-2v1h-1c-.55 0-1 .45-1 1v3c0 .55.45 1 1 1h3v1H9v2h2v1z"/><path d="M20 18H4V6h16v12zm0-14H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2z"/>',local_bar:'<path d="M11 13v6H6v2h12v-2h-5v-6l8-8V3H3v2l8 8zM7.5 7l-2-2h13l-2 2h-9z"/>',local_cafe:'<path d="M20 8h-2V5h2v3zm0-5H4v10c0 2.21 1.79 4 4 4h6c2.21 0 4-1.79 4-4v-3h2c1.11 0 2-.89 2-2V5c0-1.11-.89-2-2-2z"/><path d="M2 21h18v-2H2v2z"/>',local_car_wash:'<path d="M17 5c.83 0 1.5-.67 1.5-1.5 0-1-1.5-2.7-1.5-2.7s-1.5 1.7-1.5 2.7c0 .83.67 1.5 1.5 1.5z"/><path d="M12 5c.83 0 1.5-.67 1.5-1.5 0-1-1.5-2.7-1.5-2.7s-1.5 1.7-1.5 2.7c0 .83.67 1.5 1.5 1.5z"/><path d="M7 5c.83 0 1.5-.67 1.5-1.5C8.5 2.5 7 .8 7 .8S5.5 2.5 5.5 3.5C5.5 4.33 6.17 5 7 5z"/><path d="M5 13l1.5-4.5h11L19 13H5zm12.5 5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm-11 0c-.83 0-1.5-.67-1.5-1.5S5.67 15 6.5 15s1.5.67 1.5 1.5S7.33 18 6.5 18zm12.42-9.99C18.72 7.42 18.16 7 17.5 7h-11c-.66 0-1.21.42-1.42 1.01L3 14v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99z"/>',local_convenience_store:'<path d="M19 7V4H5v3H2v13h8v-4h4v4h8V7h-3zm-8 3H9v1h2v1H8V9h2V8H8V7h3v3zm5 2h-1v-2h-2V7h1v2h1V7h1v5z"/>',local_dining:'<path d="M8.1 13.34l2.83-2.83L3.91 3.5a4.008 4.008 0 0 0 0 5.66l4.19 4.18z"/><path d="M14.88 11.53c1.53.71 3.68.21 5.27-1.38 1.91-1.91 2.28-4.65.81-6.12-1.46-1.46-4.2-1.1-6.12.81-1.59 1.59-2.09 3.74-1.38 5.27L3.7 19.87l1.41 1.41L12 14.41l6.88 6.88 1.41-1.41L13.41 13l1.47-1.47z"/>',local_drink:'<path d="M3 2l2.01 18.23C5.13 21.23 5.97 22 7 22h10c1.03 0 1.87-.77 1.99-1.77L21 2H3zm9 17c-1.66 0-3-1.34-3-3 0-2 3-5.4 3-5.4s3 3.4 3 5.4c0 1.66-1.34 3-3 3zm6.33-11H5.67l-.44-4h13.53l-.43 4z"/>',local_florist:'<path d="M12 22c4.97 0 9-4.03 9-9-4.97 0-9 4.03-9 9z"/><path d="M12 5.5c1.38 0 2.5 1.12 2.5 2.5s-1.12 2.5-2.5 2.5S9.5 9.38 9.5 8s1.12-2.5 2.5-2.5zm-6.4 4.75c0 1.38 1.12 2.5 2.5 2.5.53 0 1.01-.16 1.42-.44l-.02.19c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5l-.02-.19c.4.28.89.44 1.42.44 1.38 0 2.5-1.12 2.5-2.5 0-1-.59-1.85-1.43-2.25.84-.4 1.43-1.25 1.43-2.25 0-1.38-1.12-2.5-2.5-2.5-.53 0-1.01.16-1.42.44l.02-.19C14.5 2.12 13.38 1 12 1S9.5 2.12 9.5 3.5l.02.19c-.4-.28-.89-.44-1.42-.44-1.38 0-2.5 1.12-2.5 2.5 0 1 .59 1.85 1.43 2.25-.84.4-1.43 1.25-1.43 2.25z"/><path d="M3 13c0 4.97 4.03 9 9 9 0-4.97-4.03-9-9-9z"/>',local_gas_station:'<path d="M19.77 7.23l.01-.01-3.72-3.72L15 4.56l2.11 2.11c-.94.36-1.61 1.26-1.61 2.33 0 1.38 1.12 2.5 2.5 2.5.36 0 .69-.08 1-.21v7.21c0 .55-.45 1-1 1s-1-.45-1-1V14c0-1.1-.9-2-2-2h-1V5c0-1.1-.9-2-2-2H6c-1.1 0-2 .9-2 2v16h10v-7.5h1.5v5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5V9c0-.69-.28-1.32-.73-1.77zM12 10H6V5h6v5zm6 0c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1z"/>',local_grocery_store:'<path d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2z"/><path d="M1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49c.08-.14.12-.31.12-.48 0-.55-.45-1-1-1H5.21l-.94-2H1z"/><path d="M17 18c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z"/>',local_hospital:'<path d="M19 3H5c-1.1 0-1.99.9-1.99 2L3 19c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-1 11h-4v4h-4v-4H6v-4h4V6h4v4h4v4z"/>',local_hotel:'<path d="M7 13c1.66 0 3-1.34 3-3S8.66 7 7 7s-3 1.34-3 3 1.34 3 3 3z"/><path d="M19 7h-8v7H3V5H1v15h2v-3h18v3h2v-9c0-2.21-1.79-4-4-4z"/>',local_laundry_service:'<path d="M9.17 16.83a4.008 4.008 0 0 0 5.66 0 4.008 4.008 0 0 0 0-5.66l-5.66 5.66z"/><path d="M12 20c-3.31 0-6-2.69-6-6s2.69-6 6-6 6 2.69 6 6-2.69 6-6 6zM7 4c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm3 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm8-1.99L6 2c-1.11 0-2 .89-2 2v16c0 1.11.89 2 2 2h12c1.11 0 2-.89 2-2V4c0-1.11-.89-1.99-2-1.99z"/>',local_library:'<path d="M12 8c1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3 1.34 3 3 3z"/><path d="M12 11.55C9.64 9.35 6.48 8 3 8v11c3.48 0 6.64 1.35 9 3.55 2.36-2.19 5.52-3.55 9-3.55V8c-3.48 0-6.64 1.35-9 3.55z"/>',local_mall:'<path d="M19 6h-2c0-2.76-2.24-5-5-5S7 3.24 7 6H5c-1.1 0-1.99.9-1.99 2L3 20c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-7-3c1.66 0 3 1.34 3 3H9c0-1.66 1.34-3 3-3zm0 10c-2.76 0-5-2.24-5-5h2c0 1.66 1.34 3 3 3s3-1.34 3-3h2c0 2.76-2.24 5-5 5z"/>',local_movies:'<path d="M18 3v2h-2V3H8v2H6V3H4v18h2v-2h2v2h8v-2h2v2h2V3h-2zM8 17H6v-2h2v2zm0-4H6v-2h2v2zm0-4H6V7h2v2zm10 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V7h2v2z"/>',local_offer:'<path d="M21.41 11.58l-9-9C12.05 2.22 11.55 2 11 2H4c-1.1 0-2 .9-2 2v7c0 .55.22 1.05.59 1.42l9 9c.36.36.86.58 1.41.58.55 0 1.05-.22 1.41-.59l7-7c.37-.36.59-.86.59-1.41 0-.55-.23-1.06-.59-1.42zM5.5 7C4.67 7 4 6.33 4 5.5S4.67 4 5.5 4 7 4.67 7 5.5 6.33 7 5.5 7z"/>',local_parking:'<path d="M13 3H6v18h4v-6h3c3.31 0 6-2.69 6-6s-2.69-6-6-6zm.2 8H10V7h3.2c1.1 0 2 .9 2 2s-.9 2-2 2z"/>',local_pharmacy:'<path d="M21 5h-2.64l1.14-3.14L17.15 1l-1.46 4H3v2l2 6-2 6v2h18v-2l-2-6 2-6V5zm-5 9h-3v3h-2v-3H8v-2h3V9h2v3h3v2z"/>',local_phone:'<path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/>',local_pizza:'<path d="M12 2C8.43 2 5.23 3.54 3.01 6L12 22l8.99-16C18.78 3.55 15.57 2 12 2zM7 7c0-1.1.9-2 2-2s2 .9 2 2-.9 2-2 2-2-.9-2-2zm5 8c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/>',local_play:'<path d="M20 12c0-1.1.9-2 2-2V6c0-1.1-.9-2-2-2H4c-1.1 0-1.99.9-1.99 2v4c1.1 0 1.99.9 1.99 2s-.89 2-2 2v4c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2v-4c-1.1 0-2-.9-2-2zm-4.42 4.8L12 14.5l-3.58 2.3 1.08-4.12-3.29-2.69 4.24-.25L12 5.8l1.54 3.95 4.24.25-3.29 2.69 1.09 4.11z"/>',local_post_office:'<path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>',local_print_shop:'<path d="M19 12c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-3 7H8v-5h8v5zm3-11H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3z"/><path d="M18 3H6v4h12V3z"/>',local_restaurant:'<path d="M8.1 13.34l2.83-2.83L3.91 3.5a4.008 4.008 0 0 0 0 5.66l4.19 4.18z"/><path d="M14.88 11.53c1.53.71 3.68.21 5.27-1.38 1.91-1.91 2.28-4.65.81-6.12-1.46-1.46-4.2-1.1-6.12.81-1.59 1.59-2.09 3.74-1.38 5.27L3.7 19.87l1.41 1.41L12 14.41l6.88 6.88 1.41-1.41L13.41 13l1.47-1.47z"/>',local_see:'<circle cx="12" cy="12" r="3.2"/><path d="M12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zM9 2L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9z"/>',local_shipping:'<path d="M20 8h-3V4H3c-1.1 0-2 .9-2 2v11h2c0 1.66 1.34 3 3 3s3-1.34 3-3h6c0 1.66 1.34 3 3 3s3-1.34 3-3h2v-5l-3-4zM6 18.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm13.5-9l1.96 2.5H17V9.5h2.5zm-1.5 9c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>',local_taxi:'<path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5H15V3H9v2H6.5c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/>',map:'<path d="M20.5 3l-.16.03L15 5.1 9 3 3.36 4.9c-.21.07-.36.25-.36.48V20.5c0 .28.22.5.5.5l.16-.03L9 18.9l6 2.1 5.64-1.9c.21-.07.36-.25.36-.48V3.5c0-.28-.22-.5-.5-.5zM15 19l-6-2.11V5l6 2.11V19z"/>',my_location:'<path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4z"/><path d="M12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7zm8.94-8c-.46-4.17-3.77-7.48-7.94-7.94V1h-2v2.06C6.83 3.52 3.52 6.83 3.06 11H1v2h2.06c.46 4.17 3.77 7.48 7.94 7.94V23h2v-2.06c4.17-.46 7.48-3.77 7.94-7.94H23v-2h-2.06z"/>',navigation:'<path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z"/>',near_me:'<path d="M21 3L3 10.53v.98l6.84 2.65L12.48 21h.98L21 3z"/>',person_pin_circle:'<path d="M12 2C8.14 2 5 5.14 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.86-3.14-7-7-7zm0 2c1.1 0 2 .9 2 2 0 1.11-.9 2-2 2s-2-.89-2-2c0-1.1.9-2 2-2zm0 10c-1.67 0-3.14-.85-4-2.15.02-1.32 2.67-2.05 4-2.05s3.98.73 4 2.05c-.86 1.3-2.33 2.15-4 2.15z"/>',person_pin:'<path d="M19 2H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h4l3 3 3-3h4c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-7 3.3c1.49 0 2.7 1.21 2.7 2.7 0 1.49-1.21 2.7-2.7 2.7-1.49 0-2.7-1.21-2.7-2.7 0-1.49 1.21-2.7 2.7-2.7zM18 16H6v-.9c0-2 4-3.1 6-3.1s6 1.1 6 3.1v.9z"/>',pin_drop:'<path d="M10 8c0-1.1.9-2 2-2s2 .9 2 2-.89 2-2 2c-1.1 0-2-.9-2-2zm8 0c0-3.31-2.69-6-6-6S6 4.69 6 8c0 4.5 6 11 6 11s6-6.5 6-11z"/><path d="M5 20v2h14v-2H5z"/>',place:'<path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>',rate_review:'<path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 14v-2.47l6.88-6.88c.2-.2.51-.2.71 0l1.77 1.77c.2.2.2.51 0 .71L8.47 14H6zm12 0h-7.5l2-2H18v2z"/>',restaurant:'<path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7z"/><path d="M16 6v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/>',restaurant_menu:'<path d="M8.1 13.34l2.83-2.83L3.91 3.5a4.008 4.008 0 0 0 0 5.66l4.19 4.18z"/><path d="M14.88 11.53c1.53.71 3.68.21 5.27-1.38 1.91-1.91 2.28-4.65.81-6.12-1.46-1.46-4.2-1.1-6.12.81-1.59 1.59-2.09 3.74-1.38 5.27L3.7 19.87l1.41 1.41L12 14.41l6.88 6.88 1.41-1.41L13.41 13l1.47-1.47z"/>',satellite:'<path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM5 4.99h3C8 6.65 6.66 8 5 8V4.99zM5 12v-2c2.76 0 5-2.25 5-5.01h2C12 8.86 8.87 12 5 12zm0 6l3.5-4.5 2.5 3.01L14.5 12l4.5 6H5z"/>',store_mall_directory:'<path d="M20 4H4v2h16V4z"/><path d="M12 18H6v-4h6v4zm9-4v-2l-1-5H4l-1 5v2h1v6h10v-6h4v6h2v-6h1z"/>',streetview:'<path d="M12.56 14.33c-.34.27-.56.7-.56 1.17V21h7c1.1 0 2-.9 2-2v-5.98c-.94-.33-1.95-.52-3-.52-2.03 0-3.93.7-5.44 1.83z"/><circle cx="18" cy="6" r="5"/><path d="M11.5 6c0-1.08.27-2.1.74-3H5c-1.1 0-2 .9-2 2v14c0 .55.23 1.05.59 1.41l9.82-9.82C12.23 9.42 11.5 7.8 11.5 6z"/>',subway:'<circle cx="15.5" cy="16" r="1"/><circle cx="8.5" cy="16" r="1"/><path d="M7.01 9h10v5h-10z"/><path d="M17.8 2.8C16 2.09 13.86 2 12 2c-1.86 0-4 .09-5.8.8C3.53 3.84 2 6.05 2 8.86V22h20V8.86c0-2.81-1.53-5.02-4.2-6.06zm.2 13.08c0 1.45-1.18 2.62-2.63 2.62l1.13 1.12V20H15l-1.5-1.5h-2.83L9.17 20H7.5v-.38l1.12-1.12C7.18 18.5 6 17.32 6 15.88V9c0-2.63 3-3 6-3 3.32 0 6 .38 6 3v6.88z"/>',terrain:'<path d="M14 6l-3.75 5 2.85 3.8-1.6 1.2C9.81 13.75 7 10 7 10l-6 8h22L14 6z"/>',traffic:'<path d="M20 10h-3V8.86c1.72-.45 3-2 3-3.86h-3V4c0-.55-.45-1-1-1H8c-.55 0-1 .45-1 1v1H4c0 1.86 1.28 3.41 3 3.86V10H4c0 1.86 1.28 3.41 3 3.86V15H4c0 1.86 1.28 3.41 3 3.86V20c0 .55.45 1 1 1h8c.55 0 1-.45 1-1v-1.14c1.72-.45 3-2 3-3.86h-3v-1.14c1.72-.45 3-2 3-3.86zm-8 9c-1.11 0-2-.9-2-2s.89-2 2-2c1.1 0 2 .9 2 2s-.89 2-2 2zm0-5c-1.11 0-2-.9-2-2s.89-2 2-2c1.1 0 2 .9 2 2s-.89 2-2 2zm0-5c-1.11 0-2-.9-2-2 0-1.11.89-2 2-2 1.1 0 2 .89 2 2 0 1.1-.89 2-2 2z"/>',train:'<path d="M12 2c-4 0-8 .5-8 4v9.5C4 17.43 5.57 19 7.5 19L6 20.5v.5h2.23l2-2H14l2 2h2v-.5L16.5 19c1.93 0 3.5-1.57 3.5-3.5V6c0-3.5-3.58-4-8-4zM7.5 17c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm3.5-7H6V6h5v4zm2 0V6h5v4h-5zm3.5 7c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>',tram:'<path d="M19 16.94V8.5c0-2.79-2.61-3.4-6.01-3.49l.76-1.51H17V2H7v1.5h4.75l-.76 1.52C7.86 5.11 5 5.73 5 8.5v8.44c0 1.45 1.19 2.66 2.59 2.97L6 21.5v.5h2.23l2-2H14l2 2h2v-.5L16.5 20h-.08c1.69 0 2.58-1.37 2.58-3.06zm-7 1.56c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm5-4.5H7V9h10v5z"/>',transfer_within_a_station:'<path d="M16.49 15.5v-1.75L14 16.25l2.49 2.5V17H22v-1.5z"/><path d="M19.51 19.75H14v1.5h5.51V23L22 20.5 19.51 18z"/><path d="M9.5 5.5c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zM5.75 8.9L3 23h2.1l1.75-8L9 17v6h2v-7.55L8.95 13.4l.6-3C10.85 12 12.8 13 15 13v-2c-1.85 0-3.45-1-4.35-2.45l-.95-1.6C9.35 6.35 8.7 6 8 6c-.25 0-.5.05-.75.15L2 8.3V13h2V9.65l1.75-.75"/>',zoom_out_map:'<path d="M15 3l2.3 2.3-2.89 2.87 1.42 1.42L18.7 6.7 21 9V3z"/><path d="M3 9l2.3-2.3 2.87 2.89 1.42-1.42L6.7 5.3 9 3H3z"/><path d="M9 21l-2.3-2.3 2.89-2.87-1.42-1.42L5.3 17.3 3 15v6z"/><path d="M21 15l-2.3 2.3-2.87-2.89-1.42 1.42 2.89 2.87L15 21h6z"/>',apps:'<path d="M4 8h4V4H4v4z"/><path d="M10 20h4v-4h-4v4z"/><path d="M4 20h4v-4H4v4z"/><path d="M4 14h4v-4H4v4z"/><path d="M10 14h4v-4h-4v4z"/><path d="M16 4v4h4V4h-4z"/><path d="M10 8h4V4h-4v4z"/><path d="M16 14h4v-4h-4v4z"/><path d="M16 20h4v-4h-4v4z"/>',arrow_back:'<path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>',arrow_downward:'<path d="M20 12l-1.41-1.41L13 16.17V4h-2v12.17l-5.58-5.59L4 12l8 8 8-8z"/>',arrow_drop_down:'<path d="M7 10l5 5 5-5z"/>',arrow_drop_down_circle:'<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 12l-4-4h8l-4 4z"/>',arrow_drop_up:'<path d="M7 14l5-5 5 5z"/>',arrow_forward:'<path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/>',arrow_upwards:'<path d="M4 12l1.41 1.41L11 7.83V20h2V7.83l5.58 5.59L20 12l-8-8-8 8z"/>',cancel:'<path d="M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59z"/>',check:'<path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>',chevron_left:'<path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>',chevron_right:'<path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>',close:'<path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>',expand_less:'<path d="M12 8l-6 6 1.41 1.41L12 10.83l4.59 4.58L18 14z"/>',expand_more:'<path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"/>',first_page:'<path d="M18.41 16.59L13.82 12l4.59-4.59L17 6l-6 6 6 6z"/><path d="M6 6h2v12H6z"/>',fullscreen:'<path d="M7 14H5v5h5v-2H7v-3z"/><path d="M5 10h2V7h3V5H5v5z"/><path d="M17 17h-3v2h5v-5h-2v3z"/><path d="M14 5v2h3v3h2V5h-5z"/>',fullscreen_exit:'<path d="M5 16h3v3h2v-5H5v2z"/><path d="M8 8H5v2h5V5H8v3z"/><path d="M14 19h2v-3h3v-2h-5v5z"/><path d="M16 8V5h-2v5h5V8h-3z"/>',last_page:'<path d="M5.59 7.41L10.18 12l-4.59 4.59L7 18l6-6-6-6z"/><path d="M16 6h2v12h-2z"/>',menu:'<path d="M3 18h18v-2H3v2z"/><path d="M3 13h18v-2H3v2z"/><path d="M3 6v2h18V6H3z"/>',more_horiz:'<path d="M6 10c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/><path d="M18 10c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/><path d="M12 10c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>',more_vert:'<path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z"/><path d="M12 16c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/><path d="M12 10c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>',refresh:'<path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>',subdirectory_arrow_left:' <path d="M11 9l1.42 1.42L8.83 14H18V4h2v12H8.83l3.59 3.58L11 21l-6-6 6-6z"/>',subdirectory_arrow_right:'<path d="M19 15l-6 6-1.42-1.42L15.17 16H4V4h2v10h9.17l-3.59-3.58L13 9l6 6z"/>',adb:'<path d="M5 16c0 3.87 3.13 7 7 7s7-3.13 7-7v-4H5v4z"/><path d="M15 9c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zM9 9c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm7.12-4.63l2.1-2.1-.82-.83-2.3 2.31C14.16 3.28 13.12 3 12 3s-2.16.28-3.09.75L6.6 1.44l-.82.83 2.1 2.1C6.14 5.64 5 7.68 5 10v1h14v-1c0-2.32-1.14-4.36-2.88-5.63z"/>',airline_seat_flat:'<path d="M22 11v2H9V7h9c2.21 0 4 1.79 4 4z"/><path d="M2 14v2h6v2h8v-2h6v-2H2z"/><path d="M7.14 12.1a3 3 0 0 0-.04-4.24 3 3 0 0 0-4.24.04 3 3 0 0 0 .04 4.24 3 3 0 0 0 4.24-.04z"/>',airline_seat_angled:'<path d="M22.25 14.29l-.69 1.89L9.2 11.71l2.08-5.66 8.56 3.09a4 4 0 0 1 2.41 5.15z"/><path d="M1.5 12.14L8 14.48V19h8v-1.63L20.52 19l.69-1.89-19.02-6.86-.69 1.89z"/><path d="M7.3 10.2a3.01 3.01 0 0 0 1.41-4A3.005 3.005 0 0 0 4.7 4.8a2.99 2.99 0 0 0-1.4 4 2.99 2.99 0 0 0 4 1.4z"/>',airline_seat_individual_suite:'<path d="M7 13c1.65 0 3-1.35 3-3S8.65 7 7 7s-3 1.35-3 3 1.35 3 3 3z"/><path d="M19 7h-8v7H3V7H1v10h22v-6c0-2.21-1.79-4-4-4z"/>',airline_seat_legroom_extra:'<path d="M4 12V3H2v9c0 2.76 2.24 5 5 5h6v-2H7c-1.66 0-3-1.34-3-3z"/><path d="M22.83 17.24c-.38-.72-1.29-.97-2.03-.63l-1.09.5-3.41-6.98a2.01 2.01 0 0 0-1.79-1.12L11 9V3H5v8c0 1.66 1.34 3 3 3h7l3.41 7 3.72-1.7c.77-.36 1.1-1.3.7-2.06z"/>',airline_seat_legroom_normal:'<path d="M5 12V3H3v9c0 2.76 2.24 5 5 5h6v-2H8c-1.66 0-3-1.34-3-3z"/><path d="M20.5 18H19v-7c0-1.1-.9-2-2-2h-5V3H6v8c0 1.65 1.35 3 3 3h7v7h4.5c.83 0 1.5-.67 1.5-1.5s-.67-1.5-1.5-1.5z"/>',airline_seat_legroom_reduced:'<path d="M19.97 19.2c.18.96-.55 1.8-1.47 1.8H14v-3l1-4H9c-1.65 0-3-1.35-3-3V3h6v6h5c1.1 0 2 .9 2 2l-2 7h1.44c.73 0 1.39.49 1.53 1.2z"/><path d="M5 12V3H3v9c0 2.76 2.24 5 5 5h4v-2H8c-1.66 0-3-1.34-3-3z"/>',airline_seat_recline_extra:'<path d="M5.35 5.64c-.9-.64-1.12-1.88-.49-2.79.63-.9 1.88-1.12 2.79-.49.9.64 1.12 1.88.49 2.79-.64.9-1.88 1.12-2.79.49z"/><path d="M16 19H8.93c-1.48 0-2.74-1.08-2.96-2.54L4 7H2l1.99 9.76A5.01 5.01 0 0 0 8.94 21H16v-2z"/><path d="M16.23 15h-4.88l-1.03-4.1c1.58.89 3.28 1.54 5.15 1.22V9.99c-1.63.31-3.44-.27-4.69-1.25L9.14 7.47c-.23-.18-.49-.3-.76-.38a2.21 2.21 0 0 0-.99-.06h-.02a2.268 2.268 0 0 0-1.84 2.61l1.35 5.92A3.008 3.008 0 0 0 9.83 18h6.85l3.82 3 1.5-1.5-5.77-4.5z"/>',airline_seat_recline_normal:'<path d="M7.59 5.41c-.78-.78-.78-2.05 0-2.83.78-.78 2.05-.78 2.83 0 .78.78.78 2.05 0 2.83-.79.79-2.05.79-2.83 0z"/><path d="M6 16V7H4v9c0 2.76 2.24 5 5 5h6v-2H9c-1.66 0-3-1.34-3-3z"/><path d="M20 20.07L14.93 15H11.5v-3.68c1.4 1.15 3.6 2.16 5.5 2.16v-2.16c-1.66.02-3.61-.87-4.67-2.04l-1.4-1.55c-.19-.21-.43-.38-.69-.5-.29-.14-.62-.23-.96-.23h-.03C8.01 7 7 8.01 7 9.25V15c0 1.66 1.34 3 3 3h5.07l3.5 3.5L20 20.07z"/>',bluetooth_audio:'<path d="M19.53 6.71l-1.26 1.26c.63 1.21.98 2.57.98 4.02 0 1.45-.36 2.82-.98 4.02l1.2 1.2c.97-1.54 1.54-3.36 1.54-5.31-.01-1.89-.55-3.67-1.48-5.19zm-5.29 5.3l2.32 2.32c.28-.72.44-1.51.44-2.33 0-.82-.16-1.59-.43-2.31l-2.33 2.32z"/><path d="M12.88 16.29L11 18.17v-3.76l1.88 1.88zM11 5.83l1.88 1.88L11 9.59V5.83zm4.71 1.88L10 2H9v7.59L4.41 5 3 6.41 8.59 12 3 17.59 4.41 19 9 14.41V22h1l5.71-5.71-4.3-4.29 4.3-4.29z"/>',confirmation_number:'<path d="M22 10V6c0-1.11-.9-2-2-2H4c-1.1 0-1.99.89-1.99 2v4c1.1 0 1.99.9 1.99 2s-.89 2-2 2v4c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2v-4c-1.1 0-2-.9-2-2s.9-2 2-2zm-9 7.5h-2v-2h2v2zm0-4.5h-2v-2h2v2zm0-4.5h-2v-2h2v2z"/>',disc_full:'<path d="M20 7v5h2V7h-2zm0 9h2v-2h-2v2z"/><path d="M10 14c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm0-10c-4.42 0-8 3.58-8 8s3.58 8 8 8 8-3.58 8-8-3.58-8-8-8z"/>',do_not_disturb:'<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8 0-1.85.63-3.55 1.69-4.9L16.9 18.31C15.55 19.37 13.85 20 12 20zm6.31-3.1L7.1 5.69C8.45 4.63 10.15 4 12 4c4.42 0 8 3.58 8 8 0 1.85-.63 3.55-1.69 4.9z"/>',do_not_disturb_alt:'<path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zM4 12c0-4.4 3.6-8 8-8 1.8 0 3.5.6 4.9 1.7L5.7 16.9C4.6 15.5 4 13.8 4 12zm8 8c-1.8 0-3.5-.6-4.9-1.7L18.3 7.1C19.4 8.5 20 10.2 20 12c0 4.4-3.6 8-8 8z"/>',do_not_disturb_off:'<path d="M17 11v2h-1.46l4.68 4.68A9.92 9.92 0 0 0 22 12c0-5.52-4.48-10-10-10-2.11 0-4.07.66-5.68 1.78L13.54 11H17z"/><path d="M7 13v-2h1.46l2 2H7zM2.27 2.27L1 3.54l2.78 2.78A9.92 9.92 0 0 0 2 12c0 5.52 4.48 10 10 10 2.11 0 4.07-.66 5.68-1.78L20.46 23l1.27-1.27L11 11 2.27 2.27z"/>',do_not_disturb_on:'<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11H7v-2h10v2z"/>',drive_eta:'<path d="M18.92 5.01C18.72 4.42 18.16 4 17.5 4h-11c-.66 0-1.21.42-1.42 1.01L3 11v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 15c-.83 0-1.5-.67-1.5-1.5S5.67 12 6.5 12s1.5.67 1.5 1.5S7.33 15 6.5 15zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 10l1.5-4.5h11L19 10H5z"/>',enhanced_encryption:'<path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM8.9 6c0-1.71 1.39-3.1 3.1-3.1s3.1 1.39 3.1 3.1v2H8.9V6zM16 16h-3v3h-2v-3H8v-2h3v-3h2v3h3v2z"/>',event_available:'<path d="M16.53 11.06L15.47 10l-4.88 4.88-2.12-2.12-1.06 1.06L10.59 17l5.94-5.94z"/><path d="M19 19H5V8h14v11zm0-16h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/>',event_busy:'<path d="M9.31 17l2.44-2.44L14.19 17l1.06-1.06-2.44-2.44 2.44-2.44L14.19 10l-2.44 2.44L9.31 10l-1.06 1.06 2.44 2.44-2.44 2.44L9.31 17z"/><path d="M19 19H5V8h14v11zm0-16h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/>',event_note:'<path d="M19 19H5V8h14v11zm0-16h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/><path d="M14 14H7v2h7v-2zm3-4H7v2h10v-2z"/>',folder_special:'<path d="M20 6h-8l-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-6.42 12L10 15.9 6.42 18l.95-4.07-3.16-2.74 4.16-.36L10 7l1.63 3.84 4.16.36-3.16 2.74.95 4.06z"/>',live_tv:'<path d="M21 20H3V8h18v12zm0-14h-7.59l3.29-3.29L16 2l-4 4-4-4-.71.71L10.59 6H3a2 2 0 0 0-2 2v12c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V8a2 2 0 0 0-2-2z"/><path d="M9 10v8l7-4z"/>',mms:'<path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM5 14l3.5-4.5 2.5 3.01L14.5 8l4.5 6H5z"/>',more:'<path d="M22 3H7c-.69 0-1.23.35-1.59.88L0 12l5.41 8.11c.36.53.97.89 1.66.89H22c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 13.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm5 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm5 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>',network_check:'<path d="M15.9 5c-.17 0-.32.09-.41.23l-.07.15-5.18 11.65c-.16.29-.26.61-.26.96 0 1.11.9 2.01 2.01 2.01.96 0 1.77-.68 1.96-1.59l.01-.03L16.4 5.5c0-.28-.22-.5-.5-.5z"/><path d="M21 11l2-2a15.367 15.367 0 0 0-5.59-3.57l-.53 2.82c1.5.62 2.9 1.53 4.12 2.75zM1 9l2 2c2.88-2.88 6.79-4.08 10.53-3.62l1.19-2.68C9.89 3.84 4.74 5.27 1 9z"/><path d="M5 13l2 2a7.1 7.1 0 0 1 4.03-2l1.28-2.88c-2.63-.08-5.3.87-7.31 2.88zm12 2l2-2c-.8-.8-1.7-1.42-2.66-1.89l-.55 2.92c.42.27.83.59 1.21.97z"/>',network_locked:'<path d="M19.5 10c.17 0 .33.03.5.05V1L1 20h13v-3c0-.89.39-1.68 1-2.23v-.27c0-2.48 2.02-4.5 4.5-4.5z"/><path d="M21 16h-3v-1.5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5V16zm1 0v-1.5c0-1.38-1.12-2.5-2.5-2.5S17 13.12 17 14.5V16c-.55 0-1 .45-1 1v4c0 .55.45 1 1 1h5c.55 0 1-.45 1-1v-4c0-.55-.45-1-1-1z"/>',no_encryption:'<path d="M21 21.78L4.22 5 3 6.22l2.04 2.04C4.42 8.6 4 9.25 4 10v10c0 1.1.9 2 2 2h12c.23 0 .45-.05.66-.12L19.78 23 21 21.78z"/><path d="M8.9 6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2H9.66L20 18.34V10c0-1.1-.9-2-2-2h-1V6c0-2.76-2.24-5-5-5-2.56 0-4.64 1.93-4.94 4.4L8.9 7.24V6z"/>',ondemand_video:'<path d="M21 17H3V5h18v12zm0-14H3c-1.11 0-2 .89-2 2v12a2 2 0 0 0 2 2h5v2h8v-2h5c1.1 0 1.99-.9 1.99-2L23 5a2 2 0 0 0-2-2z"/><path d="M16 11l-7 4V7z"/>',personal_video:'<path d="M21 3H3c-1.11 0-2 .89-2 2v12c0 1.1.89 2 2 2h5v2h8v-2h5c1.1 0 1.99-.9 1.99-2L23 5c0-1.11-.9-2-2-2zm0 14H3V5h18v12z"/>',
 phone_bluetooth_speaker:'<path d="M18 7.21l.94.94-.94.94V7.21zm0-4.3l.94.94-.94.94V2.91zM14.71 9.5L17 7.21V11h.5l2.85-2.85L18.21 6l2.15-2.15L17.5 1H17v3.79L14.71 2.5l-.71.71L16.79 6 14 8.79l.71.71z"/><path d="M20 15.5c-1.25 0-2.45-.2-3.57-.57-.35-.11-.74-.03-1.02.24l-2.2 2.2c-2.83-1.44-5.15-3.75-6.59-6.59l2.2-2.21c.28-.26.36-.65.25-1C8.7 6.45 8.5 5.25 8.5 4c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1 0 9.39 7.61 17 17 17 .55 0 1-.45 1-1v-3.5c0-.55-.45-1-1-1z"/>',phone_forwarded:'<path d="M18 11l5-5-5-5v3h-4v4h4v3z"/><path d="M20 15.5c-1.25 0-2.45-.2-3.57-.57-.35-.11-.74-.03-1.02.24l-2.2 2.2c-2.83-1.44-5.15-3.75-6.59-6.59l2.2-2.21c.28-.26.36-.65.25-1C8.7 6.45 8.5 5.25 8.5 4c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1 0 9.39 7.61 17 17 17 .55 0 1-.45 1-1v-3.5c0-.55-.45-1-1-1z"/>',phone_in_talk:'<path d="M20 15.5c-1.25 0-2.45-.2-3.57-.57-.35-.11-.74-.03-1.02.24l-2.2 2.2c-2.83-1.44-5.15-3.75-6.59-6.59l2.2-2.21c.28-.26.36-.65.25-1C8.7 6.45 8.5 5.25 8.5 4c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1 0 9.39 7.61 17 17 17 .55 0 1-.45 1-1v-3.5c0-.55-.45-1-1-1z"/><path d="M19 12h2c0-4.97-4.03-9-9-9v2c3.87 0 7 3.13 7 7z"/><path d="M15 12h2c0-2.76-2.24-5-5-5v2c1.66 0 3 1.34 3 3z"/>',phone_locked:'<path d="M20 15.5c-1.25 0-2.45-.2-3.57-.57-.35-.11-.74-.03-1.02.24l-2.2 2.2c-2.83-1.44-5.15-3.75-6.59-6.59l2.2-2.21c.28-.26.36-.65.25-1C8.7 6.45 8.5 5.25 8.5 4c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1 0 9.39 7.61 17 17 17 .55 0 1-.45 1-1v-3.5c0-.55-.45-1-1-1z"/><path d="M19.2 4h-3.4v-.5c0-.94.76-1.7 1.7-1.7s1.7.76 1.7 1.7V4zm.8 0v-.5C20 2.12 18.88 1 17.5 1S15 2.12 15 3.5V4c-.55 0-1 .45-1 1v4c0 .55.45 1 1 1h5c.55 0 1-.45 1-1V5c0-.55-.45-1-1-1z"/>',phone_missed:'<path d="M6.5 5.5L12 11l7-7-1-1-6 6-4.5-4.5H11V3H5v6h1.5V5.5z"/><path d="M23.71 16.67C20.66 13.78 16.54 12 12 12 7.46 12 3.34 13.78.29 16.67c-.18.18-.29.43-.29.71 0 .28.11.53.29.71l2.48 2.48c.18.18.43.29.71.29.27 0 .52-.11.7-.28.79-.74 1.69-1.36 2.66-1.85.33-.16.56-.5.56-.9v-3.1c1.45-.48 3-.73 4.6-.73 1.6 0 3.15.25 4.6.72v3.1c0 .39.23.74.56.9.98.49 1.87 1.12 2.67 1.85.18.18.43.28.7.28.28 0 .53-.11.71-.29l2.48-2.48c.18-.18.29-.43.29-.71 0-.28-.12-.52-.3-.7z"/>',phone_paused:'<path d="M17 3h-2v7h2V3z"/><path d="M20 15.5c-1.25 0-2.45-.2-3.57-.57-.35-.11-.74-.03-1.02.24l-2.2 2.2c-2.83-1.44-5.15-3.75-6.59-6.59l2.2-2.21c.28-.26.36-.65.25-1C8.7 6.45 8.5 5.25 8.5 4c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1 0 9.39 7.61 17 17 17 .55 0 1-.45 1-1v-3.5c0-.55-.45-1-1-1z"/><path d="M19 3v7h2V3h-2z"/>',power:'<path d="M16.01 7L16 3h-2v4h-4V3H8v4h-.01C7 6.99 6 7.99 6 8.99v5.49L9.5 18v3h5v-3l3.5-3.51v-5.5c0-1-1-2-1.99-1.99z"/>',priority_high:'<circle cx="12" cy="19" r="2"/><path d="M10 3h4v12h-4z"/>',sd_card:'<path d="M18 2h-8L4.02 8 4 20c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-6 6h-2V4h2v4zm3 0h-2V4h2v4zm3 0h-2V4h2v4z"/>',sim_card_alert:'<path d="M18 2h-8L4.02 8 4 20c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-5 15h-2v-2h2v2zm0-4h-2V8h2v5z"/>',sms:'<path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM9 11H7V9h2v2zm4 0h-2V9h2v2zm4 0h-2V9h2v2z"/>',sms_failed:'<path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-7 12h-2v-2h2v2zm0-4h-2V6h2v4z"/>',sync:'<path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8z"/><path d="M12 18c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/>',sync_disabled:'<path d="M10 6.35V4.26c-.8.21-1.55.54-2.23.96l1.46 1.46c.25-.12.5-.24.77-.33z"/><path d="M2.86 5.41l2.36 2.36a7.925 7.925 0 0 0 1.14 9.87L4 20h6v-6l-2.24 2.24A6.003 6.003 0 0 1 6 12c0-1 .25-1.94.68-2.77l8.08 8.08c-.25.13-.5.25-.77.34v2.09c.8-.21 1.55-.54 2.23-.96l2.36 2.36 1.27-1.27L4.14 4.14 2.86 5.41z"/><path d="M20 4h-6v6l2.24-2.24A6.003 6.003 0 0 1 18 12c0 1-.25 1.94-.68 2.77l1.46 1.46a7.925 7.925 0 0 0-1.14-9.87L20 4z"/>',sync_problem:'<path d="M3 12c0 2.21.91 4.2 2.36 5.64L3 20h6v-6l-2.24 2.24C5.68 15.15 5 13.66 5 12c0-2.61 1.67-4.83 4-5.65V4.26C5.55 5.15 3 8.27 3 12z"/><path d="M21 4h-6v6l2.24-2.24C18.32 8.85 19 10.34 19 12c0 2.61-1.67 4.83-4 5.65v2.09c3.45-.89 6-4.01 6-7.74 0-2.21-.91-4.2-2.36-5.64L21 4z"/><path d="M11 13h2V7h-2v6zm0 4h2v-2h-2v2z"/>',system_update:'<path d="M17 19H7V5h10v14zm0-17.99L7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99z"/><path d="M16 13h-3V8h-2v5H8l4 4 4-4z"/>',tap_and_play:'<path d="M2 16v2c2.76 0 5 2.24 5 5h2c0-3.87-3.13-7-7-7z"/><path d="M2 20v3h3c0-1.66-1.34-3-3-3z"/><path d="M2 12v2a9 9 0 0 1 9 9h2c0-6.08-4.92-11-11-11z"/><path d="M17 1.01L7 1c-1.1 0-2 .9-2 2v7.37c.69.16 1.36.37 2 .64V5h10v13h-3.03c.52 1.25.84 2.59.95 4H17c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99z"/>',time_to_leave:'<path d="M18.92 5.01C18.72 4.42 18.16 4 17.5 4h-11c-.66 0-1.21.42-1.42 1.01L3 11v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 15c-.83 0-1.5-.67-1.5-1.5S5.67 12 6.5 12s1.5.67 1.5 1.5S7.33 15 6.5 15zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 10l1.5-4.5h11L19 10H5z"/>',vibration:'<path d="M0 15h2V9H0v6z"/><path d="M3 17h2V7H3v10z"/><path d="M22 9v6h2V9h-2z"/><path d="M19 17h2V7h-2v10z"/><path d="M16 19H8V5h8v14zm.5-16h-9C6.67 3 6 3.67 6 4.5v15c0 .83.67 1.5 1.5 1.5h9c.83 0 1.5-.67 1.5-1.5v-15c0-.83-.67-1.5-1.5-1.5z"/>',voice_chat:'<path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12l-4-3.2V14H6V6h8v3.2L18 6v8z"/>',vpn_lock:'<path d="M21.2 4h-3.4v-.5c0-.94.76-1.7 1.7-1.7s1.7.76 1.7 1.7V4zm.8 0v-.5a2.5 2.5 0 0 0-5 0V4c-.55 0-1 .45-1 1v4c0 .55.45 1 1 1h5c.55 0 1-.45 1-1V5c0-.55-.45-1-1-1z"/><path d="M10 20.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L8 16v1c0 1.1.9 2 2 2v1.93zM18.92 12c.04.33.08.66.08 1 0 2.08-.8 3.97-2.1 5.39-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H7v-2h2c.55 0 1-.45 1-1V8h2c1.1 0 2-.9 2-2V3.46c-.95-.3-1.95-.46-3-.46C5.48 3 1 7.48 1 13s4.48 10 10 10 10-4.48 10-10c0-.34-.02-.67-.05-1h-2.03z"/>',wc:'<path d="M5.5 22v-7.5H4V9c0-1.1.9-2 2-2h3c1.1 0 2 .9 2 2v5.5H9.5V22h-4z"/><path d="M18 22v-6h3l-2.54-7.63A2.01 2.01 0 0 0 16.56 7h-.12a2 2 0 0 0-1.9 1.37L12 16h3v6h3z"/><path d="M7.5 6c1.11 0 2-.89 2-2 0-1.11-.89-2-2-2-1.11 0-2 .89-2 2 0 1.11.89 2 2 2z"/><path d="M16.5 6c1.11 0 2-.89 2-2 0-1.11-.89-2-2-2-1.11 0-2 .89-2 2 0 1.11.89 2 2 2z"/>',wifi:'<path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9z"/><path d="M9 17l3 3 3-3a4.237 4.237 0 0 0-6 0z"/><path d="M5 13l2 2a7.074 7.074 0 0 1 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/>',ac_unit:'<path d="M22 11h-4.17l3.24-3.24-1.41-1.42L15 11h-2V9l4.66-4.66-1.42-1.41L13 6.17V2h-2v4.17L7.76 2.93 6.34 4.34 11 9v2H9L4.34 6.34 2.93 7.76 6.17 11H2v2h4.17l-3.24 3.24 1.41 1.42L9 13h2v2l-4.66 4.66 1.42 1.41L11 17.83V22h2v-4.17l3.24 3.24 1.42-1.41L13 15v-2h2l4.66 4.66 1.41-1.42L17.83 13H22z"/>',airport_shuttle:'<path d="M17 5H3c-1.1 0-2 .89-2 2v9h2c0 1.65 1.34 3 3 3s3-1.35 3-3h5.5c0 1.65 1.34 3 3 3s3-1.35 3-3H23v-5l-6-6zM3 11V7h4v4H3zm3 6.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm7-6.5H9V7h4v4zm4.5 6.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM15 11V7h1l4 4h-5z"/>',all_inclusive:'<path d="M18.6 6.62c-1.44 0-2.8.56-3.77 1.53L12 10.66 10.48 12h.01L7.8 14.39c-.64.64-1.49.99-2.4.99-1.87 0-3.39-1.51-3.39-3.38S3.53 8.62 5.4 8.62c.91 0 1.76.35 2.44 1.03l1.13 1 1.51-1.34L9.22 8.2C8.2 7.18 6.84 6.62 5.4 6.62 2.42 6.62 0 9.04 0 12s2.42 5.38 5.4 5.38c1.44 0 2.8-.56 3.77-1.53l2.83-2.5.01.01L13.52 12h-.01l2.69-2.39c.64-.64 1.49-.99 2.4-.99 1.87 0 3.39 1.51 3.39 3.38s-1.52 3.38-3.39 3.38c-.9 0-1.76-.35-2.44-1.03l-1.14-1.01-1.51 1.34 1.27 1.12c1.02 1.01 2.37 1.57 3.82 1.57 2.98 0 5.4-2.41 5.4-5.38s-2.42-5.37-5.4-5.37z"/>',beach_access:'<path d="M13.127 14.56l1.43-1.43 6.44 6.443L19.57 21z"/><path d="M17.42 8.83l2.86-2.86c-3.95-3.95-10.35-3.96-14.3-.02 3.93-1.3 8.31-.25 11.44 2.88z"/><path d="M5.95 5.98c-3.94 3.95-3.93 10.35.02 14.3l2.86-2.86C5.7 14.29 4.65 9.91 5.95 5.98z"/><path d="M5.97 5.96l-.01.01c-.38 3.01 1.17 6.88 4.3 10.02l5.73-5.73c-3.13-3.13-7.01-4.68-10.02-4.3z"/>',business_center:'<path d="M10 16v-1H3.01L3 19c0 1.11.89 2 2 2h14c1.11 0 2-.89 2-2v-4h-7v1h-4z"/><path d="M14 7h-4V5h4v2zm6 0h-4.01V5l-2-2h-4l-2 2v2H4c-1.1 0-2 .9-2 2v3c0 1.11.89 2 2 2h6v-2h4v2h6c1.1 0 2-.9 2-2V9c0-1.1-.9-2-2-2z"/>',casino:'<path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM7.5 18c-.83 0-1.5-.67-1.5-1.5S6.67 15 7.5 15s1.5.67 1.5 1.5S8.33 18 7.5 18zm0-9C6.67 9 6 8.33 6 7.5S6.67 6 7.5 6 9 6.67 9 7.5 8.33 9 7.5 9zm4.5 4.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm4.5 4.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm0-9c-.83 0-1.5-.67-1.5-1.5S15.67 6 16.5 6s1.5.67 1.5 1.5S17.33 9 16.5 9z"/>',child_care:'<circle cx="14.5" cy="10.5" r="1.25"/> <circle cx="9.5" cy="10.5" r="1.25"/> <path d="M22.94 12.66c.04-.21.06-.43.06-.66s-.02-.45-.06-.66c-.25-1.51-1.36-2.74-2.81-3.17-.53-1.12-1.28-2.1-2.19-2.91C16.36 3.85 14.28 3 12 3s-4.36.85-5.94 2.26c-.92.81-1.67 1.8-2.19 2.91-1.45.43-2.56 1.65-2.81 3.17-.04.21-.06.43-.06.66s.02.45.06.66c.25 1.51 1.36 2.74 2.81 3.17.52 1.11 1.27 2.09 2.17 2.89C7.62 20.14 9.71 21 12 21s4.38-.86 5.97-2.28c.9-.8 1.65-1.79 2.17-2.89 1.44-.43 2.55-1.65 2.8-3.17zM19 14c-.1 0-.19-.02-.29-.03-.2.67-.49 1.29-.86 1.86C16.6 17.74 14.45 19 12 19s-4.6-1.26-5.85-3.17c-.37-.57-.66-1.19-.86-1.86-.1.01-.19.03-.29.03-1.1 0-2-.9-2-2s.9-2 2-2c.1 0 .19.02.29.03.2-.67.49-1.29.86-1.86C7.4 6.26 9.55 5 12 5s4.6 1.26 5.85 3.17c.37.57.66 1.19.86 1.86.1-.01.19-.03.29-.03 1.1 0 2 .9 2 2s-.9 2-2 2zM7.5 14c.76 1.77 2.49 3 4.5 3s3.74-1.23 4.5-3h-9z"/>',child_friedly:'<path d="M13 2v8h8c0-4.42-3.58-8-8-8z"/><path d="M17 20c-.83 0-1.5-.67-1.5-1.5S16.17 17 17 17s1.5.67 1.5 1.5S17.83 20 17 20zm-9 0c-.83 0-1.5-.67-1.5-1.5S7.17 17 8 17s1.5.67 1.5 1.5S8.83 20 8 20zm11.32-4.11A7.948 7.948 0 0 0 21 11H6.44l-.95-2H2v2h2.22s1.89 4.07 2.12 4.42c-1.1.59-1.84 1.75-1.84 3.08C4.5 20.43 6.07 22 8 22c1.76 0 3.22-1.3 3.46-3h2.08c.24 1.7 1.7 3 3.46 3 1.93 0 3.5-1.57 3.5-3.5 0-1.04-.46-1.97-1.18-2.61z"/>',fitness_center:'<path d="M20.57 14.86L22 13.43 20.57 12 17 15.57 8.43 7 12 3.43 10.57 2 9.14 3.43 7.71 2 5.57 4.14 4.14 2.71 2.71 4.14l1.43 1.43L2 7.71l1.43 1.43L2 10.57 3.43 12 7 8.43 15.57 17 12 20.57 13.43 22l1.43-1.43L16.29 22l2.14-2.14 1.43 1.43 1.43-1.43-1.43-1.43L22 16.29z"/>',free_breakfast:'<path d="M20 8h-2V5h2v3zm0-5H4v10c0 2.21 1.79 4 4 4h6c2.21 0 4-1.79 4-4v-3h2a2 2 0 0 0 2-2V5c0-1.11-.89-2-2-2z"/><path d="M4 19h16v2H4z"/>',golf_course:'<circle cx="19.5" cy="19.5" r="1.5"/><path d="M17 5.92L9 2v18H7v-1.73c-1.79.35-3 .99-3 1.73 0 1.1 2.69 2 6 2s6-.9 6-2c0-.99-2.16-1.81-5-1.97V8.98l6-3.06z"/>',hot_tub:'<circle cx="7" cy="6" r="2"/><path d="M11.15 12c-.31-.22-.59-.46-.82-.72l-1.4-1.55c-.19-.21-.43-.38-.69-.5-.29-.14-.62-.23-.96-.23h-.03C6.01 9 5 10.01 5 11.25V12H2v8c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2v-8H11.15zM7 20H5v-6h2v6zm4 0H9v-6h2v6zm4 0h-2v-6h2v6zm4 0h-2v-6h2v6zm-.35-14.14l-.07-.07c-.57-.62-.82-1.41-.67-2.2L18 3h-1.89l-.06.43c-.2 1.36.27 2.71 1.3 3.72l.07.06c.57.62.82 1.41.67 2.2l-.11.59h1.91l.06-.43c.21-1.36-.27-2.71-1.3-3.71zm-4 0l-.07-.07c-.57-.62-.82-1.41-.67-2.2L14 3h-1.89l-.06.43c-.2 1.36.27 2.71 1.3 3.72l.07.06c.57.62.82 1.41.67 2.2l-.11.59h1.91l.06-.43c.21-1.36-.27-2.71-1.3-3.71z"/>',kitchen:'<path d="M18 9H6V4h12v5zm0 11H6v-9.02h12V20zm0-17.99L6 2a2 2 0 0 0-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.11-.9-1.99-2-1.99z"/><path d="M8 5h2v3H8z"/><path d="M8 12h2v5H8z"/>',pool:'<path d="M22 21c-1.11 0-1.73-.37-2.18-.64-.37-.22-.6-.36-1.15-.36-.56 0-.78.13-1.15.36-.46.27-1.07.64-2.18.64s-1.73-.37-2.18-.64c-.37-.22-.6-.36-1.15-.36-.56 0-.78.13-1.15.36-.46.27-1.08.64-2.19.64-1.11 0-1.73-.37-2.18-.64-.37-.23-.6-.36-1.15-.36s-.78.13-1.15.36c-.46.27-1.08.64-2.19.64v-2c.56 0 .78-.13 1.15-.36.46-.27 1.08-.64 2.19-.64s1.73.37 2.18.64c.37.23.59.36 1.15.36.56 0 .78-.13 1.15-.36.46-.27 1.08-.64 2.19-.64 1.11 0 1.73.37 2.18.64.37.22.6.36 1.15.36s.78-.13 1.15-.36c.45-.27 1.07-.64 2.18-.64s1.73.37 2.18.64c.37.23.59.36 1.15.36v2zm0-4.5c-1.11 0-1.73-.37-2.18-.64-.37-.22-.6-.36-1.15-.36-.56 0-.78.13-1.15.36-.45.27-1.07.64-2.18.64s-1.73-.37-2.18-.64c-.37-.22-.6-.36-1.15-.36-.56 0-.78.13-1.15.36-.45.27-1.07.64-2.18.64s-1.73-.37-2.18-.64c-.37-.22-.6-.36-1.15-.36s-.78.13-1.15.36c-.47.27-1.09.64-2.2.64v-2c.56 0 .78-.13 1.15-.36.45-.27 1.07-.64 2.18-.64s1.73.37 2.18.64c.37.22.6.36 1.15.36.56 0 .78-.13 1.15-.36.45-.27 1.07-.64 2.18-.64s1.73.37 2.18.64c.37.22.6.36 1.15.36s.78-.13 1.15-.36c.45-.27 1.07-.64 2.18-.64s1.73.37 2.18.64c.37.22.6.36 1.15.36v2zM8.67 12c.56 0 .78-.13 1.15-.36.46-.27 1.08-.64 2.19-.64 1.11 0 1.73.37 2.18.64.37.22.6.36 1.15.36s.78-.13 1.15-.36c.12-.07.26-.15.41-.23L10.48 5C8.93 3.45 7.5 2.99 5 3v2.5c1.82-.01 2.89.39 4 1.5l1 1-3.25 3.25c.31.12.56.27.77.39.37.23.59.36 1.15.36z"/> <circle cx="16.5" cy="5.5" r="2.5"/>',room_service:'<path d="M2 17h20v2H2z"/><path d="M13.84 7.79A2.006 2.006 0 0 0 12 5a2.006 2.006 0 0 0-1.84 2.79C6.25 8.6 3.27 11.93 3 16h18c-.27-4.07-3.25-7.4-7.16-8.21z"/>',rv_hookup:'<path d="M18 14h-4v-3h4v3zm-7 6c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm9-3v-6c0-1.1-.9-2-2-2H7V7l-3 3 3 3v-2h4v3H4v3c0 1.1.9 2 2 2h2c0 1.66 1.34 3 3 3s3-1.34 3-3h8v-2h-2z"/><path d="M17 2v2H9v2h8v2l3-3z"/>',smoke_free:'<path d="M2 6l6.99 7H2v3h9.99l7 7 1.26-1.25-17-17z"/><path d="M20.5 13H22v3h-1.5z"/><path d="M18 13h1.5v3H18z"/><path d="M18.85 4.88c.62-.61 1-1.45 1-2.38h-1.5c0 1.02-.83 1.85-1.85 1.85v1.5c2.24 0 4 1.83 4 4.07V12H22V9.92c0-2.23-1.28-4.15-3.15-5.04z"/><path d="M14.5 8.7h1.53c1.05 0 1.97.74 1.97 2.05V12h1.5v-1.59c0-1.8-1.6-3.16-3.47-3.16H14.5c-1.02 0-1.85-.98-1.85-2s.83-1.75 1.85-1.75V2a3.35 3.35 0 0 0 0 6.7z"/><path d="M17 15.93V13h-2.93z"/>',smoke_rooms:'<path d="M2 16h15v3H2z"/><path d="M20.5 16H22v3h-1.5z"/><path d="M18 16h1.5v3H18z"/><path d="M18.85 7.73c.62-.61 1-1.45 1-2.38C19.85 3.5 18.35 2 16.5 2v1.5c1.02 0 1.85.83 1.85 1.85S17.52 7.2 16.5 7.2v1.5c2.24 0 4 1.83 4 4.07V15H22v-2.24c0-2.22-1.28-4.14-3.15-5.03z"/><path d="M16.03 10.2H14.5c-1.02 0-1.85-.98-1.85-2s.83-1.75 1.85-1.75v-1.5a3.35 3.35 0 0 0 0 6.7h1.53c1.05 0 1.97.74 1.97 2.05V15h1.5v-1.64c0-1.81-1.6-3.16-3.47-3.16z"/>',spa:'<path d="M8.55 12c-1.07-.71-2.25-1.27-3.53-1.61 1.28.34 2.46.9 3.53 1.61zm10.43-1.61c-1.29.34-2.49.91-3.57 1.64 1.08-.73 2.28-1.3 3.57-1.64z"/> <path d="M15.49 9.63c-.18-2.79-1.31-5.51-3.43-7.63-2.14 2.14-3.32 4.86-3.55 7.63 1.28.68 2.46 1.56 3.49 2.63 1.03-1.06 2.21-1.94 3.49-2.63zm-6.5 2.65c-.14-.1-.3-.19-.45-.29.15.11.31.19.45.29zm6.42-.25c-.13.09-.27.16-.4.26.13-.1.27-.17.4-.26zM12 15.45C9.85 12.17 6.18 10 2 10c0 5.32 3.36 9.82 8.03 11.49.63.23 1.29.4 1.97.51.68-.12 1.33-.29 1.97-.51C18.64 19.82 22 15.32 22 10c-4.18 0-7.85 2.17-10 5.45z"/>',cake:'<path d="M12 6c1.11 0 2-.9 2-2 0-.38-.1-.73-.29-1.03L12 0l-1.71 2.97c-.19.3-.29.65-.29 1.03 0 1.1.9 2 2 2z"/><path d="M16.6 15.99l-1.07-1.07-1.08 1.07c-1.3 1.3-3.58 1.31-4.89 0l-1.07-1.07-1.09 1.07C6.75 16.64 5.88 17 4.96 17c-.73 0-1.4-.23-1.96-.61V21c0 .55.45 1 1 1h16c.55 0 1-.45 1-1v-4.61c-.56.38-1.23.61-1.96.61-.92 0-1.79-.36-2.44-1.01z"/><path d="M18 9h-5V7h-2v2H6c-1.66 0-3 1.34-3 3v1.54c0 1.08.88 1.96 1.96 1.96.52 0 1.02-.2 1.38-.57l2.14-2.13 2.13 2.13c.74.74 2.03.74 2.77 0l2.14-2.13 2.13 2.13c.37.37.86.57 1.38.57 1.08 0 1.96-.88 1.96-1.96V12C21 10.34 19.66 9 18 9z"/>',domain:'<path d="M20 19h-8v-2h2v-2h-2v-2h2v-2h-2V9h8v10zM10 7H8V5h2v2zm0 4H8V9h2v2zm0 4H8v-2h2v2zm0 4H8v-2h2v2zM6 7H4V5h2v2zm0 4H4V9h2v2zm0 4H4v-2h2v2zm0 4H4v-2h2v2zm6-12V3H2v18h20V7H12z"/><path d="M18 11h-2v2h2v-2z"/><path d="M18 15h-2v2h2v-2z"/>',group:'<path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3z"/><path d="M8 11c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3z"/><path d="M8 13c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5z"/><path d="M16 13c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>',group_add:'<path d="M8 10H5V7H3v3H0v2h3v3h2v-3h3v-2z"/><path d="M18 11c1.66 0 2.99-1.34 2.99-3S19.66 5 18 5c-.32 0-.63.05-.91.14.57.81.9 1.79.9 2.86 0 1.07-.34 2.04-.9 2.86.28.09.59.14.91.14z"/><path d="M13 11c1.66 0 2.99-1.34 2.99-3S14.66 5 13 5c-1.66 0-3 1.34-3 3s1.34 3 3 3z"/><path d="M19.62 13.16c.83.73 1.38 1.66 1.38 2.84v2h3v-2c0-1.54-2.37-2.49-4.38-2.84z"/><path d="M13 13c-2 0-6 1-6 3v2h12v-2c0-2-4-3-6-3z"/>',location_city:'<path d="M15 11V5l-3-3-3 3v2H3v14h18V11h-6zm-8 8H5v-2h2v2zm0-4H5v-2h2v2zm0-4H5V9h2v2zm6 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V9h2v2zm0-4h-2V5h2v2zm6 12h-2v-2h2v2zm0-4h-2v-2h2v2z"/>',mood:'<path d="M12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm-.01-18C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2z"/><path d="M15.5 11c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5z"/><path d="M8.5 11c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 11 8.5 11z"/><path d="M12 17.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"/>',mood_bad:'<path d="M12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm-.01-18C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2z"/><path d="M15.5 11c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5z"/><path d="M8.5 11c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 11 8.5 11z"/><path d="M12 14c-2.33 0-4.31 1.46-5.11 3.5h10.22c-.8-2.04-2.78-3.5-5.11-3.5z"/>',notifications:'<path d="M11.5 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2z"/><path d="M18 16v-5.5c0-3.07-2.13-5.64-5-6.32V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5v.68c-2.87.68-5 3.25-5 6.32V16l-2 2v1h17v-1l-2-2z"/>',notifications_none:'<path d="M11.5 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2z"/><path d="M16 17H7v-6.5C7 8.01 9.01 6 11.5 6S16 8.01 16 10.5V17zm2-1v-5.5c0-3.07-2.13-5.64-5-6.32V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5v.68c-2.87.68-5 3.25-5 6.32V16l-2 2v1h17v-1l-2-2z"/>',notifications_off:'<path d="M11.5 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2z"/><path d="M18 10.5c0-3.07-2.13-5.64-5-6.32V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5v.68c-.51.12-.99.32-1.45.56L18 14.18V10.5z"/><path d="M17.73 19l2 2L21 19.73 4.27 3 3 4.27l2.92 2.92C5.34 8.16 5 9.29 5 10.5V16l-2 2v1h14.73z"/>',notifications_active:'<path d="M6.58 3.58L5.15 2.15C2.76 3.97 1.18 6.8 1.03 10h2c.15-2.65 1.51-4.97 3.55-6.42z"/><path d="M19.97 10h2c-.15-3.2-1.73-6.03-4.13-7.85l-1.43 1.43c2.05 1.45 3.41 3.77 3.56 6.42z"/><path d="M18 10.5c0-3.07-2.13-5.64-5-6.32V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5v.68c-2.87.68-5 3.25-5 6.32V16l-2 2v1h17v-1l-2-2v-5.5z"/><path d="M11.5 22c.14 0 .27-.01.4-.04.65-.13 1.19-.58 1.44-1.18.1-.24.16-.5.16-.78h-4c0 1.1.9 2 2 2z"/>',notifications_paused:'<path d="M11.5 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2z"/><path d="M14 9.8l-2.8 3.4H14V15H9v-1.8l2.8-3.4H9V8h5v1.8zm4 6.2v-5.5c0-3.07-2.13-5.64-5-6.32V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5v.68c-2.87.68-5 3.25-5 6.32V16l-2 2v1h17v-1l-2-2z"/>',pages:'<path d="M3 5v6h5L7 7l4 1V3H5c-1.1 0-2 .9-2 2z"/><path d="M8 13H3v6c0 1.1.9 2 2 2h6v-5l-4 1 1-4z"/><path d="M17 17l-4-1v5h6c1.1 0 2-.9 2-2v-6h-5l1 4z"/><path d="M19 3h-6v5l4-1-1 4h5V5c0-1.1-.9-2-2-2z"/>',party_mode:'<path d="M20 4h-3.17L15 2H9L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-8 3c1.63 0 3.06.79 3.98 2H12c-1.66 0-3 1.34-3 3 0 .35.07.69.18 1H7.1c-.06-.32-.1-.66-.1-1 0-2.76 2.24-5 5-5zm0 10c-1.63 0-3.06-.79-3.98-2H12c1.66 0 3-1.34 3-3 0-.35-.07-.69-.18-1h2.08c.07.32.1.66.1 1 0 2.76-2.24 5-5 5z"/>',people:'<path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3z"/><path d="M8 11c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3z"/><path d="M8 13c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5z"/><path d="M16 13c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>',people_outline:'<path d="M21.5 17.5H14v-1.25c0-.46-.2-.86-.52-1.22.88-.3 1.96-.53 3.02-.53 2.44 0 5 1.21 5 1.75v1.25zm-9 0h-10v-1.25c0-.54 2.56-1.75 5-1.75s5 1.21 5 1.75v1.25zm4-4.5c-1.2 0-3.07.34-4.5 1-1.43-.67-3.3-1-4.5-1C5.33 13 1 14.08 1 16.25V19h22v-2.75c0-2.17-4.33-3.25-6.5-3.25z"/><path d="M7.5 6.5c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2zm0 5.5c1.93 0 3.5-1.57 3.5-3.5S9.43 5 7.5 5 4 6.57 4 8.5 5.57 12 7.5 12z"/><path d="M16.5 6.5c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2zm0 5.5c1.93 0 3.5-1.57 3.5-3.5S18.43 5 16.5 5 13 6.57 13 8.5s1.57 3.5 3.5 3.5z"/>',person:'<path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4z"/><path d="M12 14c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>',person_add:'<path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4z"/><path d="M6 10V7H4v3H1v2h3v3h2v-3h3v-2H6z"/><path d="M15 14c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>',person_outline:'<path d="M12 4C9.79 4 8 5.79 8 8s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm0 1.9c1.16 0 2.1.94 2.1 2.1 0 1.16-.94 2.1-2.1 2.1-1.16 0-2.1-.94-2.1-2.1 0-1.16.94-2.1 2.1-2.1"/><path d="M12 13c-2.67 0-8 1.34-8 4v3h16v-3c0-2.66-5.33-4-8-4zm0 1.9c2.97 0 6.1 1.46 6.1 2.1v1.1H5.9V17c0-.64 3.13-2.1 6.1-2.1"/>',plus_one:'<path d="M10 8H8v4H4v2h4v4h2v-4h4v-2h-4z"/><path d="M14.5 6.08V7.9l2.5-.5V18h2V5z"/>',poll:'<path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>',"public":'<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>',school:'<path d="M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z"/><path d="M12 3L1 9l11 6 9-4.91V17h2V9L12 3z"/>',sentiment_dissatisfied:'<circle cx="15.5" cy="9.5" r="1.5"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm0-6c-2.33 0-4.32 1.45-5.12 3.5h1.67c.69-1.19 1.97-2 3.45-2s2.75.81 3.45 2h1.67c-.8-2.05-2.79-3.5-5.12-3.5z"/>',sentiment_neutral:'<path d="M9 14h6v1.5H9z"/><circle cx="15.5" cy="9.5" r="1.5"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z"/>',sentiment_satisfied:'<circle cx="15.5" cy="9.5" r="1.5"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm0-4c-1.48 0-2.75-.81-3.45-2H6.88c.8 2.05 2.79 3.5 5.12 3.5s4.32-1.45 5.12-3.5h-1.67c-.7 1.19-1.97 2-3.45 2z"/>',sentiment_very_dissatisfied:'<path d="M12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm-.01-18C6.47 2 2 6.47 2 12s4.47 10 9.99 10C17.51 22 22 17.53 22 12S17.52 2 11.99 2z"/><path d="M16.18 7.76l-1.06 1.06-1.06-1.06L13 8.82l1.06 1.06L13 10.94 14.06 12l1.06-1.06L16.18 12l1.06-1.06-1.06-1.06 1.06-1.06z"/><path d="M7.82 12l1.06-1.06L9.94 12 11 10.94 9.94 9.88 11 8.82 9.94 7.76 8.88 8.82 7.82 7.76 6.76 8.82l1.06 1.06-1.06 1.06z"/><path d="M12 14c-2.33 0-4.31 1.46-5.11 3.5h10.22c-.8-2.04-2.78-3.5-5.11-3.5z"/>',sentiment_very_satisfied:'<path d="M12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm-.01-18C6.47 2 2 6.47 2 12s4.47 10 9.99 10C17.51 22 22 17.53 22 12S17.52 2 11.99 2z"/><path d="M13 9.94L14.06 11l1.06-1.06L16.18 11l1.06-1.06-2.12-2.12z"/><path d="M8.88 9.94L9.94 11 11 9.94 8.88 7.82 6.76 9.94 7.82 11z"/><path d="M12 17.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"/>',share:'<path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/>',whatshot:'<path d="M13.5.67s.74 2.65.74 4.8c0 2.06-1.35 3.73-3.41 3.73-2.07 0-3.63-1.67-3.63-3.73l.03-.36C5.21 7.51 4 10.62 4 14c0 4.42 3.58 8 8 8s8-3.58 8-8C20 8.61 17.41 3.8 13.5.67zM11.71 19c-1.78 0-3.22-1.4-3.22-3.14 0-1.62 1.05-2.76 2.81-3.12 1.77-.36 3.6-1.21 4.62-2.58.39 1.29.59 2.65.59 4.04 0 2.65-2.15 4.8-4.8 4.8z"/>',check_box:'<path d="M19 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.11 0 2-.9 2-2V5c0-1.1-.89-2-2-2zm-9 14l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>',check_box_outline_blank:'<path d="M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/>',indeterminate_check_box:'<path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10H7v-2h10v2z"/>',radio_button_unchecked:'<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z"/>',radio_button_checked:'<path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5z"/><path d="M12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm0-18C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/>',star:'<path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>',star_half:'<path d="M22 9.74l-7.19-.62L12 2.5 9.19 9.13 2 9.74l5.46 4.73-1.64 7.03L12 17.77l6.18 3.73-1.63-7.03L22 9.74zM12 15.9V6.6l1.71 4.04 4.38.38-3.32 2.88 1 4.28L12 15.9z"/>',star_border:'<path d="M22 9.24l-7.19-.62L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.63-7.03L22 9.24zM12 15.4l-3.76 2.27 1-4.28-3.32-2.88 4.38-.38L12 6.1l1.71 4.04 4.38.38-3.32 2.88 1 4.28L12 15.4z"/>'}}function l(){return V}var H,V,s,e;return s=M(),e={},V={getShape:z,getShapes:t,getViewBox:d,getViewBoxes:p,setShape:h,setShapes:c,setViewBox:v,setViewBoxes:a,addShape:h,addShapes:c,addViewBox:v,addViewBoxes:a},H={$get:l,getShape:z,getShapes:t,getViewBox:d,getViewBoxes:p,setShape:h,setShapes:c,setViewBox:v,setViewBoxes:a,addShape:h,addShapes:c,addViewBox:v,addViewBoxes:a}});
-/*
- * angular-ui-bootstrap
- * http://angular-ui.github.io/bootstrap/
-
- * Version: 0.14.3 - 2015-10-23
- * License: MIT
- */
-angular.module("ui.bootstrap",["ui.bootstrap.tpls","ui.bootstrap.modal","ui.bootstrap.stackedMap","ui.bootstrap.datepicker","ui.bootstrap.dateparser","ui.bootstrap.position"]),angular.module("ui.bootstrap.tpls",["template/modal/backdrop.html","template/modal/window.html","template/datepicker/datepicker.html","template/datepicker/day.html","template/datepicker/month.html","template/datepicker/popup.html","template/datepicker/year.html"]),angular.module("ui.bootstrap.modal",["ui.bootstrap.stackedMap"]).factory("$$multiMap",function(){return{createNew:function(){var e={};return{entries:function(){return Object.keys(e).map(function(t){return{key:t,value:e[t]}})},get:function(t){return e[t]},hasKey:function(t){return!!e[t]},keys:function(){return Object.keys(e)},put:function(t,a){e[t]||(e[t]=[]),e[t].push(a)},remove:function(t,a){var n=e[t];if(n){var i=n.indexOf(a);-1!==i&&n.splice(i,1),n.length||delete e[t]}}}}}}).directive("uibModalBackdrop",["$animate","$injector","$uibModalStack",function(e,t,a){function n(t,n,r){n.addClass("modal-backdrop"),r.modalInClass&&(i?i(n,{addClass:r.modalInClass}).start():e.addClass(n,r.modalInClass),t.$on(a.NOW_CLOSING_EVENT,function(t,a){var o=a();i?i(n,{removeClass:r.modalInClass}).start().then(o):e.removeClass(n,r.modalInClass).then(o)}))}var i=null;return t.has("$animateCss")&&(i=t.get("$animateCss")),{replace:!0,templateUrl:"template/modal/backdrop.html",compile:function(e,t){return e.addClass(t.backdropClass),n}}}]).directive("uibModalWindow",["$uibModalStack","$q","$animate","$injector",function(e,t,a,n){var i=null;return n.has("$animateCss")&&(i=n.get("$animateCss")),{scope:{index:"@"},replace:!0,transclude:!0,templateUrl:function(e,t){return t.templateUrl||"template/modal/window.html"},link:function(n,r,o){r.addClass(o.windowClass||""),r.addClass(o.windowTopClass||""),n.size=o.size,n.close=function(t){var a=e.getTop();a&&a.value.backdrop&&"static"!==a.value.backdrop&&t.target===t.currentTarget&&(t.preventDefault(),t.stopPropagation(),e.dismiss(a.key,"backdrop click"))},r.on("click",n.close),n.$isRendered=!0;var s=t.defer();o.$observe("modalRender",function(e){"true"==e&&s.resolve()}),s.promise.then(function(){var s=null;o.modalInClass&&(s=i?i(r,{addClass:o.modalInClass}).start():a.addClass(r,o.modalInClass),n.$on(e.NOW_CLOSING_EVENT,function(e,t){var n=t();i?i(r,{removeClass:o.modalInClass}).start().then(n):a.removeClass(r,o.modalInClass).then(n)})),t.when(s).then(function(){var e=r[0].querySelector("[autofocus]");e?e.focus():r[0].focus()});var l=e.getTop();l&&e.modalRendered(l.key)})}}}]).directive("uibModalAnimationClass",function(){return{compile:function(e,t){t.modalAnimation&&e.addClass(t.uibModalAnimationClass)}}}).directive("uibModalTransclude",function(){return{link:function(e,t,a,n,i){i(e.$parent,function(e){t.empty(),t.append(e)})}}}).factory("$uibModalStack",["$animate","$timeout","$document","$compile","$rootScope","$q","$injector","$$multiMap","$$stackedMap",function(e,t,a,n,i,r,o,s,l){function d(){for(var e=-1,t=w.keys(),a=0;a<t.length;a++)w.get(t[a]).value.backdrop&&(e=a);return e}function c(e,t){var n=a.find("body").eq(0),i=w.get(e).value;w.remove(e),m(i.modalDomEl,i.modalScope,function(){var t=i.openedClass||k;D.remove(t,e),n.toggleClass(t,D.hasKey(t)),u(!0)}),p(),t&&t.focus?t.focus():n.focus()}function u(e){var t;w.length()>0&&(t=w.top().value,t.modalDomEl.toggleClass(t.windowTopClass||"",e))}function p(){if(g&&-1==d()){var e=v;m(g,v,function(){e=null}),g=void 0,v=void 0}}function m(t,a,n){function i(){i.done||(i.done=!0,h?h(t,{event:"leave"}).start().then(function(){t.remove()}):e.leave(t),a.$destroy(),n&&n())}var o,s=null,l=function(){return o||(o=r.defer(),s=o.promise),function(){o.resolve()}};return a.$broadcast($.NOW_CLOSING_EVENT,l),r.when(s).then(i)}function f(e,t,a){return!e.value.modalScope.$broadcast("modal.closing",t,a).defaultPrevented}var h=null;o.has("$animateCss")&&(h=o.get("$animateCss"));var g,v,b,k="modal-open",w=l.createNew(),D=s.createNew(),$={NOW_CLOSING_EVENT:"modal.stack.now-closing"},y=0,M="a[href], area[href], input:not([disabled]), button:not([disabled]),select:not([disabled]), textarea:not([disabled]), iframe, object, embed, *[tabindex], *[contenteditable=true]";return i.$watch(d,function(e){v&&(v.index=e)}),a.bind("keydown",function(e){if(e.isDefaultPrevented())return e;var t=w.top();if(t&&t.value.keyboard)switch(e.which){case 27:e.preventDefault(),i.$apply(function(){$.dismiss(t.key,"escape key press")});break;case 9:$.loadFocusElementList(t);var a=!1;e.shiftKey?$.isFocusInFirstItem(e)&&(a=$.focusLastFocusableElement()):$.isFocusInLastItem(e)&&(a=$.focusFirstFocusableElement()),a&&(e.preventDefault(),e.stopPropagation())}}),$.open=function(e,t){var r=a[0].activeElement,o=t.openedClass||k;u(!1),w.add(e,{deferred:t.deferred,renderDeferred:t.renderDeferred,modalScope:t.scope,backdrop:t.backdrop,keyboard:t.keyboard,openedClass:t.openedClass,windowTopClass:t.windowTopClass}),D.put(o,e);var s=a.find("body").eq(0),l=d();if(l>=0&&!g){v=i.$new(!0),v.index=l;var c=angular.element('<div uib-modal-backdrop="modal-backdrop"></div>');c.attr("backdrop-class",t.backdropClass),t.animation&&c.attr("modal-animation","true"),g=n(c)(v),s.append(g)}var p=angular.element('<div uib-modal-window="modal-window"></div>');p.attr({"template-url":t.windowTemplateUrl,"window-class":t.windowClass,"window-top-class":t.windowTopClass,size:t.size,index:w.length()-1,animate:"animate"}).html(t.content),t.animation&&p.attr("modal-animation","true");var m=n(p)(t.scope);w.top().value.modalDomEl=m,w.top().value.modalOpener=r,s.append(m),s.addClass(o),$.clearFocusListCache()},$.close=function(e,t){var a=w.get(e);return a&&f(a,t,!0)?(a.value.modalScope.$$uibDestructionScheduled=!0,a.value.deferred.resolve(t),c(e,a.value.modalOpener),!0):!a},$.dismiss=function(e,t){var a=w.get(e);return a&&f(a,t,!1)?(a.value.modalScope.$$uibDestructionScheduled=!0,a.value.deferred.reject(t),c(e,a.value.modalOpener),!0):!a},$.dismissAll=function(e){for(var t=this.getTop();t&&this.dismiss(t.key,e);)t=this.getTop()},$.getTop=function(){return w.top()},$.modalRendered=function(e){var t=w.get(e);t&&t.value.renderDeferred.resolve()},$.focusFirstFocusableElement=function(){return b.length>0?(b[0].focus(),!0):!1},$.focusLastFocusableElement=function(){return b.length>0?(b[b.length-1].focus(),!0):!1},$.isFocusInFirstItem=function(e){return b.length>0?(e.target||e.srcElement)==b[0]:!1},$.isFocusInLastItem=function(e){return b.length>0?(e.target||e.srcElement)==b[b.length-1]:!1},$.clearFocusListCache=function(){b=[],y=0},$.loadFocusElementList=function(e){if((void 0===b||!b.length)&&e){var t=e.value.modalDomEl;t&&t.length&&(b=t[0].querySelectorAll(M))}},$}]).provider("$uibModal",function(){var e={options:{animation:!0,backdrop:!0,keyboard:!0},$get:["$injector","$rootScope","$q","$templateRequest","$controller","$uibModalStack","$modalSuppressWarning","$log",function(t,a,n,i,r,o,s,l){function d(e){return e.template?n.when(e.template):i(angular.isFunction(e.templateUrl)?e.templateUrl():e.templateUrl)}function c(e){var a=[];return angular.forEach(e,function(e){a.push(angular.isFunction(e)||angular.isArray(e)?n.when(t.invoke(e)):angular.isString(e)?n.when(t.get(e)):n.when(e))}),a}var u={},p=null;return u.getPromiseChain=function(){return p},u.open=function(t){function i(){return v}var u=n.defer(),m=n.defer(),f=n.defer(),h={result:u.promise,opened:m.promise,rendered:f.promise,close:function(e){return o.close(h,e)},dismiss:function(e){return o.dismiss(h,e)}};if(t=angular.extend({},e.options,t),t.resolve=t.resolve||{},!t.template&&!t.templateUrl)throw new Error("One of template or templateUrl options is required.");var g,v=n.all([d(t)].concat(c(t.resolve)));return g=p=n.all([p]).then(i,i).then(function(e){var n=(t.scope||a).$new();n.$close=h.close,n.$dismiss=h.dismiss,n.$on("$destroy",function(){n.$$uibDestructionScheduled||n.$dismiss("$uibUnscheduledDestruction")});var i,d={},c=1;t.controller&&(d.$scope=n,d.$uibModalInstance=h,Object.defineProperty(d,"$modalInstance",{get:function(){return s||l.warn("$modalInstance is now deprecated. Use $uibModalInstance instead."),h}}),angular.forEach(t.resolve,function(t,a){d[a]=e[c++]}),i=r(t.controller,d),t.controllerAs&&(t.bindToController&&angular.extend(i,n),n[t.controllerAs]=i)),o.open(h,{scope:n,deferred:u,renderDeferred:f,content:e[0],animation:t.animation,backdrop:t.backdrop,keyboard:t.keyboard,backdropClass:t.backdropClass,windowTopClass:t.windowTopClass,windowClass:t.windowClass,windowTemplateUrl:t.windowTemplateUrl,size:t.size,openedClass:t.openedClass}),m.resolve(!0)},function(e){m.reject(e),u.reject(e)}).finally(function(){p===g&&(p=null)}),h},u}]};return e}),angular.module("ui.bootstrap.modal").value("$modalSuppressWarning",!1).directive("modalBackdrop",["$animate","$injector","$modalStack","$log","$modalSuppressWarning",function(e,t,a,n,i){function r(t,r,s){i||n.warn("modal-backdrop is now deprecated. Use uib-modal-backdrop instead."),r.addClass("modal-backdrop"),s.modalInClass&&(o?o(r,{addClass:s.modalInClass}).start():e.addClass(r,s.modalInClass),t.$on(a.NOW_CLOSING_EVENT,function(t,a){var n=a();o?o(r,{removeClass:s.modalInClass}).start().then(n):e.removeClass(r,s.modalInClass).then(n)}))}var o=null;return t.has("$animateCss")&&(o=t.get("$animateCss")),{replace:!0,templateUrl:"template/modal/backdrop.html",compile:function(e,t){return e.addClass(t.backdropClass),r}}}]).directive("modalWindow",["$modalStack","$q","$animate","$injector","$log","$modalSuppressWarning",function(e,t,a,n,i,r){var o=null;return n.has("$animateCss")&&(o=n.get("$animateCss")),{scope:{index:"@"},replace:!0,transclude:!0,templateUrl:function(e,t){return t.templateUrl||"template/modal/window.html"},link:function(n,s,l){r||i.warn("modal-window is now deprecated. Use uib-modal-window instead."),s.addClass(l.windowClass||""),s.addClass(l.windowTopClass||""),n.size=l.size,n.close=function(t){var a=e.getTop();a&&a.value.backdrop&&"static"!==a.value.backdrop&&t.target===t.currentTarget&&(t.preventDefault(),t.stopPropagation(),e.dismiss(a.key,"backdrop click"))},s.on("click",n.close),n.$isRendered=!0;var d=t.defer();l.$observe("modalRender",function(e){"true"==e&&d.resolve()}),d.promise.then(function(){var i=null;l.modalInClass&&(i=o?o(s,{addClass:l.modalInClass}).start():a.addClass(s,l.modalInClass),n.$on(e.NOW_CLOSING_EVENT,function(e,t){var n=t();o?o(s,{removeClass:l.modalInClass}).start().then(n):a.removeClass(s,l.modalInClass).then(n)})),t.when(i).then(function(){var e=s[0].querySelector("[autofocus]");e?e.focus():s[0].focus()});var r=e.getTop();r&&e.modalRendered(r.key)})}}}]).directive("modalAnimationClass",["$log","$modalSuppressWarning",function(e,t){return{compile:function(a,n){t||e.warn("modal-animation-class is now deprecated. Use uib-modal-animation-class instead."),n.modalAnimation&&a.addClass(n.modalAnimationClass)}}}]).directive("modalTransclude",["$log","$modalSuppressWarning",function(e,t){return{link:function(a,n,i,r,o){t||e.warn("modal-transclude is now deprecated. Use uib-modal-transclude instead."),o(a.$parent,function(e){n.empty(),n.append(e)})}}}]).service("$modalStack",["$animate","$timeout","$document","$compile","$rootScope","$q","$injector","$$multiMap","$$stackedMap","$uibModalStack","$log","$modalSuppressWarning",function(e,t,a,n,i,r,o,s,l,d,c,u){u||c.warn("$modalStack is now deprecated. Use $uibModalStack instead."),angular.extend(this,d)}]).provider("$modal",["$uibModalProvider",function(e){angular.extend(this,e),this.$get=["$injector","$log","$modalSuppressWarning",function(t,a,n){return n||a.warn("$modal is now deprecated. Use $uibModal instead."),t.invoke(e.$get)}]}]),angular.module("ui.bootstrap.stackedMap",[]).factory("$$stackedMap",function(){return{createNew:function(){var e=[];return{add:function(t,a){e.push({key:t,value:a})},get:function(t){for(var a=0;a<e.length;a++)if(t==e[a].key)return e[a]},keys:function(){for(var t=[],a=0;a<e.length;a++)t.push(e[a].key);return t},top:function(){return e[e.length-1]},remove:function(t){for(var a=-1,n=0;n<e.length;n++)if(t==e[n].key){a=n;break}return e.splice(a,1)[0]},removeTop:function(){return e.splice(e.length-1,1)[0]},length:function(){return e.length}}}}}),angular.module("ui.bootstrap.datepicker",["ui.bootstrap.dateparser","ui.bootstrap.position"]).value("$datepickerSuppressError",!1).constant("uibDatepickerConfig",{formatDay:"dd",formatMonth:"MMMM",formatYear:"yyyy",formatDayHeader:"EEE",formatDayTitle:"MMMM yyyy",formatMonthTitle:"yyyy",datepickerMode:"day",minMode:"day",maxMode:"year",showWeeks:!0,startingDay:0,yearRange:20,minDate:null,maxDate:null,shortcutPropagation:!1}).controller("UibDatepickerController",["$scope","$attrs","$parse","$interpolate","$log","dateFilter","uibDatepickerConfig","$datepickerSuppressError",function(e,t,a,n,i,r,o,s){var l=this,d={$setViewValue:angular.noop};this.modes=["day","month","year"],angular.forEach(["formatDay","formatMonth","formatYear","formatDayHeader","formatDayTitle","formatMonthTitle","showWeeks","startingDay","yearRange","shortcutPropagation"],function(a,i){l[a]=angular.isDefined(t[a])?6>i?n(t[a])(e.$parent):e.$parent.$eval(t[a]):o[a]}),angular.forEach(["minDate","maxDate"],function(n){t[n]?e.$parent.$watch(a(t[n]),function(e){l[n]=e?new Date(e):null,l.refreshView()}):l[n]=o[n]?new Date(o[n]):null}),angular.forEach(["minMode","maxMode"],function(n){t[n]?e.$parent.$watch(a(t[n]),function(a){l[n]=angular.isDefined(a)?a:t[n],e[n]=l[n],("minMode"==n&&l.modes.indexOf(e.datepickerMode)<l.modes.indexOf(l[n])||"maxMode"==n&&l.modes.indexOf(e.datepickerMode)>l.modes.indexOf(l[n]))&&(e.datepickerMode=l[n])}):(l[n]=o[n]||null,e[n]=l[n])}),e.datepickerMode=e.datepickerMode||o.datepickerMode,e.uniqueId="datepicker-"+e.$id+"-"+Math.floor(1e4*Math.random()),angular.isDefined(t.initDate)?(this.activeDate=e.$parent.$eval(t.initDate)||new Date,e.$parent.$watch(t.initDate,function(e){e&&(d.$isEmpty(d.$modelValue)||d.$invalid)&&(l.activeDate=e,l.refreshView())})):this.activeDate=new Date,e.isActive=function(t){return 0===l.compare(t.date,l.activeDate)?(e.activeDateId=t.uid,!0):!1},this.init=function(e){d=e,d.$render=function(){l.render()}},this.render=function(){if(d.$viewValue){var e=new Date(d.$viewValue),t=!isNaN(e);t?this.activeDate=e:s||i.error('Datepicker directive: "ng-model" value must be a Date object, a number of milliseconds since 01.01.1970 or a string representing an RFC2822 or ISO 8601 date.')}this.refreshView()},this.refreshView=function(){if(this.element){this._refreshView();var e=d.$viewValue?new Date(d.$viewValue):null;d.$setValidity("dateDisabled",!e||this.element&&!this.isDisabled(e))}},this.createDateObject=function(e,t){var a=d.$viewValue?new Date(d.$viewValue):null;return{date:e,label:r(e,t),selected:a&&0===this.compare(e,a),disabled:this.isDisabled(e),current:0===this.compare(e,new Date),customClass:this.customClass(e)}},this.isDisabled=function(a){return this.minDate&&this.compare(a,this.minDate)<0||this.maxDate&&this.compare(a,this.maxDate)>0||t.dateDisabled&&e.dateDisabled({date:a,mode:e.datepickerMode})},this.customClass=function(t){return e.customClass({date:t,mode:e.datepickerMode})},this.split=function(e,t){for(var a=[];e.length>0;)a.push(e.splice(0,t));return a},e.select=function(t){if(e.datepickerMode===l.minMode){var a=d.$viewValue?new Date(d.$viewValue):new Date(0,0,0,0,0,0,0);a.setFullYear(t.getFullYear(),t.getMonth(),t.getDate()),d.$setViewValue(a),d.$render()}else l.activeDate=t,e.datepickerMode=l.modes[l.modes.indexOf(e.datepickerMode)-1]},e.move=function(e){var t=l.activeDate.getFullYear()+e*(l.step.years||0),a=l.activeDate.getMonth()+e*(l.step.months||0);l.activeDate.setFullYear(t,a,1),l.refreshView()},e.toggleMode=function(t){t=t||1,e.datepickerMode===l.maxMode&&1===t||e.datepickerMode===l.minMode&&-1===t||(e.datepickerMode=l.modes[l.modes.indexOf(e.datepickerMode)+t])},e.keys={13:"enter",32:"space",33:"pageup",34:"pagedown",35:"end",36:"home",37:"left",38:"up",39:"right",40:"down"};var c=function(){l.element[0].focus()};e.$on("uib:datepicker.focus",c),e.keydown=function(t){var a=e.keys[t.which];if(a&&!t.shiftKey&&!t.altKey)if(t.preventDefault(),l.shortcutPropagation||t.stopPropagation(),"enter"===a||"space"===a){if(l.isDisabled(l.activeDate))return;e.select(l.activeDate)}else!t.ctrlKey||"up"!==a&&"down"!==a?(l.handleKeyDown(a,t),l.refreshView()):e.toggleMode("up"===a?1:-1)}}]).controller("UibDaypickerController",["$scope","$element","dateFilter",function(e,t,a){function n(e,t){return 1!==t||e%4!==0||e%100===0&&e%400!==0?r[t]:29}function i(e){var t=new Date(e);t.setDate(t.getDate()+4-(t.getDay()||7));var a=t.getTime();return t.setMonth(0),t.setDate(1),Math.floor(Math.round((a-t)/864e5)/7)+1}var r=[31,28,31,30,31,30,31,31,30,31,30,31];this.step={months:1},this.element=t,this.init=function(t){angular.extend(t,this),e.showWeeks=t.showWeeks,t.refreshView()},this.getDates=function(e,t){for(var a,n=new Array(t),i=new Date(e),r=0;t>r;)a=new Date(i),n[r++]=a,i.setDate(i.getDate()+1);return n},this._refreshView=function(){var t=this.activeDate.getFullYear(),n=this.activeDate.getMonth(),r=new Date(this.activeDate);r.setFullYear(t,n,1);var o=this.startingDay-r.getDay(),s=o>0?7-o:-o,l=new Date(r);s>0&&l.setDate(-s+1);for(var d=this.getDates(l,42),c=0;42>c;c++)d[c]=angular.extend(this.createDateObject(d[c],this.formatDay),{secondary:d[c].getMonth()!==n,uid:e.uniqueId+"-"+c});e.labels=new Array(7);for(var u=0;7>u;u++)e.labels[u]={abbr:a(d[u].date,this.formatDayHeader),full:a(d[u].date,"EEEE")};if(e.title=a(this.activeDate,this.formatDayTitle),e.rows=this.split(d,7),e.showWeeks){e.weekNumbers=[];for(var p=(11-this.startingDay)%7,m=e.rows.length,f=0;m>f;f++)e.weekNumbers.push(i(e.rows[f][p].date))}},this.compare=function(e,t){return new Date(e.getFullYear(),e.getMonth(),e.getDate())-new Date(t.getFullYear(),t.getMonth(),t.getDate())},this.handleKeyDown=function(e){var t=this.activeDate.getDate();if("left"===e)t-=1;else if("up"===e)t-=7;else if("right"===e)t+=1;else if("down"===e)t+=7;else if("pageup"===e||"pagedown"===e){var a=this.activeDate.getMonth()+("pageup"===e?-1:1);this.activeDate.setMonth(a,1),t=Math.min(n(this.activeDate.getFullYear(),this.activeDate.getMonth()),t)}else"home"===e?t=1:"end"===e&&(t=n(this.activeDate.getFullYear(),this.activeDate.getMonth()));this.activeDate.setDate(t)}}]).controller("UibMonthpickerController",["$scope","$element","dateFilter",function(e,t,a){this.step={years:1},this.element=t,this.init=function(e){angular.extend(e,this),e.refreshView()},this._refreshView=function(){for(var t,n=new Array(12),i=this.activeDate.getFullYear(),r=0;12>r;r++)t=new Date(this.activeDate),t.setFullYear(i,r,1),n[r]=angular.extend(this.createDateObject(t,this.formatMonth),{uid:e.uniqueId+"-"+r});e.title=a(this.activeDate,this.formatMonthTitle),e.rows=this.split(n,3)},this.compare=function(e,t){return new Date(e.getFullYear(),e.getMonth())-new Date(t.getFullYear(),t.getMonth())},this.handleKeyDown=function(e){var t=this.activeDate.getMonth();if("left"===e)t-=1;else if("up"===e)t-=3;else if("right"===e)t+=1;else if("down"===e)t+=3;else if("pageup"===e||"pagedown"===e){var a=this.activeDate.getFullYear()+("pageup"===e?-1:1);this.activeDate.setFullYear(a)}else"home"===e?t=0:"end"===e&&(t=11);this.activeDate.setMonth(t)}}]).controller("UibYearpickerController",["$scope","$element","dateFilter",function(e,t){function a(e){return parseInt((e-1)/n,10)*n+1}var n;this.element=t,this.yearpickerInit=function(){n=this.yearRange,this.step={years:n}},this._refreshView=function(){for(var t,i=new Array(n),r=0,o=a(this.activeDate.getFullYear());n>r;r++)t=new Date(this.activeDate),t.setFullYear(o+r,0,1),i[r]=angular.extend(this.createDateObject(t,this.formatYear),{uid:e.uniqueId+"-"+r});e.title=[i[0].label,i[n-1].label].join(" - "),e.rows=this.split(i,5)},this.compare=function(e,t){return e.getFullYear()-t.getFullYear()},this.handleKeyDown=function(e){var t=this.activeDate.getFullYear();"left"===e?t-=1:"up"===e?t-=5:"right"===e?t+=1:"down"===e?t+=5:"pageup"===e||"pagedown"===e?t+=("pageup"===e?-1:1)*this.step.years:"home"===e?t=a(this.activeDate.getFullYear()):"end"===e&&(t=a(this.activeDate.getFullYear())+n-1),this.activeDate.setFullYear(t)}}]).directive("uibDatepicker",function(){return{replace:!0,templateUrl:function(e,t){return t.templateUrl||"template/datepicker/datepicker.html"},scope:{datepickerMode:"=?",dateDisabled:"&",customClass:"&",shortcutPropagation:"&?"},require:["uibDatepicker","^ngModel"],controller:"UibDatepickerController",controllerAs:"datepicker",link:function(e,t,a,n){var i=n[0],r=n[1];i.init(r)}}}).directive("uibDaypicker",function(){return{replace:!0,templateUrl:function(e,t){return t.templateUrl||"template/datepicker/day.html"},require:["^?uibDatepicker","uibDaypicker","^?datepicker"],controller:"UibDaypickerController",link:function(e,t,a,n){var i=n[0]||n[2],r=n[1];r.init(i)}}}).directive("uibMonthpicker",function(){return{replace:!0,templateUrl:function(e,t){return t.templateUrl||"template/datepicker/month.html"},require:["^?uibDatepicker","uibMonthpicker","^?datepicker"],controller:"UibMonthpickerController",link:function(e,t,a,n){var i=n[0]||n[2],r=n[1];r.init(i)}}}).directive("uibYearpicker",function(){return{replace:!0,templateUrl:function(e,t){return t.templateUrl||"template/datepicker/year.html"},require:["^?uibDatepicker","uibYearpicker","^?datepicker"],controller:"UibYearpickerController",link:function(e,t,a,n){var i=n[0]||n[2];angular.extend(i,n[1]),i.yearpickerInit(),i.refreshView()}}}).constant("uibDatepickerPopupConfig",{datepickerPopup:"yyyy-MM-dd",datepickerPopupTemplateUrl:"template/datepicker/popup.html",datepickerTemplateUrl:"template/datepicker/datepicker.html",html5Types:{date:"yyyy-MM-dd","datetime-local":"yyyy-MM-ddTHH:mm:ss.sss",month:"yyyy-MM"},currentText:"Today",clearText:"Clear",closeText:"Done",closeOnDateSelection:!0,appendToBody:!1,showButtonBar:!0,onOpenFocus:!0}).controller("UibDatepickerPopupController",["$scope","$element","$attrs","$compile","$parse","$document","$rootScope","$uibPosition","dateFilter","uibDateParser","uibDatepickerPopupConfig","$timeout",function(e,t,a,n,i,r,o,s,l,d,c,u){function p(e){return e.replace(/([A-Z])/g,function(e){return"-"+e.toLowerCase()})}function m(t){if(angular.isNumber(t)&&(t=new Date(t)),t){if(angular.isDate(t)&&!isNaN(t))return t;if(angular.isString(t)){var a=d.parse(t,v,e.date);return isNaN(a)?void 0:a}return void 0}return null}function f(e,t){var n=e||t;if(!a.ngRequired&&!n)return!0;if(angular.isNumber(n)&&(n=new Date(n)),n){if(angular.isDate(n)&&!isNaN(n))return!0;if(angular.isString(n)){var i=d.parse(n,v);return!isNaN(i)}return!1}return!0}function h(a){var n=x[0],i=t[0].contains(a.target),r=void 0!==n.contains&&n.contains(a.target);!e.isOpen||i||r||e.$apply(function(){e.isOpen=!1})}function g(a){27===a.which&&e.isOpen?(a.preventDefault(),a.stopPropagation(),e.$apply(function(){e.isOpen=!1}),t[0].focus()):40!==a.which||e.isOpen||(a.preventDefault(),a.stopPropagation(),e.$apply(function(){e.isOpen=!0}))}var v,b,k,w,D,$,y,M,C,x,T={},S=!1;e.watchData={},this.init=function(s){if(C=s,b=angular.isDefined(a.closeOnDateSelection)?e.$parent.$eval(a.closeOnDateSelection):c.closeOnDateSelection,k=angular.isDefined(a.datepickerAppendToBody)?e.$parent.$eval(a.datepickerAppendToBody):c.appendToBody,w=angular.isDefined(a.onOpenFocus)?e.$parent.$eval(a.onOpenFocus):c.onOpenFocus,D=angular.isDefined(a.datepickerPopupTemplateUrl)?a.datepickerPopupTemplateUrl:c.datepickerPopupTemplateUrl,$=angular.isDefined(a.datepickerTemplateUrl)?a.datepickerTemplateUrl:c.datepickerTemplateUrl,e.showButtonBar=angular.isDefined(a.showButtonBar)?e.$parent.$eval(a.showButtonBar):c.showButtonBar,c.html5Types[a.type]?(v=c.html5Types[a.type],S=!0):(v=a.datepickerPopup||a.uibDatepickerPopup||c.datepickerPopup,a.$observe("uibDatepickerPopup",function(e){var t=e||c.datepickerPopup;if(t!==v&&(v=t,C.$modelValue=null,!v))throw new Error("uibDatepickerPopup must have a date format specified.")})),!v)throw new Error("uibDatepickerPopup must have a date format specified.");if(S&&a.datepickerPopup)throw new Error("HTML5 date input types do not support custom formats.");if(y=angular.element("<div uib-datepicker-popup-wrap><div uib-datepicker></div></div>"),y.attr({"ng-model":"date","ng-change":"dateSelection(date)","template-url":D}),M=angular.element(y.children()[0]),M.attr("template-url",$),S&&"month"===a.type&&(M.attr("datepicker-mode",'"month"'),M.attr("min-mode","month")),a.datepickerOptions){var u=e.$parent.$eval(a.datepickerOptions);u&&u.initDate&&(e.initDate=u.initDate,M.attr("init-date","initDate"),delete u.initDate),angular.forEach(u,function(e,t){M.attr(p(t),e)})}angular.forEach(["minMode","maxMode","minDate","maxDate","datepickerMode","initDate","shortcutPropagation"],function(t){if(a[t]){var n=i(a[t]);if(e.$parent.$watch(n,function(a){e.watchData[t]=a,("minDate"===t||"maxDate"===t)&&(T[t]=new Date(a))}),M.attr(p(t),"watchData."+t),"datepickerMode"===t){var r=n.assign;e.$watch("watchData."+t,function(t,a){angular.isFunction(r)&&t!==a&&r(e.$parent,t)})}}}),a.dateDisabled&&M.attr("date-disabled","dateDisabled({ date: date, mode: mode })"),a.showWeeks&&M.attr("show-weeks",a.showWeeks),a.customClass&&M.attr("custom-class","customClass({ date: date, mode: mode })"),S?C.$formatters.push(function(t){return e.date=t,t}):(C.$$parserName="date",C.$validators.date=f,C.$parsers.unshift(m),C.$formatters.push(function(t){return e.date=t,C.$isEmpty(t)?t:l(t,v)})),C.$viewChangeListeners.push(function(){e.date=d.parse(C.$viewValue,v,e.date)}),t.bind("keydown",g),x=n(y)(e),y.remove(),k?r.find("body").append(x):t.after(x),e.$on("$destroy",function(){e.isOpen===!0&&(o.$$phase||e.$apply(function(){e.isOpen=!1})),x.remove(),t.unbind("keydown",g),r.unbind("click",h)})},e.getText=function(t){return e[t+"Text"]||c[t+"Text"]},e.isDisabled=function(t){return"today"===t&&(t=new Date),e.watchData.minDate&&e.compare(t,T.minDate)<0||e.watchData.maxDate&&e.compare(t,T.maxDate)>0},e.compare=function(e,t){return new Date(e.getFullYear(),e.getMonth(),e.getDate())-new Date(t.getFullYear(),t.getMonth(),t.getDate())},e.dateSelection=function(a){angular.isDefined(a)&&(e.date=a);var n=e.date?l(e.date,v):null;t.val(n),C.$setViewValue(n),b&&(e.isOpen=!1,t[0].focus())},e.keydown=function(a){27===a.which&&(e.isOpen=!1,t[0].focus())},e.select=function(t){if("today"===t){var a=new Date;angular.isDate(e.date)?(t=new Date(e.date),t.setFullYear(a.getFullYear(),a.getMonth(),a.getDate())):t=new Date(a.setHours(0,0,0,0))}e.dateSelection(t)},e.close=function(){e.isOpen=!1,t[0].focus()},e.$watch("isOpen",function(a){a?(e.position=k?s.offset(t):s.position(t),e.position.top=e.position.top+t.prop("offsetHeight"),u(function(){w&&e.$broadcast("uib:datepicker.focus"),r.bind("click",h)},0,!1)):r.unbind("click",h)})}]).directive("uibDatepickerPopup",function(){return{require:["ngModel","uibDatepickerPopup"],controller:"UibDatepickerPopupController",scope:{isOpen:"=?",currentText:"@",clearText:"@",closeText:"@",dateDisabled:"&",customClass:"&"},link:function(e,t,a,n){var i=n[0],r=n[1];r.init(i)}}}).directive("uibDatepickerPopupWrap",function(){return{replace:!0,transclude:!0,templateUrl:function(e,t){return t.templateUrl||"template/datepicker/popup.html"}}}),angular.module("ui.bootstrap.datepicker").value("$datepickerSuppressWarning",!1).controller("DatepickerController",["$scope","$attrs","$parse","$interpolate","$log","dateFilter","uibDatepickerConfig","$datepickerSuppressError","$datepickerSuppressWarning",function(e,t,a,n,i,r,o,s,l){l||i.warn("DatepickerController is now deprecated. Use UibDatepickerController instead.");var d=this,c={$setViewValue:angular.noop};this.modes=["day","month","year"],angular.forEach(["formatDay","formatMonth","formatYear","formatDayHeader","formatDayTitle","formatMonthTitle","showWeeks","startingDay","yearRange","shortcutPropagation"],function(a,i){d[a]=angular.isDefined(t[a])?6>i?n(t[a])(e.$parent):e.$parent.$eval(t[a]):o[a]}),angular.forEach(["minDate","maxDate"],function(n){t[n]?e.$parent.$watch(a(t[n]),function(e){d[n]=e?new Date(e):null,d.refreshView()}):d[n]=o[n]?new Date(o[n]):null}),angular.forEach(["minMode","maxMode"],function(n){t[n]?e.$parent.$watch(a(t[n]),function(a){d[n]=angular.isDefined(a)?a:t[n],e[n]=d[n],("minMode"==n&&d.modes.indexOf(e.datepickerMode)<d.modes.indexOf(d[n])||"maxMode"==n&&d.modes.indexOf(e.datepickerMode)>d.modes.indexOf(d[n]))&&(e.datepickerMode=d[n])}):(d[n]=o[n]||null,e[n]=d[n])}),e.datepickerMode=e.datepickerMode||o.datepickerMode,e.uniqueId="datepicker-"+e.$id+"-"+Math.floor(1e4*Math.random()),angular.isDefined(t.initDate)?(this.activeDate=e.$parent.$eval(t.initDate)||new Date,e.$parent.$watch(t.initDate,function(e){e&&(c.$isEmpty(c.$modelValue)||c.$invalid)&&(d.activeDate=e,d.refreshView())})):this.activeDate=new Date,e.isActive=function(t){return 0===d.compare(t.date,d.activeDate)?(e.activeDateId=t.uid,!0):!1},this.init=function(e){c=e,c.$render=function(){d.render()}},this.render=function(){if(c.$viewValue){var e=new Date(c.$viewValue),t=!isNaN(e);t?this.activeDate=e:s||i.error('Datepicker directive: "ng-model" value must be a Date object, a number of milliseconds since 01.01.1970 or a string representing an RFC2822 or ISO 8601 date.')}this.refreshView()},this.refreshView=function(){if(this.element){this._refreshView();var e=c.$viewValue?new Date(c.$viewValue):null;c.$setValidity("dateDisabled",!e||this.element&&!this.isDisabled(e))}},this.createDateObject=function(e,t){var a=c.$viewValue?new Date(c.$viewValue):null;return{date:e,label:r(e,t),selected:a&&0===this.compare(e,a),disabled:this.isDisabled(e),current:0===this.compare(e,new Date),customClass:this.customClass(e)}},this.isDisabled=function(a){return this.minDate&&this.compare(a,this.minDate)<0||this.maxDate&&this.compare(a,this.maxDate)>0||t.dateDisabled&&e.dateDisabled({date:a,mode:e.datepickerMode})},this.customClass=function(t){return e.customClass({date:t,mode:e.datepickerMode})},this.split=function(e,t){for(var a=[];e.length>0;)a.push(e.splice(0,t));return a},this.fixTimeZone=function(e){var t=e.getHours();e.setHours(23===t?t+2:0)},e.select=function(t){if(e.datepickerMode===d.minMode){var a=c.$viewValue?new Date(c.$viewValue):new Date(0,0,0,0,0,0,0);a.setFullYear(t.getFullYear(),t.getMonth(),t.getDate()),c.$setViewValue(a),c.$render()}else d.activeDate=t,e.datepickerMode=d.modes[d.modes.indexOf(e.datepickerMode)-1]},e.move=function(e){var t=d.activeDate.getFullYear()+e*(d.step.years||0),a=d.activeDate.getMonth()+e*(d.step.months||0);d.activeDate.setFullYear(t,a,1),d.refreshView()},e.toggleMode=function(t){t=t||1,e.datepickerMode===d.maxMode&&1===t||e.datepickerMode===d.minMode&&-1===t||(e.datepickerMode=d.modes[d.modes.indexOf(e.datepickerMode)+t])},e.keys={13:"enter",32:"space",33:"pageup",34:"pagedown",35:"end",36:"home",37:"left",38:"up",39:"right",40:"down"};var u=function(){d.element[0].focus()};e.$on("uib:datepicker.focus",u),e.keydown=function(t){var a=e.keys[t.which];if(a&&!t.shiftKey&&!t.altKey)if(t.preventDefault(),d.shortcutPropagation||t.stopPropagation(),"enter"===a||"space"===a){if(d.isDisabled(d.activeDate))return;e.select(d.activeDate)}else!t.ctrlKey||"up"!==a&&"down"!==a?(d.handleKeyDown(a,t),d.refreshView()):e.toggleMode("up"===a?1:-1)}}]).directive("datepicker",["$log","$datepickerSuppressWarning",function(e,t){return{replace:!0,templateUrl:function(e,t){return t.templateUrl||"template/datepicker/datepicker.html"},scope:{datepickerMode:"=?",dateDisabled:"&",customClass:"&",shortcutPropagation:"&?"},require:["datepicker","^ngModel"],controller:"DatepickerController",controllerAs:"datepicker",link:function(a,n,i,r){t||e.warn("datepicker is now deprecated. Use uib-datepicker instead.");var o=r[0],s=r[1];o.init(s)}}}]).directive("daypicker",["$log","$datepickerSuppressWarning",function(e,t){return{replace:!0,templateUrl:"template/datepicker/day.html",require:["^datepicker","daypicker"],controller:"UibDaypickerController",link:function(a,n,i,r){t||e.warn("daypicker is now deprecated. Use uib-daypicker instead.");
-var o=r[0],s=r[1];s.init(o)}}}]).directive("monthpicker",["$log","$datepickerSuppressWarning",function(e,t){return{replace:!0,templateUrl:"template/datepicker/month.html",require:["^datepicker","monthpicker"],controller:"UibMonthpickerController",link:function(a,n,i,r){t||e.warn("monthpicker is now deprecated. Use uib-monthpicker instead.");var o=r[0],s=r[1];s.init(o)}}}]).directive("yearpicker",["$log","$datepickerSuppressWarning",function(e,t){return{replace:!0,templateUrl:"template/datepicker/year.html",require:["^datepicker","yearpicker"],controller:"UibYearpickerController",link:function(a,n,i,r){t||e.warn("yearpicker is now deprecated. Use uib-yearpicker instead.");var o=r[0];angular.extend(o,r[1]),o.yearpickerInit(),o.refreshView()}}}]).directive("datepickerPopup",["$log","$datepickerSuppressWarning",function(e,t){return{require:["ngModel","datepickerPopup"],controller:"UibDatepickerPopupController",scope:{isOpen:"=?",currentText:"@",clearText:"@",closeText:"@",dateDisabled:"&",customClass:"&"},link:function(a,n,i,r){t||e.warn("datepicker-popup is now deprecated. Use uib-datepicker-popup instead.");var o=r[0],s=r[1];s.init(o)}}}]).directive("datepickerPopupWrap",["$log","$datepickerSuppressWarning",function(e,t){return{replace:!0,transclude:!0,templateUrl:function(e,t){return t.templateUrl||"template/datepicker/popup.html"},link:function(){t||e.warn("datepicker-popup-wrap is now deprecated. Use uib-datepicker-popup-wrap instead.")}}}]),angular.module("ui.bootstrap.dateparser",[]).service("uibDateParser",["$log","$locale","orderByFilter",function(e,t,a){function n(e){var t=[],n=e.split("");return angular.forEach(o,function(a,i){var r=e.indexOf(i);if(r>-1){e=e.split(""),n[r]="("+a.regex+")",e[r]="$";for(var o=r+1,s=r+i.length;s>o;o++)n[o]="",e[o]="$";e=e.join(""),t.push({index:r,apply:a.apply})}}),{regex:new RegExp("^"+n.join("")+"$"),map:a(t,"index")}}function i(e,t,a){return 1>a?!1:1===t&&a>28?29===a&&(e%4===0&&e%100!==0||e%400===0):3===t||5===t||8===t||10===t?31>a:!0}var r,o,s=/[\\\^\$\*\+\?\|\[\]\(\)\.\{\}]/g;this.init=function(){r=t.id,this.parsers={},o={yyyy:{regex:"\\d{4}",apply:function(e){this.year=+e}},yy:{regex:"\\d{2}",apply:function(e){this.year=+e+2e3}},y:{regex:"\\d{1,4}",apply:function(e){this.year=+e}},MMMM:{regex:t.DATETIME_FORMATS.MONTH.join("|"),apply:function(e){this.month=t.DATETIME_FORMATS.MONTH.indexOf(e)}},MMM:{regex:t.DATETIME_FORMATS.SHORTMONTH.join("|"),apply:function(e){this.month=t.DATETIME_FORMATS.SHORTMONTH.indexOf(e)}},MM:{regex:"0[1-9]|1[0-2]",apply:function(e){this.month=e-1}},M:{regex:"[1-9]|1[0-2]",apply:function(e){this.month=e-1}},dd:{regex:"[0-2][0-9]{1}|3[0-1]{1}",apply:function(e){this.date=+e}},d:{regex:"[1-2]?[0-9]{1}|3[0-1]{1}",apply:function(e){this.date=+e}},EEEE:{regex:t.DATETIME_FORMATS.DAY.join("|")},EEE:{regex:t.DATETIME_FORMATS.SHORTDAY.join("|")},HH:{regex:"(?:0|1)[0-9]|2[0-3]",apply:function(e){this.hours=+e}},hh:{regex:"0[0-9]|1[0-2]",apply:function(e){this.hours=+e}},H:{regex:"1?[0-9]|2[0-3]",apply:function(e){this.hours=+e}},h:{regex:"[0-9]|1[0-2]",apply:function(e){this.hours=+e}},mm:{regex:"[0-5][0-9]",apply:function(e){this.minutes=+e}},m:{regex:"[0-9]|[1-5][0-9]",apply:function(e){this.minutes=+e}},sss:{regex:"[0-9][0-9][0-9]",apply:function(e){this.milliseconds=+e}},ss:{regex:"[0-5][0-9]",apply:function(e){this.seconds=+e}},s:{regex:"[0-9]|[1-5][0-9]",apply:function(e){this.seconds=+e}},a:{regex:t.DATETIME_FORMATS.AMPMS.join("|"),apply:function(e){12===this.hours&&(this.hours=0),"PM"===e&&(this.hours+=12)}}}},this.init(),this.parse=function(a,o,l){if(!angular.isString(a)||!o)return a;o=t.DATETIME_FORMATS[o]||o,o=o.replace(s,"\\$&"),t.id!==r&&this.init(),this.parsers[o]||(this.parsers[o]=n(o));var d=this.parsers[o],c=d.regex,u=d.map,p=a.match(c);if(p&&p.length){var m,f;angular.isDate(l)&&!isNaN(l.getTime())?m={year:l.getFullYear(),month:l.getMonth(),date:l.getDate(),hours:l.getHours(),minutes:l.getMinutes(),seconds:l.getSeconds(),milliseconds:l.getMilliseconds()}:(l&&e.warn("dateparser:","baseDate is not a valid date"),m={year:1900,month:0,date:1,hours:0,minutes:0,seconds:0,milliseconds:0});for(var h=1,g=p.length;g>h;h++){var v=u[h-1];v.apply&&v.apply.call(m,p[h])}return i(m.year,m.month,m.date)&&(angular.isDate(l)&&!isNaN(l.getTime())?(f=new Date(l),f.setFullYear(m.year,m.month,m.date,m.hours,m.minutes,m.seconds,m.milliseconds||0)):f=new Date(m.year,m.month,m.date,m.hours,m.minutes,m.seconds,m.milliseconds||0)),f}}}]),angular.module("ui.bootstrap.dateparser").value("$dateParserSuppressWarning",!1).service("dateParser",["$log","$dateParserSuppressWarning","uibDateParser",function(e,t,a){t||e.warn("dateParser is now deprecated. Use uibDateParser instead."),angular.extend(this,a)}]),angular.module("ui.bootstrap.position",[]).factory("$uibPosition",["$document","$window",function(e,t){function a(e,a){return e.currentStyle?e.currentStyle[a]:t.getComputedStyle?t.getComputedStyle(e)[a]:e.style[a]}function n(e){return"static"===(a(e,"position")||"static")}var i=function(t){for(var a=e[0],i=t.offsetParent||a;i&&i!==a&&n(i);)i=i.offsetParent;return i||a};return{position:function(t){var a=this.offset(t),n={top:0,left:0},r=i(t[0]);r!=e[0]&&(n=this.offset(angular.element(r)),n.top+=r.clientTop-r.scrollTop,n.left+=r.clientLeft-r.scrollLeft);var o=t[0].getBoundingClientRect();return{width:o.width||t.prop("offsetWidth"),height:o.height||t.prop("offsetHeight"),top:a.top-n.top,left:a.left-n.left}},offset:function(a){var n=a[0].getBoundingClientRect();return{width:n.width||a.prop("offsetWidth"),height:n.height||a.prop("offsetHeight"),top:n.top+(t.pageYOffset||e[0].documentElement.scrollTop),left:n.left+(t.pageXOffset||e[0].documentElement.scrollLeft)}},positionElements:function(e,t,a,n){var i,r,o,s,l=a.split("-"),d=l[0],c=l[1]||"center";i=n?this.offset(e):this.position(e),r=t.prop("offsetWidth"),o=t.prop("offsetHeight");var u={center:function(){return i.left+i.width/2-r/2},left:function(){return i.left},right:function(){return i.left+i.width}},p={center:function(){return i.top+i.height/2-o/2},top:function(){return i.top},bottom:function(){return i.top+i.height}};switch(d){case"right":s={top:p[c](),left:u[d]()};break;case"left":s={top:p[c](),left:i.left-r};break;case"bottom":s={top:p[d](),left:u[c]()};break;default:s={top:i.top-o,left:u[c]()}}return s}}}]),angular.module("ui.bootstrap.position").value("$positionSuppressWarning",!1).service("$position",["$log","$positionSuppressWarning","$uibPosition",function(e,t,a){t||e.warn("$position is now deprecated. Use $uibPosition instead."),angular.extend(this,a)}]),angular.module("template/modal/backdrop.html",[]).run(["$templateCache",function(e){e.put("template/modal/backdrop.html",'<div uib-modal-animation-class="fade"\n     modal-in-class="in"\n     ng-style="{\'z-index\': 1040 + (index && 1 || 0) + index*10}"\n></div>\n')}]),angular.module("template/modal/window.html",[]).run(["$templateCache",function(e){e.put("template/modal/window.html",'<div modal-render="{{$isRendered}}" tabindex="-1" role="dialog" class="modal"\n    uib-modal-animation-class="fade"\n    modal-in-class="in"\n    ng-style="{\'z-index\': 1050 + index*10, display: \'block\'}">\n    <div class="modal-dialog" ng-class="size ? \'modal-\' + size : \'\'"><div class="modal-content" uib-modal-transclude></div></div>\n</div>\n')}]),angular.module("template/datepicker/datepicker.html",[]).run(["$templateCache",function(e){e.put("template/datepicker/datepicker.html",'<div ng-switch="datepickerMode" role="application" ng-keydown="keydown($event)">\n  <uib-daypicker ng-switch-when="day" tabindex="0"></uib-daypicker>\n  <uib-monthpicker ng-switch-when="month" tabindex="0"></uib-monthpicker>\n  <uib-yearpicker ng-switch-when="year" tabindex="0"></uib-yearpicker>\n</div>')}]),angular.module("template/datepicker/day.html",[]).run(["$templateCache",function(e){e.put("template/datepicker/day.html",'<table role="grid" aria-labelledby="{{::uniqueId}}-title" aria-activedescendant="{{activeDateId}}">\n  <thead>\n    <tr>\n      <th><button type="button" class="btn btn-default btn-sm pull-left" ng-click="move(-1)" tabindex="-1"><i class="glyphicon glyphicon-chevron-left"></i></button></th>\n      <th colspan="{{::5 + showWeeks}}"><button id="{{::uniqueId}}-title" role="heading" aria-live="assertive" aria-atomic="true" type="button" class="btn btn-default btn-sm" ng-click="toggleMode()" ng-disabled="datepickerMode === maxMode" tabindex="-1" style="width:100%;"><strong>{{title}}</strong></button></th>\n      <th><button type="button" class="btn btn-default btn-sm pull-right" ng-click="move(1)" tabindex="-1"><i class="glyphicon glyphicon-chevron-right"></i></button></th>\n    </tr>\n    <tr>\n      <th ng-if="showWeeks" class="text-center"></th>\n      <th ng-repeat="label in ::labels track by $index" class="text-center"><small aria-label="{{::label.full}}">{{::label.abbr}}</small></th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr ng-repeat="row in rows track by $index">\n      <td ng-if="showWeeks" class="text-center h6"><em>{{ weekNumbers[$index] }}</em></td>\n      <td ng-repeat="dt in row track by dt.date" class="text-center" role="gridcell" id="{{::dt.uid}}" ng-class="::dt.customClass">\n        <button type="button" style="min-width:100%;" class="btn btn-default btn-sm" ng-class="{\'btn-info\': dt.selected, active: isActive(dt)}" ng-click="select(dt.date)" ng-disabled="dt.disabled" tabindex="-1"><span ng-class="::{\'text-muted\': dt.secondary, \'text-info\': dt.current}">{{::dt.label}}</span></button>\n      </td>\n    </tr>\n  </tbody>\n</table>\n')}]),angular.module("template/datepicker/month.html",[]).run(["$templateCache",function(e){e.put("template/datepicker/month.html",'<table role="grid" aria-labelledby="{{::uniqueId}}-title" aria-activedescendant="{{activeDateId}}">\n  <thead>\n    <tr>\n      <th><button type="button" class="btn btn-default btn-sm pull-left" ng-click="move(-1)" tabindex="-1"><i class="glyphicon glyphicon-chevron-left"></i></button></th>\n      <th><button id="{{::uniqueId}}-title" role="heading" aria-live="assertive" aria-atomic="true" type="button" class="btn btn-default btn-sm" ng-click="toggleMode()" ng-disabled="datepickerMode === maxMode" tabindex="-1" style="width:100%;"><strong>{{title}}</strong></button></th>\n      <th><button type="button" class="btn btn-default btn-sm pull-right" ng-click="move(1)" tabindex="-1"><i class="glyphicon glyphicon-chevron-right"></i></button></th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr ng-repeat="row in rows track by $index">\n      <td ng-repeat="dt in row track by dt.date" class="text-center" role="gridcell" id="{{::dt.uid}}" ng-class="::dt.customClass">\n        <button type="button" style="min-width:100%;" class="btn btn-default" ng-class="{\'btn-info\': dt.selected, active: isActive(dt)}" ng-click="select(dt.date)" ng-disabled="dt.disabled" tabindex="-1"><span ng-class="::{\'text-info\': dt.current}">{{::dt.label}}</span></button>\n      </td>\n    </tr>\n  </tbody>\n</table>\n')}]),angular.module("template/datepicker/popup.html",[]).run(["$templateCache",function(e){e.put("template/datepicker/popup.html",'<ul class="dropdown-menu" dropdown-nested ng-if="isOpen" style="display: block" ng-style="{top: position.top+\'px\', left: position.left+\'px\'}" ng-keydown="keydown($event)" ng-click="$event.stopPropagation()">\n	<li ng-transclude></li>\n	<li ng-if="showButtonBar" style="padding:10px 9px 2px">\n		<span class="btn-group pull-left">\n			<button type="button" class="btn btn-sm btn-info" ng-click="select(\'today\')" ng-disabled="isDisabled(\'today\')">{{ getText(\'current\') }}</button>\n			<button type="button" class="btn btn-sm btn-danger" ng-click="select(null)">{{ getText(\'clear\') }}</button>\n		</span>\n		<button type="button" class="btn btn-sm btn-success pull-right" ng-click="close()">{{ getText(\'close\') }}</button>\n	</li>\n</ul>\n')}]),angular.module("template/datepicker/year.html",[]).run(["$templateCache",function(e){e.put("template/datepicker/year.html",'<table role="grid" aria-labelledby="{{::uniqueId}}-title" aria-activedescendant="{{activeDateId}}">\n  <thead>\n    <tr>\n      <th><button type="button" class="btn btn-default btn-sm pull-left" ng-click="move(-1)" tabindex="-1"><i class="glyphicon glyphicon-chevron-left"></i></button></th>\n      <th colspan="3"><button id="{{::uniqueId}}-title" role="heading" aria-live="assertive" aria-atomic="true" type="button" class="btn btn-default btn-sm" ng-click="toggleMode()" ng-disabled="datepickerMode === maxMode" tabindex="-1" style="width:100%;"><strong>{{title}}</strong></button></th>\n      <th><button type="button" class="btn btn-default btn-sm pull-right" ng-click="move(1)" tabindex="-1"><i class="glyphicon glyphicon-chevron-right"></i></button></th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr ng-repeat="row in rows track by $index">\n      <td ng-repeat="dt in row track by dt.date" class="text-center" role="gridcell" id="{{::dt.uid}}" ng-class="::dt.customClass">\n        <button type="button" style="min-width:100%;" class="btn btn-default" ng-class="{\'btn-info\': dt.selected, active: isActive(dt)}" ng-click="select(dt.date)" ng-disabled="dt.disabled" tabindex="-1"><span ng-class="::{\'text-info\': dt.current}">{{::dt.label}}</span></button>\n      </td>\n    </tr>\n  </tbody>\n</table>\n')}]);
 (function(e){"use strict";function t(e){return parseInt(e.replace(/px|%/,""),10)}e.module("scrollable-table",[]).directive("scrollableTable",["$timeout","$q","$parse",function(n,r,i){return{transclude:true,restrict:"E",scope:{rows:"=watch",sortFn:"="},template:'<div class="scrollableContainer">'+'<div class="headerSpacer"></div>'+'<div class="scrollArea" ng-transclude></div>'+"</div>",controller:["$scope","$element","$attrs",function(s,o,u){function a(e,t){var n=s.sortExpr.match(/(.+)\s+as\s+(.+)/);var r={};r[n[1]]=e;var o=i(n[2])(r);r[n[1]]=t;var u=i(n[2])(r);if(o===u)return 0;return o>u?1:-1}function f(e){var t=o.find(".headerSpacer").height();var n=o.find(".scrollArea").scrollTop();o.find(".scrollArea").scrollTop(n+e.position().top-t)}function l(){function t(){if(o.find("table:visible").length===0){n(t,100)}else{e.resolve()}}var e=r.defer();n(t);return e.promise}function h(){if(!o.find("thead th .th-inner").length){o.find("thead th").wrapInner('<div class="th-inner"></div>')}if(o.find("thead th .th-inner:not(:has(.box))").length){o.find("thead th .th-inner:not(:has(.box))").wrapInner('<div class="box"></div>')}o.find("table th .th-inner:visible").each(function(n,r){r=e.element(r);var i=r.parent().width(),s=o.find("table th:visible:last"),u=i;if(s.css("text-align")!=="center"){var a=o.find(".scrollArea").height()<o.find("table").height();if(s[0]==r.parent()[0]&&a){u+=o.find(".scrollArea").width()-o.find("tbody tr").width();u=Math.max(u,i)}}var f=t(r.parent().css("min-width")),l=r.parent().attr("title");u=Math.max(f,u);r.css("width",u);if(!l){l=r.find(".title .ng-scope").html()||r.find(".box").html()}r.attr("title",l.trim())});c.resolve()}function p(){var e=l().then(h),t=s.headerResizeHanlers||[];for(var n=0;n<t.length;n++){e=e.then(t[n])}return e}this.getSortExpr=function(){return s.sortExpr};this.isAsc=function(){return s.asc};this.setSortExpr=function(e){s.asc=true;s.sortExpr=e};this.toggleSort=function(){s.asc=!s.asc};this.doSort=function(e){if(e){s.rows.sort(function(t,n){var r=e(t,n);return s.asc?r:r*-1})}else{s.rows.sort(function(e,t){var n=a(e,t);return s.asc?n:n*-1})}};this.renderTalble=function(){return l().then(h)};this.getTableElement=function(){return o};this.appendTableResizingHandler=function(e){var t=s.headerResizeHanlers||[];for(var n=0;n<t.length;n++){if(t[n].name===e.name){return}}t.push(e);s.headerResizeHanlers=t};s.$on("rowSelected",function(e,t){var n=o.find(".scrollArea table tr[row-id='"+t+"']");if(n.length===1){r.all([l(),c.promise]).then(function(){f(n)})}});var c=r.defer();s.$watch("rows",function(e,t){if(e){p(o.find(".scrollArea").width());s.sortExpr=null;o.find(".scrollArea").scrollTop(0)}});s.asc=!u.hasOwnProperty("desc");s.sortAttr=u.sortAttr;o.find(".scrollArea").scroll(function(e){o.find("thead th .th-inner").css("margin-left",0-e.target.scrollLeft)});s.$on("renderScrollableTable",function(){p(o.find(".scrollArea").width())});e.element(window).on("resize",function(){s.$apply()});s.$watch(function(){return o.find(".scrollArea").width()},function(e,t){if(e*t<=0){return}p()})}]}}]).directive("sortableHeader",[function(){return{transclude:true,scope:true,require:"^scrollableTable",template:'<div class="box">'+'<div ng-mouseenter="enter()" ng-mouseleave="leave()">'+'<div class="title" ng-transclude></div>'+'<span class="orderWrapper">'+'<span class="order" ng-show="focused || isActive()" '+'ng-click="toggleSort($event)" ng-class="{active:isActive()}">'+'<i ng-show="isAscending()" class="glyphicon glyphicon-chevron-up"></i>'+'<i ng-show="!isAscending()" class="glyphicon glyphicon-chevron-down"></i>'+"</span>"+"</span>"+"</div>"+"</div>",link:function(t,n,r,i){var s=r.on||"a as a."+r.col;t.element=e.element(n);t.isActive=function(){return i.getSortExpr()===s};t.toggleSort=function(e){if(t.isActive()){i.toggleSort()}else{i.setSortExpr(s)}i.doSort(t[r.comparatorFn]);e.preventDefault()};t.isAscending=function(){if(t.focused&&!t.isActive()){return true}else{return i.isAsc()}};t.enter=function(){t.focused=true};t.leave=function(){t.focused=false};t.isLastCol=function(){return n.parent().find("th:last-child").get(0)===n.get(0)}}}}]).directive("resizable",["$compile",function(n){return{restrict:"A",priority:0,require:"^scrollableTable",link:function(i,s,o,u){function a(){var t=s.find("table th .th-inner");if(t.find(".resize-rod").length==0){u.getTableElement().find(".scrollArea table").css("table-layout","auto");var r=e.element('<div class="resize-rod" ng-mousedown="resizing($event)"></div>');t.append(n(r)(i))}}function f(){var n=u.getTableElement();var r=1;n.find("table th .th-inner:visible").each(function(n,i){i=e.element(i);var s=i.parent().width(),o=t(i.parent().css("min-width"));s=Math.max(o,s);i.css("left",r);r+=s})}function l(){var n=1,r=u.getTableElement();u.getTableElement().find("table th .th-inner:visible").each(function(i,s){s=e.element(s);var o=s.parent().width(),u=r.find("table th:visible:last"),a=t(s.parent().css("min-width"));o=Math.max(a,o);if(u[0]!=s.parent()[0]){s.parent().css("width",o)}s.css("left",n);n+=o})}function c(n){var r=u.getTableElement(),i=r.find("table th:visible").length,s=r.find("table th:visible:last");r.find("table th:visible").each(function(r,o){o=e.element(o);if(s.get(0)==o.get(0)){o.css("width","auto");return}var u=o.data("width");if(/\d+%$/.test(u)){u=Math.ceil(n*t(u)/100)}else{u=n/i}o.css("width",u+"px")});u.renderTalble().then(l())}u.appendTableResizingHandler(function(){a()});u.appendTableResizingHandler(function(){var t=u.getTableElement().find(".scrollArea table");if(t.css("table-layout")==="auto"){f()}else{c(t.parent().width())}});i.resizing=function(n){var r=u.getTableElement().find(".scrollArea").scrollLeft(),i=e.element(n.target).parent(),s=i.parent(),o=t(i.css("left"))+i.width()-r,a=n.pageX,f=e.element(document),c=e.element("body"),h=e.element(".scrollableContainer .resizing-cover"),p=e.element('<div class="scaler">');c.addClass("scrollable-resizing");h.addClass("active");e.element(".scrollableContainer").append(p);p.css("left",o);f.bind("mousemove",function(e){var n=e.pageX-a,r=t(p.css("left"))-o,i=s.width(),u=t(s.css("min-width")),f=s.next().width(),l=t(s.next().css("min-width"));a=e.pageX;e.preventDefault();if(n>0&&f-r<=l||n<0&&i+r<=u){return}p.css("left",t(p.css("left"))+n)});f.bind("mouseup",function(n){n.preventDefault();p.remove();c.removeClass("scrollable-resizing");h.removeClass("active");f.unbind("mousemove");f.unbind("mouseup");var r=t(p.css("left"))-o,i=s.width(),a=t(s.css("min-width")),d=s.next().width(),v=t(s.next().css("min-width")),m=u.getTableElement().find(".scrollArea table");if(m.css("table-layout")==="auto"){m.find("th .th-inner").each(function(t,n){n=e.element(n);var r=n.parent().width();n.parent().css("width",r)})}m.css("table-layout","fixed");if(r>0&&d-r<=v){r=d-v}s.next().removeAttr("style");i+=r;s.css("width",Math.max(a,i));s.next().css("width",d-r);u.renderTalble().then(l())})}}}}])})(angular)
 angular.module("ngLocale", [], ["$provide", function($provide) {
 var PLURAL_CATEGORY = {ZERO: "zero", ONE: "one", TWO: "two", FEW: "few", MANY: "many", OTHER: "other"};
