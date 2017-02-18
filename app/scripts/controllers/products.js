@@ -11,7 +11,7 @@ angular.module('tunariApp')
   .controller('ProductsCtrl', ['$scope', '$location', '$timeout', '$mdDialog', '$mdMedia', 'Restangular', 'Config', 'Messages', 'Products', 'ProductInfo', 'SearchInfo',
         function ($scope, $location, $timeout, $mdDialog, $mdMedia, Restangular, Config, Messages, Products, ProductInfo, SearchInfo) {
     
-    //$scope.layout.title = 'Productos';
+    $scope.layout.title = 'Productos';
     var pagination = {
         page: 0,
         itemsPerPage:30

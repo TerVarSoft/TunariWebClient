@@ -36,7 +36,7 @@
   <body ng-app="tunariApp" layout="row" ng-cloak>
     
     <div ng-controller="ContentCtrl" flex layout="column">
-        <md-toolbar  md-scroll-shrink layout="column">
+        <md-toolbar  md-scroll-shrink layout="column" ng-if="!layout.hideHeader">
             <div class="md-toolbar-tools" md- layout-align="space-between center" layout-wrap>
                 <md-button ng-click="toggleSidenav('sideNav')" aria-label="Menu">
                     <ng-md-icon icon="menu" style="fill: #fff" size="40"></ng-md-icon>                 
@@ -175,7 +175,7 @@
     <script src="bower_components/angular-material-icons/angular-material-icons.min.js"></script>
     <!-- endbower -->
     <!--customDependencies-->
-    <script src="custom_dependencies/angular-bootstrap/ui-bootstrap-custom-tpls-0.14.3.js"></script>
+    <!--<script src="custom_dependencies/angular-bootstrap/ui-bootstrap-custom-tpls-0.14.3.js"></script>-->
     <script src="custom_dependencies/angular-scrollable-table/angular-scrollable-table.js"></script>
     <script src="custom_dependencies/angular-scrollable-table/angular-locale_es-419.js"></script>    
     <script src="custom_dependencies/angular-materialize/materialize-0.97.7.min.js"></script>
@@ -190,6 +190,8 @@
     <script src="scripts/controllers/products.js"></script>
     <script src="scripts/controllers/addquantity.js"></script>
     <script src="scripts/controllers/main.js"></script>
+    <script src="scripts/controllers/login.js"></script>
+    <script src="scripts/controllers/register.js"></script>
     <script src="scripts/controllers/navBar.js"></script>
     <script src="scripts/controllers/about.js"></script>
     <script src="scripts/services/products.js"></script>
@@ -230,6 +232,8 @@
     <script src="scripts/directives/sellingsDatepicker.js"></script>
     <script src="scripts/directives/sellingsbarchart.js"></script>
     <script src="scripts/directives/checkimage.js"></script>
+    <script src="scripts/directives/validateEquals.js"></script>
+    <script src="scripts/directives/validateNotEmpty.js"></script>
     <script src="scripts/controllers/clientSearch.js"></script>
     <script src="scripts/controllers/clientSamples.js"></script>
     <script src="scripts/controllers/newclient.js"></script>
