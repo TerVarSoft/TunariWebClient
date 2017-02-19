@@ -10,9 +10,9 @@
   </head>
   <body ng-app="tunariApp" layout="row" ng-cloak>
     
-    <div ng-controller="ContentCtrl" flex layout="column" layout-wrap >
+    <div ng-controller="ContentCtrl" flex layout="column">
         <md-toolbar  md-scroll-shrink layout="column" ng-if="!layout.hideHeader">
-            <div class="md-toolbar-tools" md- layout-align="space-between center">
+            <div class="md-toolbar-tools" md- layout-align="space-between center" layout-wrap>
                 <md-button ng-click="toggleSidenav('sideNav')" aria-label="Menu">
                     <ng-md-icon icon="menu" style="fill: #fff" size="40"></ng-md-icon>                 
                 </md-button>                
@@ -28,25 +28,31 @@
                 </md-button>-->
             </div>               
         </md-toolbar> 
-        <md-sidenav  md-component-id="sideNav" layout="column" class="md-sidenav-left md-whiteframe-z4">
-            <md-toolbar layout="row" ng-click="closeSideNav('sideNav')" layout-align="center center" class="md-tall md-hue-2">
-                <img flex=100 style="object-fit:contain"src="/images/tunari-logo-1.png">                
-            </md-toolbar>
-            <md-list ng-controller="NavBarCtrl">
-                <md-list-item ng-repeat="menu in menus" ng-click="changeView(menu.propName)">
-                    <a>
-                        <md-item-content md-ink-ripple layout="row" layout-align="start center">
-                            <div class="inset" >
-                                <ng-md-icon icon="{{menu.icon}}"></ng-md-icon>
-                            </div>
-                            <div class="inset" >
-                                {{menu.text}}
-                            </div>                    
-                        </md-item-content>                
-                    </a>
-                </md-list-item>                    
-            </md-list>
-        </md-sidenav>
+        <md-sidenav md-component-id="sideNav" layout="column" class="md-sidenav-left md-whiteframe-z4">
+            <div ng-controller="NavBarCtrl">
+                <md-toolbar layout="row" ng-click="closeSideNav('sideNav')" layout-align="center center" class="md-tall md-hue-2">
+                    <!--<img flex=100 style="object-fit:contain"src="/images/tunari-logo-1.png">-->  
+                    <div flex layout="column" class="md-toolbar-tools bottom inset">
+                        <img flex=100 style="object-fit:contain"src="/images/tunari-logo-1.png">
+                        <h5 ng-show="isUserAuthenticated()">{{getUserName()}}</h5>
+                    </div>              
+                </md-toolbar>
+                <md-list>
+                    <md-list-item ng-repeat="menu in menus" ng-click="changeView(menu.propName)">
+                        <a>
+                            <md-item-content md-ink-ripple layout="row" layout-align="start center">
+                                <div class="inset" >
+                                    <ng-md-icon icon="{{menu.icon}}"></ng-md-icon>
+                                </div>
+                                <div class="inset" >
+                                    {{menu.text}}
+                                </div>                    
+                            </md-item-content>                
+                        </a>
+                    </md-list-item>                    
+                </md-list>
+            </div>            
+        </md-sidenav>        
                 
         <!-- Main View -->
         <div ng-view="" flex layout="row"></div>

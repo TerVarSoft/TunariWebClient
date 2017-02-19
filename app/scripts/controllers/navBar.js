@@ -8,10 +8,12 @@
  * Controller of the clientApp
  */
 angular.module('tunariApp')
-  .controller('NavBarCtrl', ['$scope', '$location', '$mdSidenav', function ($scope, $location, $mdSidenav) {
-    
-  	$scope.subMenu = "views/productsSubmenu.html"
-  	 
+  .controller('NavBarCtrl', ['$scope', '$location', '$mdSidenav', 'AuthToken', 
+    function ($scope, $location, $mdSidenav, AuthToken) {
+      	
+    $scope.isUserAuthenticated = AuthToken.isAuthenticated;  
+    $scope.getUserName = AuthToken.getUserFullName;    
+ 
     $scope.menus = {
     /*  shopping: {
         icon: 'dashboard',
@@ -46,7 +48,7 @@ angular.module('tunariApp')
       },
       logout: {
         icon: 'logout',
-        redirectTo: '/login',
+        redirectTo: '/logout',
         propName: 'logout',
         text: 'Salir'
       }

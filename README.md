@@ -3,10 +3,11 @@ Tunari Web Client
 
 To set up TunariWebClient you need to run:
 
-npm install
-bower install
-grunt serve
-
+- npm install
+- bower install
+- Copy your local.env.sample.js to create an local.env.js and 
+  modify with your configs.
+- grunt serve
 
 # To deploy TunariWebClient
 

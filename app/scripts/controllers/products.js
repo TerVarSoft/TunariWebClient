@@ -23,6 +23,7 @@ angular.module('tunariApp')
     $scope.showFavorites = false;
     $scope.selectedPriceType = ProductInfo.getSelectedPriceType() || 'Unidad';
     
+    // Pull favorites
     Products.getList({isFavorite: true}).then(function(favorites) {
         $scope.favorites = favorites
         $scope.showFavorites = true;  

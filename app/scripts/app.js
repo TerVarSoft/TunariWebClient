@@ -57,21 +57,26 @@ angular
     });
 
     
-    $routeProvider
+    $routeProvider      
+      .when('/', {
+        templateUrl: 'views/products.html',
+        controller: 'ProductsCtrl',
+        controllerAs: 'Products'
+      })
       .when('/login', {
         templateUrl: 'views/login.html',
         controller: 'LoginCtrl',
         controllerAs: 'login'
       })
+      .when('/logout', {        
+        controller: 'LogoutCtrl',
+        templateUrl: 'views/empty.html',
+        controllerAs: 'logout'
+      })
       .when('/register', {
         templateUrl: 'views/register.html',
         controller: 'RegisterCtrl',
         controllerAs: 'register'
-      })
-      .when('/', {
-        templateUrl: 'views/products.html',
-        controller: 'ProductsCtrl',
-        controllerAs: 'Products'
       })
       .when('/about', {
         templateUrl: 'views/about.html',

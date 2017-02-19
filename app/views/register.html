@@ -5,22 +5,37 @@
         <img flex=50 style="object-fit:contain;height:100px"src="/images/tunari-logo-1.png">
       </div>
       
-      <form name="registerForm" novalidate ng-submit="registerForm.$valid && registerUser()">
-          <md-input-container class="md-block" flex-gt-xs>
+      <form name="registerForm" novalidate ng-submit="registerForm.$valid && registerUser()" 
+        layout="row" layout-wrap>
+          <md-input-container class="md-block" flex-gt-xs=50>
             <label>Nombre</label>
-            <input ng-model="name" validate-not-empty name="userName" autocomplete="off"/>
-            <div ng-messages="registerForm.userName.$error">
+            <input ng-model="name" validate-not-empty name="name" autocomplete="off"/>
+            <div ng-messages="registerForm.name.$error">
               <div ng-message="empty">Necesiamos un nombre.</div>
             </div>
           </md-input-container>
-          <md-input-container class="md-block" flex-gt-xs>
+          <md-input-container class="md-block" flex-gt-xs=50>
+            <label>Apellido</label>
+            <input ng-model="lastName" validate-not-empty name="lastName" autocomplete="off"/>
+            <div ng-messages="registerForm.lastName.$error">
+              <div ng-message="empty">Necesiamos un apellido.</div>
+            </div>
+          </md-input-container>
+          <md-input-container class="md-block" flex-gt-xs=100>
+            <label>Nombre de Usuario</label>
+            <input ng-model="userName" validate-not-empty name="userName" autocomplete="off"/>
+            <div ng-messages="registerForm.userName.$error">
+              <div ng-message="empty">Necesiamos un nombre de usuario.</div>
+            </div>
+          </md-input-container>
+          <md-input-container class="md-block" flex-gt-xs=100>
             <label>Contraseña</label>
             <input  ng-model="password" type="password" name="password" validate-not-empty>
             <div ng-messages="registerForm.password.$error">
               <div ng-message="empty">Necesiamos un password.</div>
             </div>
           </md-input-container>
-          <md-input-container class="md-block" flex-gt-xs>
+          <md-input-container class="md-block" flex-gt-xs=100>
             <label>Repetir Contraseña</label>
             <input ng-model="passwordConfirm" type="password" validate-equals="password" validate-not-empty name="passwordConfirm">
             <div ng-messages="registerForm.passwordConfirm.$error">
@@ -28,7 +43,7 @@
               <div ng-message="equal">Los passwords no son iguales.</div>
             </div>            
           </md-input-container>
-          <md-card-actions layout="row" layout-align="end center">      
+          <md-card-actions layout="row" layout-align="end center" flex-gt-xs=100>      
             <md-button type="submit" class="md-raised md-primary">Registrar</md-button>
           </md-card-actions>    
     </md-content>             
