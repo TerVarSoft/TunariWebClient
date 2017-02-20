@@ -8,6 +8,6 @@
  * Service in the tunariApp.
  */
 angular.module('tunariApp')
-  .service('Settings', ['Restangular', function (Restangular) {
-    return Restangular.service('settings');
+  .service('Settings', ['AuthRestangular', function (AuthRestangular) {
+    return AuthRestangular.service('settings');
   }]);

@@ -8,8 +8,8 @@
  * Factory in the clientApp.
  */
 angular.module('tunariApp')
-  .factory('Products', ['Restangular', function (Restangular) {
-    return Restangular.service('products');
+  .factory('Products', ['AuthRestangular', function (AuthRestangular) {
+    return AuthRestangular.service('products');
     
 //    return Restangular.withConfig(function(RestangularConfigurer) {
 //        RestangularConfigurer.setResponseExtractor(function(response, operation, what, url) {
