@@ -12,7 +12,7 @@ angular.module('tunariApp')
     function ($scope, $location, Register) {
 
     $scope.layout.title = 'Registrar Usuario';
-    $scope.layout.hideHeader = false;     
+    $scope.layout.hideHeader = false; 
     
     $scope.registerUser = function() {
       /**

@@ -12,6 +12,7 @@ angular.module('tunariApp')
     function ($scope, $location, Login, AuthToken) {
 
     $scope.layout.title = 'Login'; 
+    $scope.layout.hideHeader = true;
 
     $scope.loginUser = function() {       
 
