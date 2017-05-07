@@ -17,7 +17,7 @@ angular.module('tunariApp')
         bottomFabButtonIcon: 'add',
         bottomFabButtonIconTooltip: 'Oprimeme!',	    		    	
         recordIcon: 'mic', 
-        hideHeader: false
+        hideHeader: true
     }    
 
     $scope.isRecording = false;

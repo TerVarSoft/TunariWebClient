@@ -15,7 +15,7 @@
         </md-input-container>
         <md-input-container class="md-block" flex-gt-xs>
           <label>Contraseña</label>
-          <input name="password" ng-model="password" type="password" validate-not-empty/>
+          <input name="password" ng-model="password" type="password" validate-not-empty autocomplete="off"/>
           <div ng-messages="loginForm.password.$error">
             <div ng-message="empty">Escribe tu password!.</div>
           </div>

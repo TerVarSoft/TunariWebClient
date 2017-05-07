@@ -12,6 +12,8 @@ angular.module('tunariApp')
         function ($scope, $location, $timeout, $mdDialog, $mdMedia, Restangular, Config, Messages, Products, ProductInfo, SearchInfo) {
     
     $scope.layout.title = 'Productos';
+    $scope.layout.hideHeader = false;
+       
     var pagination = {
         page: 0,
         itemsPerPage:30

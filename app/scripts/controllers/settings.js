@@ -12,6 +12,7 @@ angular.module('tunariApp')
         function ($scope, $window, $location, Settings, ProductInfo) {
 
     $scope.layout.title = 'Configuraciones';
+    $scope.layout.hideHeader = false;
 
     Settings.getList().then(function(settings){
         $scope.imgServer = _.find(settings, {'key': 'imgServer'});    

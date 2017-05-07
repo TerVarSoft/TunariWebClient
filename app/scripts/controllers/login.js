@@ -12,7 +12,6 @@ angular.module('tunariApp')
     function ($scope, $location, Login, AuthToken) {
 
     $scope.layout.title = 'Login'; 
-    $scope.layout.hideHeader = true;
 
     $scope.loginUser = function() {       
 
@@ -26,8 +25,7 @@ angular.module('tunariApp')
         password: $scope.password
       }
       Login.post(userToLogin).then(function(userToken) {                        
-        AuthToken.setUserToken(userToken);
-        $scope.layout.hideHeader = false;      
+        AuthToken.setUserToken(userToken);   
         $location.path("/");
       }, function(response) {
         if(response.status == 401) {

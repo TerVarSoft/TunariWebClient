@@ -11,7 +11,8 @@ angular.module('tunariApp')
   .controller('RegisterCtrl', ['$scope', '$location', 'Register', 
     function ($scope, $location, Register) {
 
-    $scope.layout.title = 'Registrar Usuario';     
+    $scope.layout.title = 'Registrar Usuario';
+    $scope.layout.hideHeader = false;     
     
     $scope.registerUser = function() {
       /**

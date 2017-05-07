@@ -18,3 +18,9 @@ Before merging to master you need to take care of a couple of things:
 - If you add some style file or a javascript dependency you need to add it in the grunt file.
 - After that run grunt tvsBuild.
 - To test de builded project run npm start.
+
+# About imgServer
+
+- If for some reason you do't see images in tunariwebclient could be related
+ to the browser trying to access to an insecure source. Try opening in a
+ seperate tab the image in the browser and accept the resource.
