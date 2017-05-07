@@ -27,7 +27,7 @@ angular.module('tunariApp')
     Products.getList({isFavorite: true}).then(function(favorites) {
         $scope.favorites = favorites
         $scope.showFavorites = true;  
-    });
+    }, handleRequestError);
 
     $scope.search = function() {
         $scope.products = [];
@@ -53,7 +53,7 @@ angular.module('tunariApp')
             $scope.showToast(products.meta.count + " Productos encontrados!","TUNARI");   
             SearchInfo.setTags($scope.searchTags);
             $scope.isLoading = false;
-        });
+        }, handleRequestError);
     }     
 
     $scope.getProductImageUrl = function(product, sufix) {
@@ -245,6 +245,13 @@ angular.module('tunariApp')
             }, 200);
                 
         });        
+    }
+
+    function handleRequestError(response) {
+        if(response.status == 401) {
+            console.log('Invalid jwt in local storage!, then redirecting to login');            
+            $location.path("/login"); 
+        }        
     }
 
     $scope.search();

@@ -12,6 +12,7 @@ angular.module('tunariApp')
     
     var interceptor = {
       request: function(element, operation, route, url, headers, params) {
+        
         var token = AuthToken.getToken();
         return {
           element: element,
