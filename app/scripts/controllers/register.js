@@ -8,8 +8,8 @@
  * Controller of the clientApp
  */
 angular.module('tunariApp')
-  .controller('RegisterCtrl', ['$scope', '$location', 'Register', 'AuthToken',
-    function ($scope, $location, Register, AuthToken) {
+  .controller('RegisterCtrl', ['$scope', '$location', 'Register', 
+    function ($scope, $location, Register) {
 
     $scope.layout.title = 'Registrar Usuario';     
     
