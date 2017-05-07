@@ -8,8 +8,8 @@
  * Controller of the clientApp
  */
 angular.module('tunariApp')
-  .controller('ProductsCtrl', ['$scope', '$location', '$timeout', '$mdDialog', '$mdMedia', 'Restangular', 'Config', 'Messages', 'Products', 'ProductInfo', 'SearchInfo',
-        function ($scope, $location, $timeout, $mdDialog, $mdMedia, Restangular, Config, Messages, Products, ProductInfo, SearchInfo) {
+  .controller('ProductsCtrl', ['$scope', '$location', '$timeout', '$mdDialog', '$mdMedia', 'AuthRestangular', 'Config', 'Messages', 'Products', 'ProductInfo', 'SearchInfo',
+        function ($scope, $location, $timeout, $mdDialog, $mdMedia, AuthRestangular, Config, Messages, Products, ProductInfo, SearchInfo) {
     
     $scope.layout.title = 'Productos';
     $scope.layout.hideHeader = false;
@@ -67,7 +67,7 @@ angular.module('tunariApp')
     }
 
     $scope.openCreateProductModal = function(event) {    
-        var newProduct = Restangular.one('products');
+        var newProduct = AuthRestangular.one('products');
 
         $mdDialog.show({
             controller: 'NewProductCtrl',
@@ -101,7 +101,7 @@ angular.module('tunariApp')
     }
 
     $scope.openEditProductModal = function(event, product) {
-        var productToEdit = Restangular.copy(product);
+        var productToEdit = AuthRestangular.copy(product);
 
         $mdDialog.show({
             controller: 'NewProductCtrl',
