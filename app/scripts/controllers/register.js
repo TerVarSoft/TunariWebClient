@@ -14,6 +14,11 @@ angular.module('tunariApp')
     $scope.layout.title = 'Registrar Usuario';     
     
     $scope.registerUser = function() {
+      /**
+       * we create a user in this way instead of wrapping in
+       * scope user due to errors with the forms validation
+       * and the directive to control the match password.
+       */
       var newUser = {
         name: $scope.name,
         lastName: $scope.lastName,
@@ -22,7 +27,6 @@ angular.module('tunariApp')
       }       
 
       Register.post(newUser).then(function(userToken) {
-        AuthToken.setUserToken(userToken);  
         $location.path("/");    
       });
     }

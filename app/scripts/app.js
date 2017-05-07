@@ -136,5 +136,15 @@ angular
       .otherwise({
         redirectTo: '/'
       });
-  }]);
+  }])
+  .run(['$rootScope', '$location', 'AuthToken', function ($rootScope, $location, AuthToken) {
+    $rootScope.$on('$routeChangeStart', function (event, next) {
+
+      if (!AuthToken.isAuthenticated() && next.templateUrl != "views/login.html") {
+        console.log('No token in local storage!, Then not authenticated, redirect to Login!');
+        event.preventDefault();
+        $location.path("/login");   
+      }
+    });
+}]);;
 

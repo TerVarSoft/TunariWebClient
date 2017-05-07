@@ -42,7 +42,7 @@ angular.module('tunariApp')
               $scope.excludeListForStatistics = newSetting;
             });
         }
-    });
+    }, handleRequestError);
 
     $scope.testImgServer = function() {
         $window.location.href = $scope.imgServer.value + '/test.html?returnUrl=' + $location.absUrl();
@@ -61,6 +61,12 @@ angular.module('tunariApp')
 
         $location.path('/products');
     }
-     
+    
+    function handleRequestError(response) {
+        if(response.status == 401) {
+            console.log('Invalid jwt in local storage!, then redirecting to login');            
+            $location.path("/login"); 
+        }        
+    }
   }]);
 	
