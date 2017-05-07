@@ -19,7 +19,7 @@
 								<md-list flex>
 										<md-subheader class="center">Productos</md-subheader>
 										<md-list-item class="md-2-line" ng-click="null" ng-repeat="product in products | orderBy:'quantity'">
-												<img check-image="{{getProductImageUrl(product, '-S')}}" class="md-avatar" 
+												<img prevent-right-click check-image="{{getProductImageUrl(product, '-S')}}" class="md-avatar" 
 														src="/images/tunari-logo-1.png" alt="{{product.name}}" />												
 												<div class="md-list-item-text" layout="column">
 														<h3 style="color:#ff4081">{{product.quantity}} Unidades</h3> 

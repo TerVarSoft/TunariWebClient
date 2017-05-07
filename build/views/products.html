@@ -26,7 +26,7 @@
                         <div carousel >                    
                             <a ng-repeat="product in favorites" class="carousel-item unselectable">
                                 <img check-image="{{getProductImageUrl(product, '-L')}}" ng-dblclick="searchFavorite(product.name)" 
-                                    src="/images/tunari-logo-1.png">                        
+                                    src="/images/tunari-logo-1.png" prevent-right-click>                        
                                 <p class="center" layout-align"center center"><b>{{product.name}}</b></p>
                             </a>                                                         
                         </div>
@@ -39,7 +39,7 @@
                     <div class="card sticky-action" md-whiteframe=4>
                         <div class="card-image">                            
                             <img materialboxed check-image="{{getProductImageUrl(product, '-L')}}" data-caption={{product.name}}
-                                class="materialboxed product-image" width="650" src="/images/tunari-logo-1.png">
+                                class="materialboxed product-image" width="650" src="/images/tunari-logo-1.png" prevent-right-click>
                         </div>
                         <div class="card-content">
                             <span class="card-title activator grey-text text-darken-4">{{product.name}}</span>

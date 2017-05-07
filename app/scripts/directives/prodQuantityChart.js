@@ -143,10 +143,7 @@ angular.module('tunariApp')
 				  )
 				  .html(function(d) {
 						var productImg = ProductInfo.getProductImageUrl(d, "-L");
-						return 	"<div class='card-image'>" +
-												"<img class='tooltip-img' src='" + productImg + "'>" +
-										"</div>" +
-										"<div clas='card-content'>" +
+						return 	"<div clas='card-content'>" +
 												"<p class='truncate card-title grey-text text-darken-4'>" + d.name + "</p>" +
 												"<p>" + d.quantity + " Unidades</p>" +
 										"</div>";
