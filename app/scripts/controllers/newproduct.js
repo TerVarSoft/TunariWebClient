@@ -9,18 +9,17 @@
  */
 angular.module('tunariApp')
   .controller('NewProductCtrl', 
-              ['$scope', '$location', '$mdDialog', 'Restangular', 'Settings', 'ProductInfo', 'Products', 'Notifier', 'Messages', 'product',
-             function ($scope, $location, $mdDialog, Restangular, Settings, ProductInfo, Products, Notifier, Messages, product) {
-
+              ['$scope', '$location', '$routeParams', '$mdDialog', 'AuthRestangular', 'Settings', 'ProductInfo', 'Products', 'Notifier', 'Messages',
+             function ($scope, $location, $routeParams, $mdDialog, AuthRestangular, Settings, ProductInfo, Products, Notifier, Messages) {
+        
+    $scope.layout.title = "Nuevo Producto";
+    $scope.layout.hideHeader = false;    
     $scope.productNames = [];
     $scope.newPrice = {};
     $scope.newLocation = {};
-    $scope.product = product;
+    $scope.product = AuthRestangular.one('products');;    
 
-    // backup
-    var originalName = product.name;
-
-    Settings.getList().then(function(settings){
+    Settings.getList().then(function(settings) {
         $scope.categories = _.find(settings, {'key': 'productCategories'}).value;
         $scope.productProviders = _.find(settings, {'key': 'productProviders'}).value;
 
@@ -29,55 +28,29 @@ angular.module('tunariApp')
         $scope.newPrice.quantity = 1;
 
         $scope.locationTypes = _.find(settings, {key: 'locationTypes'}).value;
-        $scope.newLocation.type = $scope.locationTypes[0];
+        $scope.newLocation.type = $scope.locationTypes[0];        
 
-        setDefaultValues();
-        $scope.updateView();
-    });
+        if($routeParams.productId) { 
+            $scope.isLoading = true;
+            Products.one($routeParams.productId).get().then(function(product) {
+                $scope.product = product;                      
+                $scope.originalName = $scope.product.name;
+                $scope.layout.title = "Editar Producto " + $scope.product.name;
 
-    function setDefaultValues() {
-        $scope.product.category = $scope.product.category ? 
-                                    $scope.product.category : $scope.categories[0].name;        
-        
-        $scope.product.prices = $scope.product.prices || [];
-        $scope.product.locations = $scope.product.locations || [];
-        $scope.product.tags = $scope.product.tags ? $scope.product.tags : [];
-        $scope.product.images =  $scope.product.images || [];
-        $scope.product.properties = $scope.product.properties ? $scope.product.properties : {};
-    }
+                setDefaultValues();
+                $scope.updateView();
+                $scope.isLoading = false;
+            });
+        } else {
+            setDefaultValues();
+            $scope.updateView();
+        }
+    });    
 
     $scope.updateView = function() {
         $scope.specificPropertiesView = _.find($scope.categories, {name:$scope.product.category}).view;
-    }    
-
-    $scope.cancel = function () {
-        $mdDialog.cancel();
-    }
-
-    $scope.save = function() {
-        prepareProductBeforeSaving();
-        $mdDialog.hide();
-    }   
-
-    var prepareProductBeforeSaving = function() {  
-        // Default value for sortTag, this can be overriden in prepareSpecificPropertiesBeforeProductSaving         
-        $scope.product.name = _.toUpper($scope.product.name);
-        $scope.product.sortTag = $scope.product.category + $scope.product.name;
-
-        console.log($scope.categories);
-        $scope.product.tags = _.difference($scope.product.tags, _.intersection($scope.product.tags, _.map($scope.categories, 'name')));
-        $scope.product.tags = _.difference($scope.product.tags, _.intersection($scope.product.tags, $scope.productProviders));              
-        _.pull($scope.product.tags, originalName);
         
-        $scope.product.tags.push($scope.product.name);       
-        $scope.product.tags.push($scope.product.category);       
-        $scope.product.tags.push($scope.product.provider); 
-
-        $scope.$broadcast ('prepareSpecificPropertiesBeforeProductSaving');
-        $scope.product.tags = _.filter($scope.product.tags, function(tag) {
-            return !_.isEmpty(tag);
-        });
-    }
+    }    
 
     $scope.selectPriceType = function() {
         if(_.includes($scope.newPrice.type, 'Paquete')) {
@@ -120,5 +93,62 @@ angular.module('tunariApp')
         return  ProductInfo.getExtraImageUrl(image);
     }
 
-    $('#name').focus();
+    $scope.save = function() {
+        prepareProductBeforeSaving();
+
+        $scope.product.save().then(function(savedProduct){            
+            $scope.showToast("Bien! Haz salvado el producto", savedProduct.name);
+            $location.path("/products");
+        }, function(response){            
+            manageCreateProductError(response);
+        });
+    }   
+
+    $scope.cancel = function() {
+        $location.path("/products");
+    }
+
+    function prepareProductBeforeSaving() {  
+        /**
+         * Default value for sortTag, this can be overriden in 
+         * prepareSpecificPropertiesBeforeProductSaving
+         */          
+        $scope.product.name = _.toUpper($scope.product.name);
+        $scope.product.sortTag = $scope.product.category + $scope.product.name;
+
+        $scope.product.tags = _.difference($scope.product.tags, _.intersection($scope.product.tags, _.map($scope.categories, 'name')));
+        $scope.product.tags = _.difference($scope.product.tags, _.intersection($scope.product.tags, $scope.productProviders));              
+        _.pull($scope.product.tags, $scope.originalName);
+        
+        $scope.product.tags.push($scope.product.name);       
+        $scope.product.tags.push($scope.product.category);       
+        $scope.product.tags.push($scope.product.provider); 
+
+        $scope.$broadcast ('prepareSpecificPropertiesBeforeProductSaving');
+        $scope.product.tags = _.filter($scope.product.tags, function(tag) {
+            return !_.isEmpty(tag);
+        });
+    }
+
+    function setDefaultValues() {
+        $scope.product.category = $scope.product.category ? 
+                                    $scope.product.category : $scope.categories[0].name;        
+        
+        $scope.product.prices = $scope.product.prices || [];
+        $scope.product.locations = $scope.product.locations || [];
+        $scope.product.tags = $scope.product.tags ? $scope.product.tags : [];
+        $scope.product.images =  $scope.product.images || [];
+        $scope.product.properties = $scope.product.properties ? $scope.product.properties : {};
+    }
+
+    function manageCreateProductError(response) {     
+        var productName = response.config.data.name;
+        if(response.status === 409) {
+            $scope.showToast(_.template(Messages.message018)({product : productName}), productName);    
+            console.log(_.template(Messages.message018)({product : productName}));                
+        }
+        else {                
+            console.log(Messages.message019);
+        }
+    }
   }]);

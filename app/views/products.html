@@ -3,7 +3,7 @@
         <div  layout="row" layout-wrap flex=80 flex-sm=80 flex-offset-sm="10" flex-offset="10">
             <h1 flex="100" class="center primary-color"><strong>Productos Tunari</strong></h1>
 		    </br>                                            
-            <div flex=100 class="md-padding">
+            <div flex=100 class="md-padding" ng-show="!isLoading">
                 <md-chips 
                     ng-model="searchTags"
                     md-on-add="search()"
@@ -16,7 +16,7 @@
                     secondary-placeholder="Escribe algo mas!">
                 </md-chips>                            
             </div>        
-            <div flex="100" ng-if="showFavorites && favorites.length > 0" class="md-padding">
+            <div flex="100" ng-if="showFavorites && favorites.length > 0 && !isLoading" class="md-padding">
                 <div class="card" md-whiteframe=4>                    
                     <div class="card-image">
                         <span style="color:#607d8b;top:0px;right:0px" class="card-title favorites-title">

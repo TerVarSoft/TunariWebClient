@@ -67,26 +67,7 @@ angular.module('tunariApp')
     }
 
     $scope.openCreateProductModal = function(event) {    
-        var newProduct = AuthRestangular.one('products');
-
-        $mdDialog.show({
-            controller: 'NewProductCtrl',
-            templateUrl: '../../views/modal/newProduct.html',
-            parent: angular.element(document.body),
-            targetEvent: event,
-            clickOutsideToClose:true,
-            fullscreen: useFullScreenForModals,
-            locals : {
-                product : newProduct
-            }
-        }).then(function() {            
-            newProduct.save().then(function(productCreated){            
-                $scope.products.splice(0, 0, productCreated);
-                $scope.showToast(Messages.message002, productCreated.name);
-            }, function(response){            
-                manageCreateProductError(response);
-            });
-        }, function() {});
+        $location.path("newProduct");
     }
 
     function manageCreateProductError(response) {     
@@ -101,25 +82,7 @@ angular.module('tunariApp')
     }
 
     $scope.openEditProductModal = function(event, product) {
-        var productToEdit = AuthRestangular.copy(product);
-
-        $mdDialog.show({
-            controller: 'NewProductCtrl',
-            templateUrl: '../../views/modal/newProduct.html',
-            parent: angular.element(document.body),
-            targetEvent: event,
-            clickOutsideToClose:true,
-            fullscreen: useFullScreenForModals,
-            locals : {
-                product : productToEdit
-            }
-        }).then(function() {
-            productToEdit.put().then(function(productEdited) {
-                var productIndex = _.indexOf($scope.products, product);
-                $scope.products.splice(productIndex, 1, productEdited)
-                $scope.showToast(Messages.message004, productEdited.name);
-            });                        
-        }, function() {});
+        $location.path("products/" + product._id);
     }
 
     $scope.openQuickSearchsModal = function(event) {

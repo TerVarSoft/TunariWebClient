@@ -94,8 +94,8 @@ angular
         controllerAs: 'Products'
       })
       .when('/products/:productId', {
-        templateUrl: 'views/editProduct.html',
-        controller: 'EditProductCtrl',
+        templateUrl: 'views/newProduct.html',
+        controller: 'NewProductCtrl',
         controllerAs: 'editProduct'
       })
       .when('/newProduct', {
