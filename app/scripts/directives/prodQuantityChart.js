@@ -9,7 +9,7 @@
 angular.module('tunariApp')
   .directive('productQuantityChart', ["ProductInfo", function (ProductInfo) {
 
-  	var margin = {top: 70, right: 10, bottom: 100, left: 60};
+  	var margin = {top: 70, right: 30, bottom: 100, left: 90};
 		var	height = height = 400 - margin.top - margin.bottom;
 		var spaceBetweenBars = 10;	
 
