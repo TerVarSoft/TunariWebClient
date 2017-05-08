@@ -63,9 +63,9 @@
         </md-card>
     </div>
     <div flex-gt-md=50 flex=100 layout="column">
-        <md-card flex=50 layout="row">
-            <div  layout-padding flex=40 flex-xs="50">   
-                <div flex>  
+        <md-card flex=50 layout="row" style="min-height: 300px">
+            <div  layout-padding flex=40 flex-xs="50" layout=column>   
+                <div flex=80>  
                     <md-subheader class="center">Nuevo Precio</md-subheader>        
                     <form ng-submit=>
                         <br/>                 
@@ -92,7 +92,7 @@
                         </div>
                     </form>
                 </div>
-                <div layout="row" layout-align="center center"> 
+                <div flex=20 layout="row" layout-align="center center"> 
                     <md-button class="md-fab md-mini" ng-click="addPrice()" aria-label="addPrice">          
                         <ng-md-icon style="fill: #fff" icon="add" class="fab-button-icon" size="30">
                         </ng-md-icon>  
@@ -100,7 +100,7 @@
                 </div>
             </div>                    
 
-            <div  flex=60 flex-xs="50">     
+            <div flex=60 flex-xs="50">     
                 <md-list flex>
                     <md-subheader class="center">Lista de precios</md-subheader>
                     <md-list-item class="md-2-line" ng-click="null" ng-repeat="price in product.prices | orderBy:'value'">
@@ -117,9 +117,9 @@
                 </md-list> 
             </div> 
         </md-card>
-        <md-card flex=50 layout="row">
-            <div layout-padding flex=40 flex-xs=50>   
-                <div>  
+        <md-card flex=50 layout="row" style="min-height: 300px">
+            <div layout-padding flex=40 flex-xs=50 layout="column">   
+                <div flex=80>  
                     <md-subheader class="center">Nueva Ubicacion</md-subheader>        
                     <form >
                         <br/>                 
@@ -136,7 +136,7 @@
                         </div>
                     </form>
                 </div>
-                <div layout="row" layout-align="center center">
+                <div flex=20 layout="row" layout-align="center center">
                     <md-button class="md-fab md-mini md-hue-2" aria-label="addLocation">          
                         <ng-md-icon style="fill: #fff" icon="add" ng-click="addLocation()" class="fab-button-icon" size="30">
                         </ng-md-icon>  
