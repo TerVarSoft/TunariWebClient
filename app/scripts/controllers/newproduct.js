@@ -17,7 +17,8 @@ angular.module('tunariApp')
     $scope.productNames = [];
     $scope.newPrice = {};
     $scope.newLocation = {};
-    $scope.product = AuthRestangular.one('products');;    
+    $scope.product = AuthRestangular.one('products');
+    $scope.isLoading = true;    
 
     Settings.getList().then(function(settings) {
         $scope.categories = _.find(settings, {'key': 'productCategories'}).value;
@@ -30,8 +31,7 @@ angular.module('tunariApp')
         $scope.locationTypes = _.find(settings, {key: 'locationTypes'}).value;
         $scope.newLocation.type = $scope.locationTypes[0];        
 
-        if($routeParams.productId) { 
-            $scope.isLoading = true;
+        if($routeParams.productId) {             
             Products.one($routeParams.productId).get().then(function(product) {
                 $scope.product = product;                      
                 $scope.originalName = $scope.product.name;
@@ -41,9 +41,10 @@ angular.module('tunariApp')
                 $scope.updateView();
                 $scope.isLoading = false;
             });
-        } else {
+        } else {            
             setDefaultValues();
             $scope.updateView();
+            $scope.isLoading = false;
         }
     });    
 
