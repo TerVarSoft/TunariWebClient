@@ -1,7 +1,7 @@
 <md-content flex class="background" layout-align="center" layout="row" ng-show="!isLoading" layout-wrap>        
     <div flex-gt-md=50 flex=100 layout="column">
         <md-card flex  layout="column">             
-            <md-content-card flex layout-wrap style="overflow-y: auto" >                
+            <md-content-card flex=100 layout-wrap style="overflow-y: auto" >                
                 <form layout-padding flex=100 layout="row" layout-wrap>                                                    
                     <h1 class="center primary-color" flex=100><strong>Detalles</strong></h1>
                     <div flex=100 layout="row">
@@ -35,14 +35,17 @@
                             </md-select>
                         </md-input-container>                                      
                     </div> 
+                </form>
 
+                <div flex=100 layout="row">
                     <md-chips flex=100
                         ng-model="product.tags"
                         placeholder="Agrega etiquetas!"                            
                         secondary-placeholder="Etiquetas +">
-                    </md-chips>                    
-                </form>
-                <div flex label="Imagenes">                
+                    </md-chips>                
+                </div>
+                 
+                <div flex=100 label="Imagenes">                
                     <div layout="row" layout-align="center center" layout-wrap>
                         <img flex=50 check-image="{{getProductImageUrl(product, '-L')}}" class="product-extra-image" 
                                     src="/images/tunari-logo-1.png">
