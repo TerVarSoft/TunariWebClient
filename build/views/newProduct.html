@@ -35,29 +35,33 @@
                             </md-select>
                         </md-input-container>                                      
                     </div> 
+
+                    <div flex=100 label="Imagenes">                
+                        <div layout="row" layout-align="center center" layout-wrap>
+                            <img flex=50 check-image="{{getProductImageUrl(product, '-L')}}" class="product-extra-image" 
+                                        src="/images/tunari-logo-1.png">
+                            <img ng-repeat="image in product.images" flex=50 check-image="{{getExtraImageUrl(image)}}" 
+                                class="product-extra-image" src="/images/tunari-logo-1.png">                   
+                        </div>
+                        <div class="md-padding">
+                            <md-chips placeholder="Agrega imagenes!" ng-model="product.images">
+                            </md-chips>
+                        </div> 
+                        <br/>                             
+                    </div>
+
+                    <div flex=100 layout="row">
+                        <md-chips flex=100
+                            ng-model="product.tags"
+                            placeholder="Agrega etiquetas!"                            
+                            secondary-placeholder="Etiquetas +">
+                        </md-chips>                
+                    </div>
                 </form>
 
-                <div flex=100 layout="row">
-                    <md-chips flex=100
-                        ng-model="product.tags"
-                        placeholder="Agrega etiquetas!"                            
-                        secondary-placeholder="Etiquetas +">
-                    </md-chips>                
-                </div>
-                 
-                <div flex=100 label="Imagenes">                
-                    <div layout="row" layout-align="center center" layout-wrap>
-                        <img flex=50 check-image="{{getProductImageUrl(product, '-L')}}" class="product-extra-image" 
-                                    src="/images/tunari-logo-1.png">
-                        <img ng-repeat="image in product.images" flex=50 check-image="{{getExtraImageUrl(image)}}" 
-                            class="product-extra-image" src="/images/tunari-logo-1.png">                   
-                    </div>
-                    <div class="md-padding">
-                        <md-chips placeholder="Agrega imagenes!" ng-model="product.images">
-                        </md-chips>
-                    </div> 
-                    <br/>                             
-                </div>
+                
+
+                
             </md-content-card>
             <md-card-actions layout="row" layout-align="end center" flex=10>      
                 <md-button class="md-accent md-raised" ng-click="cancel()">Cancelar</md-button>
