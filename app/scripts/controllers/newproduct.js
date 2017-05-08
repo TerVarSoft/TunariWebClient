@@ -49,8 +49,7 @@ angular.module('tunariApp')
     });    
 
     $scope.updateView = function() {
-        $scope.specificPropertiesView = _.find($scope.categories, {name:$scope.product.category}).view;
-        
+        $scope.specificPropertiesView = _.find($scope.categories, {name:$scope.product.category}).view;        
     }    
 
     $scope.selectPriceType = function() {
@@ -104,6 +103,18 @@ angular.module('tunariApp')
             manageCreateProductError(response);
         });
     }   
+
+    $scope.saveAndNew = function() {
+        prepareProductBeforeSaving();
+
+        $scope.product.save().then(function(savedProduct){            
+            $scope.showToast("Bien! Haz salvado el producto", savedProduct.name);
+            $scope.product = AuthRestangular.one('products');
+            $location.path("/newProduct");
+        }, function(response){            
+            manageCreateProductError(response);
+        });
+    }
 
     $scope.cancel = function() {
         $location.path("/products");
