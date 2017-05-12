@@ -19,7 +19,7 @@ angular.module('tunariApp')
     Settings.getList().then(function(settings){
         imgServer = _.find(settings, {'key': 'imgServer'}).value;
         quickSearchs = _.find(settings, {'key': 'quickSearchs'}).value;
-        selectedPriceType = _.find(settings, {'key': 'priceTypes'}).value[0];
+        selectedPriceType = _.find(settings, {'key': 'priceTypes'}).value[1];
         excludeListForStatistics = _.find(settings, {'key': 'excludeListForStatistics'}).value;
         priceTypes = _.find(settings, {'key': 'priceTypes'}).value;
     });

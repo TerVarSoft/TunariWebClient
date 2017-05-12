@@ -23,7 +23,7 @@ angular.module('tunariApp')
     $scope.products = [];
     $scope.favorites = [];
     $scope.showFavorites = false;
-    $scope.selectedPriceType = ProductInfo.getSelectedPriceType() || 'Unidad';
+    $scope.selectedPriceType = ProductInfo.getSelectedPriceType() || 'Paquete';
     
     // Pull favorites
     Products.getList({isFavorite: true}).then(function(favorites) {
@@ -163,6 +163,38 @@ angular.module('tunariApp')
                 $scope.showToast(Messages.message006, product.name);
             }, function() {});
         });
+    }
+
+    $scope.openAddPriceWhenNoPriceModal = function(event, product) {
+        
+        var newPrice = {                            
+            type: $scope.selectedPriceType
+        };
+
+        if( _.includes($scope.selectedPriceType, 'Unidad')) {
+            newPrice.quantity = 1; 
+        } else {
+            newPrice.quantity = 100;
+        }
+
+        var addPriceModal = $mdDialog.prompt()
+            .title('Nuevo Precio!')
+            .textContent('Agrega el precio por ' + $scope.selectedPriceType + " (" + newPrice.quantity + ")")
+            .placeholder('Nuevo Precio')
+            .ariaLabel('Nuevo Precio')                
+            .targetEvent(event)
+            .ok('Guardar')
+            .cancel('Cancelar');
+
+        $mdDialog.show(addPriceModal).then(function(newPriceValue) {
+                       
+           newPrice.value = newPriceValue;
+           
+           product.prices.push(newPrice);
+           product.put().then(function(product) {
+               $scope.showToast("Agregaste un nuevo precio al producto ", product.name);
+           });                      
+        }, function() {});  
     }
 
     $scope.searchFavorite = function(productName) {

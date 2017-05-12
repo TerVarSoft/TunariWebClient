@@ -46,7 +46,7 @@
                         </div>
                         <div class="card-action">
                             <p ng-repeat="price in product.prices" ng-show="price.type == selectedPriceType">{{price.value}} Bs por {{price.type}}</p>                                                        
-                            <p ng-hide="hasPriceToShow(product)" style="color:#a9b9c1">No hay precio para mostrar</p>
+                            <p ng-hide="hasPriceToShow(product)" ng-click="openAddPriceWhenNoPriceModal($event, product)" style="color:#a9b9c1">No hay precio para mostrar</p>
                         </div>
 
                         <div class="card-reveal">
