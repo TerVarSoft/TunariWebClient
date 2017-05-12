@@ -66,7 +66,8 @@ angular.module('tunariApp')
         return _.some(product.prices, { type:  $scope.selectedPriceType });     
     }
 
-    $scope.openCreateProductModal = function(event) {    
+    $scope.openCreateProductModal = function(event) {
+        $scope.isLoading = true;    
         $location.path("newProduct");
     }
 

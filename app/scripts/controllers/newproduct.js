@@ -49,6 +49,7 @@ angular.module('tunariApp')
     });    
 
     $scope.updateView = function() {
+        $scope.product.properties = {};
         $scope.specificPropertiesView = _.find($scope.categories, {name:$scope.product.category}).view;        
     }    
 

@@ -15,7 +15,8 @@ angular.module('tunariApp')
     $scope.layout.hideHeader = true;
 
     $scope.loginUser = function() {       
-
+      
+      $scope.isLoading = true;
       /**
        * we create a user in this way instead of wrapping in
        * scope user due to errors with the forms validation
@@ -31,6 +32,7 @@ angular.module('tunariApp')
       }, function(response) {
         if(response.status == 401) {
           $scope.showToast("Credenciales Invalidas","Problemas!");   
+          $scope.isLoading = false;
         }        
       });               
     }     
