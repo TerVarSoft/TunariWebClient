@@ -39,9 +39,16 @@
             <label>Repetir Contraseña</label>
             <input ng-model="passwordConfirm" type="password" validate-equals="password" validate-not-empty name="passwordConfirm">
             <div ng-messages="registerForm.passwordConfirm.$error">
-              <div ng-message="empty">Necesiamos un password.</div>              
+              <div ng-message="empty">Necesitamos un password.</div>              
               <div ng-message="equal">Los passwords no son iguales.</div>
             </div>            
+          </md-input-container>
+          <md-input-container class="nd-block" flex-gt-xs="100">
+            <label>Role</label>
+            <md-select name="role" ng-model="role" validate-not-empty>
+              <md-option value="client">Cliente</md-option>
+              <md-option value="admin">Administrador</md-option>              
+            </md-select>
           </md-input-container>
           <md-card-actions layout="row" layout-align="end center" flex-gt-xs=100>      
             <md-button type="submit" class="md-raised md-primary">Registrar</md-button>

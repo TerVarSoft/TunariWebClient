@@ -13,6 +13,7 @@ angular.module('tunariApp')
 
     $scope.layout.title = 'Registrar Usuario';
     $scope.layout.hideHeader = false; 
+    $scope.role = "client";
     
     $scope.registerUser = function() {
       /**
@@ -24,7 +25,8 @@ angular.module('tunariApp')
         name: $scope.name,
         lastName: $scope.lastName,
         userName: $scope.userName,
-        password: $scope.password
+        password: $scope.password,
+        role: $scope.role
       }       
 
       Register.post(newUser).then(function(userToken) {

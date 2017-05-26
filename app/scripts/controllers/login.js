@@ -27,8 +27,13 @@ angular.module('tunariApp')
         password: $scope.password
       }
       Login.post(userToLogin).then(function(userToken) {                        
-        AuthToken.setUserToken(userToken);   
-        $location.path("/");
+        if(userToken.user.role !== "admin") {
+          $scope.showToast("Necesitas permisos de administrador!", "Problemas!");   
+          $scope.isLoading = false;
+        } else {
+          AuthToken.setUserToken(userToken);   
+          $location.path("/");
+        }        
       }, function(response) {
         if(response.status == 401) {
           $scope.showToast("Credenciales Invalidas","Problemas!");   

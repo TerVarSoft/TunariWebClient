@@ -7,6 +7,7 @@ To set up TunariWebClient you need to run:
 - bower install
 - Copy your local.env.sample.js to create an local.env.js and 
   modify with your configs.
+- If you do not have grunt installed globally run: npm install -g grunt-cli  
 - grunt serve
 
 # To deploy TunariWebClient
@@ -22,5 +23,5 @@ Before merging to master you need to take care of a couple of things:
 # About imgServer
 
 - If for some reason you do't see images in tunariwebclient could be related
- to the browser trying to access to an insecure source. Try opening in a
- seperate tab the image in the browser and accept the resource.
+  to the browser trying to access to an insecure source. Try opening in a
+  seperate tab the image in the browser and accept the resource.
