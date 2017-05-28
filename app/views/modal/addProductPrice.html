@@ -1,0 +1,44 @@
+<md-dialog>
+    <form ng-submit="addPrice()">
+        <md-dialog-content layout-padding layout-margin flex layout="column">
+            <h3 layout-padding>Agrega un nuevo precio!</h3>
+
+            <br/>
+            <md-input-container class="md-block">
+                <label>Tipo</label>                              
+                <md-select ng-model="newPrice.type" ng-change="selectPriceType()" placeholder="Tipo">
+                    <md-option ng-repeat="priceType in priceTypes" value="{{priceType}}">{{priceType}}</md-option>                                                                                                       
+                </md-select>
+            </md-input-container>
+
+            
+            <md-input-container class="md-block">
+                <md-icon>
+                    <ng-md-icon icon="monetization_on" class="primary-color" size="30">
+                    </ng-md-icon>
+                </md-icon>
+                <label>Precio</label>            
+                <input ng-model="newPrice.value" type="number" md-autofocus>
+            </md-input-container>        
+
+            <md-input-container class="md-block">
+                <md-icon>
+                    <ng-md-icon icon="style" class="primary-color" size="30">
+                    </ng-md-icon>
+                </md-icon>
+                <label>Cantidad</label>
+                <input ng-model="newPrice.quantity" type="number">
+            </md-input-container>
+        </md-dialog-content>  
+
+        <md-dialog-actions layout="row">        
+            <span flex></span>
+            <md-button class="md-primary" ng-click="cancel()">
+                Cancelar
+            </md-button>
+            <md-button class="md-primary" type="submit">
+                Agregar
+            </md-button>        
+        </md-dialog-actions>
+    </form>
+</md-dialog>

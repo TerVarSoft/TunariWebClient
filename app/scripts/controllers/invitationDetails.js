@@ -12,8 +12,7 @@ angular.module('tunariApp')
 
     Settings.getList().then(function(settings){
         $scope.invitationTypes = _.find(settings, {'key': 'invitationTypes'}).value;
-        $scope.$parent.product.properties.type = $scope.$parent.product.properties.type ?
-                                                $scope.$parent.product.properties.type :
+        $scope.$parent.product.properties.type = $scope.$parent.product.properties.type ||
                                                 $scope.invitationTypes[0];
 
         $scope.invitationsDetailsConfig = _.find(settings, {'key': 'invitationsDetails'}).value;        

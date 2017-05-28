@@ -48,38 +48,86 @@ angular.module('tunariApp')
         }
     });    
 
-    $scope.updateView = function() {
+    $scope.updateCategory = function() {
         $scope.product.properties = {};
+        $scope.updateView();        
+    }   
+
+    $scope.updateView = function() {
         $scope.specificPropertiesView = _.find($scope.categories, {name:$scope.product.category}).view;        
-    }    
+    }        
 
-    $scope.selectPriceType = function() {
-        if(_.includes($scope.newPrice.type, 'Paquete')) {
-            $scope.isNewPriceQuantityShowed = true;
-            $scope.newPrice.quantity = 100;
-        } else if($scope.newPrice.type === 'Otro') {
-            $scope.isPriceTypeInputShowed = true;
-            $scope.isNewPriceQuantityShowed = true;
-            $scope.newPrice.quantity = 100;
-        } else {
-            $scope.isNewPriceQuantityShowed = false;
-            $scope.newPrice.quantity = 1;
-        }        
+    $scope.addClientPrice = function() {        
+
+        $mdDialog.show({
+            controller: 'AddProductPriceCtrl',
+            templateUrl: '../../views/modal/addProductPrice.html',
+            parent: angular.element(document.body),
+            targetEvent: event,
+            clickOutsideToClose:true            
+        }).then(function(newPrice) {
+            $scope.product.clientPrices.splice(0, 0, newPrice);
+        }, function() {}); 
     }
 
-    $scope.addPrice = function() {
-        $scope.isPriceTypeInputShowed = false;
-        $scope.product.prices.splice(0, 0, $scope.newPrice);
-        $scope.newPrice = {}
+    $scope.addPublicPrice = function() {        
+
+        $mdDialog.show({
+            controller: 'AddProductPriceCtrl',
+            templateUrl: '../../views/modal/addProductPrice.html',
+            parent: angular.element(document.body),
+            targetEvent: event,
+            clickOutsideToClose:true            
+        }).then(function(newPrice) {
+            $scope.product.publicPrices.splice(0, 0, newPrice);
+        }, function() {}); 
     }
 
-    $scope.removePrice = function(price) {
-        _.pull($scope.product.prices, price);
+    $scope.removeClientPrice = function(price) {
+        _.pull($scope.product.clientPrices, price);
     }
 
-    $scope.addLocation = function() {        
-        $scope.product.locations.splice(0, 0, $scope.newLocation);
-        $scope.newLocation = {}
+    $scope.removePublicPrice = function(price) {
+        _.pull($scope.product.publicPrices, price);
+    }
+
+    $scope.addLocationWareHouse = function(event) {
+         
+        var addLocation = $mdDialog.prompt()
+            .title('Deposito')
+            .clickOutsideToClose(true)
+            .textContent('Agrega una nueva ubicacion en el deposito!')        
+            .ariaLabel('wareHouseLocation')        
+            .targetEvent(event)
+            .ok('Guardar')
+            .cancel('Cancelar');
+
+            $mdDialog.show(addLocation).then(function(locationValue) {
+                $scope.newLocation.type = 'Deposito';
+                $scope.newLocation.value = locationValue;
+
+                $scope.product.locations.splice(0, 0, $scope.newLocation);
+                $scope.newLocation = {}
+            });        
+    }
+
+    $scope.addLocationStore = function(event) {
+        var addLocation = $mdDialog.prompt()
+            .title('Tienda')
+            .clickOutsideToClose(true)
+            .textContent('Agrega una nueva ubicacion en la tienda!')        
+            .ariaLabel('storeLocation')        
+            .targetEvent(event)
+            .ok('Guardar')
+            .cancel('Cancelar');
+
+            $mdDialog.show(addLocation).then(function(locationValue) {
+                $scope.newLocation.type = 'Tienda';
+                $scope.newLocation.value = locationValue;
+
+                $scope.product.locations.splice(0, 0, $scope.newLocation);
+                $scope.newLocation = {}
+            }); 
     }
 
     $scope.removeLocation = function(location) {
@@ -147,11 +195,12 @@ angular.module('tunariApp')
         $scope.product.category = $scope.product.category ? 
                                     $scope.product.category : $scope.categories[0].name;        
         
-        $scope.product.prices = $scope.product.prices || [];
+        $scope.product.publicPrices = $scope.product.publicPrices || [];
+        $scope.product.clientPrices = $scope.product.clientPrices || [];
         $scope.product.locations = $scope.product.locations || [];
         $scope.product.tags = $scope.product.tags ? $scope.product.tags : [];
-        $scope.product.images =  $scope.product.images || [];
-        $scope.product.properties = $scope.product.properties ? $scope.product.properties : {};
+        $scope.product.images =  $scope.product.images || [];        
+        $scope.product.properties = $scope.product.properties || {};
     }
 
     function manageCreateProductError(response) {     

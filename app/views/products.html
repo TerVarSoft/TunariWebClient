@@ -35,7 +35,7 @@
                 </div>             
             </div>    
             <div flex=100  layout=row layout-wrap>                
-                <div flex-xs=100 flex-sm=50 flex=33 style="padding:10px" ng-repeat="product in products">
+                <div flex-xs=100 flex-sm=50 flex=25 style="padding:10px" ng-repeat="product in products">
                     <div class="card sticky-action" md-whiteframe=4>
                         <div class="card-image">                            
                             <img materialboxed check-image="{{getProductImageUrl(product, '-L')}}" data-caption={{product.name}}
@@ -45,7 +45,12 @@
                             <span  class="card-title activator grey-text text-darken-4">{{product.name}}</span>
                         </div>
                         <div class="card-action">
-                            <p ng-repeat="price in product.prices" ng-show="price.type == selectedPriceType">{{price.value}} Bs por {{price.type}}</p>                                                        
+                            <p ng-repeat="clientPrice in product.clientPrices" ng-show="clientPrice.type == selectedPriceType && selectedPriceCategory == 'Cliente'">
+                                {{clientPrice.value}} Bs por {{clientPrice.type}} ({{selectedPriceCategory}})
+                            </p>
+                            <p ng-repeat="publicPrice in product.publicPrices" ng-show="publicPrice.type == selectedPriceType && selectedPriceCategory == 'Publico'">
+                                {{publicPrice.value}} Bs por {{publicPrice.type}} ({{selectedPriceCategory}})
+                            </p>                                                        
                             <p ng-hide="hasPriceToShow(product)" ng-click="openAddPriceWhenNoPriceModal($event, product)" style="color:#a9b9c1">No hay precio para mostrar</p>
                         </div>
 

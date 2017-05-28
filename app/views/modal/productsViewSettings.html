@@ -1,8 +1,17 @@
 <md-dialog>
     <md-dialog-content>
         <md-list>
-            <md-subheader>Precio para mostrar</md-subheader>
+            <h4 class="primary-color center">Selecciona un precio!</h4>
             <br/>
+            <md-subheader>Categoria del precio</md-subheader>
+            <md-list-item>
+                <md-radio-group ng-model="selectedPriceCategory">
+                    <md-radio-button ng-repeat="priceCategory in ['Cliente', 'Publico']" value="{{priceCategory}}" class="md-primary">
+                        {{priceCategory}}
+                    </md-radio-button>                    
+                </md-radio-group>
+            </md-list-item>
+            <md-subheader>Tipo de precio</md-subheader>
             <md-list-item>
                 <md-radio-group ng-model="selectedPriceType">
                     <md-radio-button ng-repeat="priceType in priceTypes" value="{{priceType}}" class="md-primary">
@@ -13,6 +22,9 @@
         </md-list>        
     </md-dialog-content>
     <md-dialog-actions layout="row">
+        <md-button ng-click="cancel()">
+            Cancel
+        </md-button>
         <md-button ng-click="saveSettings()">
             Guardar
         </md-button>

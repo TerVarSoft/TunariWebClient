@@ -14,7 +14,8 @@ angular.module('tunariApp')
         selectedPriceType = "",
         quickSearchs = [],
         excludeListForStatistics = [],
-        priceTypes = [];
+        priceTypes = [],
+        selectedPriceCategory = "Cliente";
 
     Settings.getList().then(function(settings){
         imgServer = _.find(settings, {'key': 'imgServer'}).value;
@@ -52,6 +53,10 @@ angular.module('tunariApp')
         return imgServer + "/extras/" + image + ".jpg";     
     }
 
+    this.getSelectedPriceCategory = function() {
+        return selectedPriceCategory;
+    }
+
     this.setImageServer = function(newImageServer) {
         imgServer = newImageServer;
     }
@@ -70,6 +75,10 @@ angular.module('tunariApp')
 
     this.setSelectedPriceType = function(newSelectedPriceType) {
         selectedPriceType = newSelectedPriceType;
+    }
+
+    this.setSelectedPriceCategory = function(newSelectedPriceCategory) {
+        selectedPriceCategory = newSelectedPriceCategory;
     }
 
     this.getSelectedPriceType = function() {
