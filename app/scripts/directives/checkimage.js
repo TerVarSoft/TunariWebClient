@@ -48,7 +48,12 @@ angular.module('tunariApp')
                             );
                             $scope.objectURL = URL.createObjectURL(blob);
                         }, function(response) {
-                            if(response.status !== 404) {
+                            if(response.status == 404) {
+                                /**
+                                 *   set default  image.
+                                 */ 
+                                element.attr('src', "/images/tunari-logo-1.png"); 
+                            } else {
                                 /**
                                  *   set default error image.
                                  */ 
