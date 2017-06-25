@@ -11,18 +11,17 @@ angular.module('tunariApp')
   .service('ProductInfo', ["Settings", "Config", function (Settings, Config) {
 
     var imgServer = "",
-        selectedPriceType = "",
+        selectedPrice = "clientPackagePrice",
         quickSearchs = [],
-        excludeListForStatistics = [],
-        priceTypes = [],
-        selectedPriceCategory = "Cliente";
+        excludeListForStatistics = [];
+
+    var priceTypesTexts = {};
+    initPriceTypesTexts();
 
     Settings.getList().then(function(settings){
         imgServer = _.find(settings, {'key': 'imgServer'}).value;
-        quickSearchs = _.find(settings, {'key': 'quickSearchs'}).value;
-        selectedPriceType = _.find(settings, {'key': 'priceTypes'}).value[1];
+        quickSearchs = _.find(settings, {'key': 'quickSearchs'}).value;        
         excludeListForStatistics = _.find(settings, {'key': 'excludeListForStatistics'}).value;
-        priceTypes = _.find(settings, {'key': 'priceTypes'}).value;
     });
 
     this.getProductImageUrl = function(product, suffix) {
@@ -53,10 +52,6 @@ angular.module('tunariApp')
         return imgServer + "/extras/" + image + ".jpg";     
     }
 
-    this.getSelectedPriceCategory = function() {
-        return selectedPriceCategory;
-    }
-
     this.setImageServer = function(newImageServer) {
         imgServer = newImageServer;
     }
@@ -69,20 +64,21 @@ angular.module('tunariApp')
         return quickSearchs;
     }
 
-    this.getPriceTypes = function() {
-        return priceTypes;
+
+    this.setSelectedPrice = function(newSelectedPrice) {
+        selectedPrice = newSelectedPrice;
     }
 
-    this.setSelectedPriceType = function(newSelectedPriceType) {
-        selectedPriceType = newSelectedPriceType;
+    this.getSelectedPrice = function () {
+        return selectedPrice;
     }
 
-    this.setSelectedPriceCategory = function(newSelectedPriceCategory) {
-        selectedPriceCategory = newSelectedPriceCategory;
+    this.getPriceText = function (selectedPrice) {
+        return priceTypesTexts[selectedPrice];
     }
 
-    this.getSelectedPriceType = function() {
-        return selectedPriceType;
+    this.getPriceTypeTexts = function () {
+        return priceTypesTexts;
     }
 
     this.setExcludeListForStatistics = function() {
@@ -91,5 +87,12 @@ angular.module('tunariApp')
 
     this.getExcludeListForStatistics = function() {
         return excludeListForStatistics;
+    }
+
+    function initPriceTypesTexts() {
+        priceTypesTexts["clientUnitPrice"] = "Unidad Cliente";
+        priceTypesTexts["clientPackagePrice"] = "Paquete Cliente";
+        priceTypesTexts["publicUnitPrice"] = "Unidad Público";
+        priceTypesTexts["publicPackagePrice"] = "Paquete Público";
     }
 }]);

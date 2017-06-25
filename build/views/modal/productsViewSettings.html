@@ -3,23 +3,15 @@
         <md-list>
             <h4 class="primary-color center">Selecciona un precio!</h4>
             <br/>
-            <md-subheader>Categoria del precio</md-subheader>
             <md-list-item>
-                <md-radio-group ng-model="selectedPriceCategory">
-                    <md-radio-button ng-repeat="priceCategory in ['Cliente', 'Publico']" value="{{priceCategory}}" class="md-primary">
-                        {{priceCategory}}
-                    </md-radio-button>                    
-                </md-radio-group>
-            </md-list-item>
-            <md-subheader>Tipo de precio</md-subheader>
-            <md-list-item>
-                <md-radio-group ng-model="selectedPriceType">
-                    <md-radio-button ng-repeat="priceType in priceTypes" value="{{priceType}}" class="md-primary">
+                <md-radio-group ng-model="selectedPrice">
+                    <md-radio-button ng-repeat="(key, priceType) in priceTypes" 
+                        value="{{key}}" class="md-primary" aria-label="price">
                         {{priceType}}
-                    </md-radio-button>                    
+                    </md-radio-button>
                 </md-radio-group>
             </md-list-item>
-        </md-list>        
+        </md-list>
     </md-dialog-content>
     <md-dialog-actions layout="row">
         <md-button ng-click="cancel()">

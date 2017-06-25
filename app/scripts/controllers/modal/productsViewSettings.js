@@ -11,20 +11,15 @@ angular.module('tunariApp')
   .controller('ProductsViewSettingsCtrl', ['$scope', '$mdDialog', 'Settings', 'ProductInfo',
     function ($scope, $mdDialog, Settings, ProductInfo) {
 
-      $scope.selectedPriceType = ProductInfo.getSelectedPriceType();     
-      $scope.selectedPriceCategory = ProductInfo.getSelectedPriceCategory();       
-      $scope.priceTypes = ProductInfo.getPriceTypes();    
+      $scope.selectedPrice = ProductInfo.getSelectedPrice();
+      $scope.priceTypes = ProductInfo.getPriceTypeTexts();
 
       $scope.cancel = function() {
           $mdDialog.cancel();
       }
 
-      $scope.saveSettings = function() {        
-          var results = {
-              selectedPriceType: $scope.selectedPriceType,
-              selectedPriceCategory: $scope.selectedPriceCategory
-          }
+      $scope.saveSettings = function() {
 
-          $mdDialog.hide(results);
+          $mdDialog.hide($scope.selectedPrice);
       }
     }]);

@@ -57,7 +57,7 @@ angular.module('tunariApp')
         $scope.specificPropertiesView = _.find($scope.categories, {name:$scope.product.category}).view;        
     }        
 
-    $scope.addClientPrice = function() {        
+    $scope.addOtherPrice = function() {        
 
         $mdDialog.show({
             controller: 'AddProductPriceCtrl',
@@ -66,29 +66,12 @@ angular.module('tunariApp')
             targetEvent: event,
             clickOutsideToClose:true            
         }).then(function(newPrice) {
-            $scope.product.clientPrices.splice(0, 0, newPrice);
+            $scope.product.otherPrices.splice(0, 0, newPrice);
         }, function() {}); 
     }
 
-    $scope.addPublicPrice = function() {        
-
-        $mdDialog.show({
-            controller: 'AddProductPriceCtrl',
-            templateUrl: '../../views/modal/addProductPrice.html',
-            parent: angular.element(document.body),
-            targetEvent: event,
-            clickOutsideToClose:true            
-        }).then(function(newPrice) {
-            $scope.product.publicPrices.splice(0, 0, newPrice);
-        }, function() {}); 
-    }
-
-    $scope.removeClientPrice = function(price) {
-        _.pull($scope.product.clientPrices, price);
-    }
-
-    $scope.removePublicPrice = function(price) {
-        _.pull($scope.product.publicPrices, price);
+    $scope.removeOtherPrice = function(price) {
+        _.pull($scope.product.otherPrices, price);
     }
 
     $scope.addLocationWareHouse = function(event) {
@@ -195,8 +178,6 @@ angular.module('tunariApp')
         $scope.product.category = $scope.product.category ? 
                                     $scope.product.category : $scope.categories[0].name;        
         
-        $scope.product.publicPrices = $scope.product.publicPrices || [];
-        $scope.product.clientPrices = $scope.product.clientPrices || [];
         $scope.product.locations = $scope.product.locations || [];
         $scope.product.tags = $scope.product.tags ? $scope.product.tags : [];
         $scope.product.images =  $scope.product.images || [];        

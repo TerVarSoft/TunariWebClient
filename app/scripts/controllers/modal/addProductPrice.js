@@ -12,18 +12,9 @@ angular.module('tunariApp')
     function ($scope, $mdDialog, ProductInfo) {
 
       $scope.newPrice = {};
-      $scope.newPrice.type = "Paquete";
-      $scope.newPrice.quantity = 100;
+      $scope.newPrice.quantity = 1;
 
       $scope.priceTypes = ProductInfo.getPriceTypes();
-
-      $scope.selectPriceType = function() {
-          if(_.includes($scope.newPrice.type, 'Unidad')) {
-              $scope.newPrice.quantity = 1;
-          } else {
-              $scope.newPrice.quantity = 100;
-          }
-      }
 
       $scope.addPrice = function() {
           $mdDialog.hide($scope.newPrice);
