@@ -8,6 +8,6 @@
  * Service in the TunariApp.
  */
 angular.module('tunariApp')
-  .service('Register', ['AuthRestangular', function (AuthRestangular) {
-    return AuthRestangular.service('register');
+  .service('Users', ['AuthRestangular', function (AuthRestangular) {
+    return AuthRestangular.service('users');
   }]);

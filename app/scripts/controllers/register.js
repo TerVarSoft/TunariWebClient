@@ -8,8 +8,8 @@
  * Controller of the clientApp
  */
 angular.module('tunariApp')
-  .controller('RegisterCtrl', ['$scope', '$location', 'Register', 
-    function ($scope, $location, Register) {
+  .controller('RegisterCtrl', ['$scope', '$location', 'Users', 
+    function ($scope, $location, Users) {
 
     $scope.layout.title = 'Registrar Usuario';
     $scope.layout.hideHeader = false; 
@@ -29,9 +29,13 @@ angular.module('tunariApp')
         role: $scope.role
       }       
 
-      Register.post(newUser).then(function(userToken) {
-        $location.path("/");    
+      Users.post(newUser).then(function(userToken) {
+        $location.path("/users");
       });
+    }
+
+    $scope.cancel = function() {
+      $location.path("/users");
     }
   }]);
 	
