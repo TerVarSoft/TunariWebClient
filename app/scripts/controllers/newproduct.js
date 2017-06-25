@@ -126,7 +126,6 @@ angular.module('tunariApp')
     }
 
     $scope.save = function() {
-        prepareProductBeforeSaving();
 
         $scope.product.save().then(function(savedProduct){            
             $scope.showToast("Bien! Haz salvado el producto", savedProduct.name);
@@ -137,7 +136,6 @@ angular.module('tunariApp')
     }   
 
     $scope.saveAndNew = function() {
-        prepareProductBeforeSaving();
 
         $scope.product.save().then(function(savedProduct){            
             $scope.showToast("Bien! Haz salvado el producto", savedProduct.name);
@@ -150,28 +148,6 @@ angular.module('tunariApp')
 
     $scope.cancel = function() {
         $location.path("/products");
-    }
-
-    function prepareProductBeforeSaving() {  
-        /**
-         * Default value for sortTag, this can be overriden in 
-         * prepareSpecificPropertiesBeforeProductSaving
-         */          
-        $scope.product.name = _.toUpper($scope.product.name);
-        $scope.product.sortTag = $scope.product.category + $scope.product.name;
-
-        $scope.product.tags = _.difference($scope.product.tags, _.intersection($scope.product.tags, _.map($scope.categories, 'name')));
-        $scope.product.tags = _.difference($scope.product.tags, _.intersection($scope.product.tags, $scope.productProviders));              
-        _.pull($scope.product.tags, $scope.originalName);
-        
-        $scope.product.tags.push($scope.product.name);       
-        $scope.product.tags.push($scope.product.category);       
-        $scope.product.tags.push($scope.product.provider); 
-
-        $scope.$broadcast ('prepareSpecificPropertiesBeforeProductSaving');
-        $scope.product.tags = _.filter($scope.product.tags, function(tag) {
-            return !_.isEmpty(tag);
-        });
     }
 
     function setDefaultValues() {
