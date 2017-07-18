@@ -123,6 +123,11 @@ angular
         controller: 'EditClientCtrl',
         controllerAs: 'editClient'
       })
+      .when('/images', {
+        templateUrl: 'views/images.html',
+        controller: 'ImagesCtrl',
+        controllerAs: 'images'
+      })
       .when('/statistics', {
         templateUrl: 'views/statistics.html',
         controller: 'StatisticsCtrl',

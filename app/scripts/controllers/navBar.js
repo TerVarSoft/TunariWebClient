@@ -28,6 +28,12 @@ angular.module('tunariApp')
         propName: 'products',
         text: 'Productos'
       },
+      images: {
+        icon: 'photo_library',
+        redirectTo: '/images',
+        propName: 'images',
+        text: 'Imagenes'
+      },
       statistics: {
         icon: 'insert_chart',
         redirectTo: '/statistics',
