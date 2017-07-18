@@ -37,35 +37,4 @@ angular.module('tunariApp')
         $scope.invitationSizes = $scope.invitationDetails['sizes'];
         $scope.invitationGenres = $scope.invitationDetails['genres'];        
     }
-
-    // Called by the parent scope
-    $scope.$on('prepareSpecificPropertiesBeforeProductSaving', function(e) {
-        // Remove current type, size, genre from tags
-        $scope.$parent.product.tags = _.difference($scope.$parent.product.tags, _.intersection($scope.$parent.product.tags, $scope.invitationTypes));
-        $scope.$parent.product.tags = _.difference($scope.$parent.product.tags, _.intersection($scope.$parent.product.tags, $scope.invitationSizes));
-        $scope.$parent.product.tags = _.difference($scope.$parent.product.tags, _.intersection($scope.$parent.product.tags, $scope.invitationGenres));
-            
-        // Add new type, size, genre from tags
-        $scope.$parent.product.tags.push($scope.$parent.product.properties.type);
-        $scope.$parent.product.tags.push($scope.$parent.product.properties.size);
-        $scope.$parent.product.tags.push($scope.$parent.product.properties.genre);
-
-        var invitationNumber = getInvitationNumber();
-        $scope.$parent.product.sortTag = $scope.$parent.product.properties.type + invitationNumber;
-    });
-
-    function getInvitationNumber() {
-        var nameParts = $scope.$parent.product.name.split('-');
-
-        var lastElement = _.last(nameParts);
-        var isNum = /^\d+$/.test(lastElement);
-        var number = "";
-
-        if(isNum){
-            number = lastElement;
-        }
-    
-        return number;
-    }
-
 }]);

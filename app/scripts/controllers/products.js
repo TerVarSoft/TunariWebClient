@@ -22,9 +22,9 @@ angular.module('tunariApp')
     $scope.searchTags =[];
     $scope.products = [];
     $scope.favorites = [];
-    $scope.showFavorites = false;
-    $scope.selectedPriceType = ProductInfo.getSelectedPriceType() || 'Paquete';
-    $scope.selectedPriceCategory = ProductInfo.getSelectedPriceCategory() || 'Cliente';
+    $scope.showFavorites = false;    
+    $scope.selectedPrice = ProductInfo.getSelectedPrice();
+    $scope.selectedPriceText = ProductInfo.getPriceText($scope.selectedPrice);
     
     // Pull favorites
     Products.getList({isFavorite: true}).then(function(favorites) {
@@ -63,16 +63,6 @@ angular.module('tunariApp')
         return  ProductInfo.getProductImageUrl(product, sufix);       
     }
 
-    $scope.hasPriceToShow = function(product) {
-        
-        if($scope.selectedPriceCategory === "Cliente") {
-            return _.some(product.clientPrices, { type:  $scope.selectedPriceType });
-        } else if($scope.selectedPriceCategory === "Publico") {
-            return _.some(product.publicPrices, { type:  $scope.selectedPriceType });
-        }
-             
-    }
-
     $scope.openCreateProductModal = function(event) {
         $scope.isLoading = true;    
         $location.path("newProduct");
@@ -107,7 +97,7 @@ angular.module('tunariApp')
         }, function() {});        
     }
 
-    $scope.openProductsSettings = function(event) {
+    $scope.openSelectPriceModal = function(event) {
 
         $mdDialog.show({
             controller: 'ProductsViewSettingsCtrl',
@@ -115,11 +105,10 @@ angular.module('tunariApp')
             parent: angular.element(document.body),
             targetEvent: event,
             clickOutsideToClose:true            
-        }).then(function(results) {
-           ProductInfo.setSelectedPriceType(results.selectedPriceType);
-           ProductInfo.setSelectedPriceCategory(results.selectedPriceCategory);
-           $scope.selectedPriceType = results.selectedPriceType;
-           $scope.selectedPriceCategory = results.selectedPriceCategory;           
+        }).then(function(selectedPrice) {
+           ProductInfo.setSelectedPrice(selectedPrice);
+           $scope.selectedPrice = selectedPrice;
+           $scope.selectedPriceText = ProductInfo.getPriceText(selectedPrice);
         }, function() {});  
     }
 
@@ -177,34 +166,19 @@ angular.module('tunariApp')
 
     $scope.openAddPriceWhenNoPriceModal = function(event, product) {
         
-        var newPrice = {                            
-            type: $scope.selectedPriceType
-        };
-
-        if($scope.selectedPriceType === 'Unidad') {
-            newPrice.quantity = 1; 
-        } else {
-            newPrice.quantity = 100;
-        }
-
         var addPriceModal = $mdDialog.prompt()
-            .title('Nuevo Precio ' + $scope.selectedPriceCategory + '!')
-            .textContent('Agrega el precio por ' + $scope.selectedPriceType + " (" + newPrice.quantity + ")")
+            .title('Nuevo Precio!')
+            .textContent('Agrega el precio por ' + 
+                ProductInfo.getPriceText($scope.selectedPrice))
             .placeholder('Nuevo Precio')
-            .ariaLabel('Nuevo Precio')                
+            .ariaLabel('Nuevo Precio')
             .targetEvent(event)
             .ok('Guardar')
             .cancel('Cancelar');
 
-        $mdDialog.show(addPriceModal).then(function(newPriceValue) {
-                       
-           newPrice.value = newPriceValue;
-           
-           if($scope.selectedPriceCategory === 'Publico') {
-               product.publicPrices.push(newPrice);
-           } else if($scope.selectedPriceCategory === 'Cliente') {
-               product.clientPrices.push(newPrice);
-           }
+        $mdDialog.show(addPriceModal).then(function(newPrice) {
+
+           product[$scope.selectedPrice] = newPrice;
            
            product.put().then(function(product) {
                $scope.showToast("Agregaste un nuevo precio al producto ", product.name);

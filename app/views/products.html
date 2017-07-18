@@ -44,14 +44,12 @@
                         <div md-truncate class="card-content">
                             <span  class="card-title activator grey-text text-darken-4">{{product.name}}</span>
                         </div>
+                        
                         <div class="card-action">
-                            <p ng-repeat="clientPrice in product.clientPrices" ng-show="clientPrice.type == selectedPriceType && selectedPriceCategory == 'Cliente'">
-                                {{clientPrice.value}} Bs por {{clientPrice.type}} ({{selectedPriceCategory}})
-                            </p>
-                            <p ng-repeat="publicPrice in product.publicPrices" ng-show="publicPrice.type == selectedPriceType && selectedPriceCategory == 'Publico'">
-                                {{publicPrice.value}} Bs por {{publicPrice.type}} ({{selectedPriceCategory}})
-                            </p>                                                        
-                            <p ng-hide="hasPriceToShow(product)" ng-click="openAddPriceWhenNoPriceModal($event, product)" style="color:#a9b9c1">No hay precio para mostrar</p>
+                            <p ng-show="product[selectedPrice]">
+                                {{product[selectedPrice]}} Bs por {{selectedPriceText}}
+                            </p>                                                       
+                            <p ng-hide="product[selectedPrice]" ng-click="openAddPriceWhenNoPriceModal($event, product)" style="color:#a9b9c1">No hay precio para mostrar</p>
                         </div>
 
                         <div class="card-reveal">
@@ -99,7 +97,7 @@
         <ng-md-icon style="fill: #fff" icon="add_circle_outline" class="fab-button-icon" size="40">
         </ng-md-icon>  
     </md-button>
-    <md-button ng-click="openProductsSettings($event)" class="md-fab md-fab-bottom-right" style="bottom: 160px" aria-label="productSettings">          
+    <md-button ng-click="openSelectPriceModal($event)" class="md-fab md-fab-bottom-right" style="bottom: 160px" aria-label="productSettings">          
         <ng-md-icon style="fill: #fff" icon="attach_money" class="fab-button-icon" size="40">
         </ng-md-icon>  
     </md-button>

@@ -46,18 +46,18 @@ angular.module('tunariApp')
         propName: 'settings',
         text: 'Configuraciones'
       },
-      register: {
-        icon: 'person_add',
-        redirectTo: '/register',
-        propName: 'register',
-        text: 'Registrar usuario'
+      users: {
+        icon: 'group',
+        redirectTo: '/users',
+        propName: 'users',
+        text: 'Usuarios'
       },
       logout: {
         icon: 'logout',
         redirectTo: '/logout',
         propName: 'logout',
         text: 'Salir'
-      }
+      }      
       /*clients: {
         icon: 'people',
         redirectTo: '/clientSearch',  	

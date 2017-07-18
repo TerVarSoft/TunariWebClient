@@ -5,21 +5,22 @@
 
             <br/>
             <md-input-container class="md-block">
-                <label>Tipo</label>                              
-                <md-select ng-model="newPrice.type" ng-change="selectPriceType()" placeholder="Tipo">
-                    <md-option ng-repeat="priceType in priceTypes" value="{{priceType}}">{{priceType}}</md-option>                                                                                                       
-                </md-select>
+                <md-icon>
+                    <ng-md-icon icon="art_track" class="primary-color" size="30">
+                    </ng-md-icon>
+                </md-icon>
+                <label>Descripción</label>
+                <input ng-model="newPrice.type" type="text" md-autofocus>
             </md-input-container>
 
-            
             <md-input-container class="md-block">
                 <md-icon>
                     <ng-md-icon icon="monetization_on" class="primary-color" size="30">
                     </ng-md-icon>
                 </md-icon>
-                <label>Precio</label>            
-                <input ng-model="newPrice.value" type="number" md-autofocus>
-            </md-input-container>        
+                <label>Precio</label>
+                <input ng-model="newPrice.value" type="number">
+            </md-input-container>
 
             <md-input-container class="md-block">
                 <md-icon>

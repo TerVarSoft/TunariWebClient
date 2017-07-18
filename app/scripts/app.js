@@ -61,67 +61,67 @@ angular
       .when('/', {
         templateUrl: 'views/products.html',
         controller: 'ProductsCtrl',
-        controllerAs: 'Products'
+        controllerAs: 'ProductsCtrl'
       })
       .when('/login', {
         templateUrl: 'views/login.html',
         controller: 'LoginCtrl',
-        controllerAs: 'login'
+        controllerAs: 'loginCtrl'
       })
       .when('/logout', {        
         controller: 'LogoutCtrl',
         templateUrl: 'views/empty.html',
-        controllerAs: 'logout'
+        controllerAs: 'logoutCtrl'
       })
       .when('/register', {
         templateUrl: 'views/register.html',
         controller: 'RegisterCtrl',
-        controllerAs: 'register'
+        controllerAs: 'registerCtrl'
       })
       .when('/about', {
         templateUrl: 'views/about.html',
         controller: 'AboutCtrl',
-        controllerAs: 'about'
+        controllerAs: 'aboutCtrl'
       })
       .when('/shoppingTabs', {
         templateUrl: 'views/shoppingTabs.html',
         controller: 'ShopCtrl',
-        controllerAs: 'ProductSearcher'
+        controllerAs: 'ProductSearcherCtrl'
       })
       .when('/products', {
         templateUrl: 'views/products.html',
         controller: 'ProductsCtrl',
-        controllerAs: 'Products'
+        controllerAs: 'ProductsCtrl'
       })
       .when('/products/:productId', {
         templateUrl: 'views/newProduct.html',
         controller: 'NewProductCtrl',
-        controllerAs: 'editProduct'
+        controllerAs: 'editProductCtrl'
       })
       .when('/newProduct', {
         templateUrl: 'views/newProduct.html',
         controller: 'NewProductCtrl',
-        controllerAs: 'newProduct'
+        controllerAs: 'newProductCtrl'
       })
       .when('/clientSearch', {
         templateUrl: 'views/clientSearch.html',
         controller: 'ClientSearchCtrl',
-        controllerAs: 'clientSearch'
+        controllerAs: 'clientSearchCtrl'
       })
       .when('/clientSamples/:clientId', {
         templateUrl: 'views/clientSamples.html',
         controller: 'ClientSamplesCtrl',
-        controllerAs: 'clientSamples'
+        controllerAs: 'clientSamplesCtrl'
       })
       .when('/newClient', {
         templateUrl: 'views/newClient.html',
         controller: 'NewClientCtrl',
-        controllerAs: 'newClient'
+        controllerAs: 'newClientCtrl'
       })
       .when('/clients/:clientId', {
         templateUrl: 'views/editClient.html',
         controller: 'EditClientCtrl',
-        controllerAs: 'editClient'
+        controllerAs: 'editClientCtrl'
       })
       .when('/images', {
         templateUrl: 'views/images.html',
@@ -131,12 +131,17 @@ angular
       .when('/statistics', {
         templateUrl: 'views/statistics.html',
         controller: 'StatisticsCtrl',
-        controllerAs: 'statistics'
+        controllerAs: 'statisticsCtrl'
       })
       .when('/settings', {
         templateUrl: 'views/settings.html',
         controller: 'SettingsCtrl',
-        controllerAs: 'settings'
+        controllerAs: 'settingsCtrl'
+      })
+      .when('/users', {
+        templateUrl: 'views/users.html',
+        controller: 'UsersCtrl',
+        controllerAs: 'usersCtrl'
       })
       .otherwise({
         redirectTo: '/'
