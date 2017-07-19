@@ -40,7 +40,7 @@ angular.module('tunariApp')
 
         Products.getList({properties: 'name category properties', queryLimit: 1000}).then(function(products) {
             var step = 100 /products.length;
-            _.each(products, (product, index) => {
+            _.each(products, function(product, index) {
 
                 $http.get(ProductInfo.getProductImageUrl(product, "-S"), {
                   responseType: 'arraybuffer',
@@ -48,14 +48,14 @@ angular.module('tunariApp')
                     'accept': 'image/webp,image/*,*/*;q=0.8',
                     'authorization': 'Bearer ' + AuthToken.getToken()
                   }
-                }).then(() => {
+                }).then(function() {
                     $scope.smallLoaderIsDeterminateMode = true;
                     $scope.smallImagesIndicator += step;
 
                     if (index === products.length - 1){ 
                         $scope.isSmallButtonDisabled = false;
                     }         
-                }, () => {
+                }, function() {
                     $scope.smallLoaderIsDeterminateMode = true;
                     $scope.smallImagesIndicator += step;
                     $scope.noSmallImageProducts.push(product);
@@ -79,7 +79,7 @@ angular.module('tunariApp')
 
         Products.getList({properties: 'name category properties', queryLimit: 1000}).then(function(products) {
             var step = 100 /products.length;
-            _.each(products, (product, index) => {
+            _.each(products, function(product, index) {
 
                 $http.get(ProductInfo.getProductImageUrl(product, "-M"), {
                   responseType: 'arraybuffer',
@@ -87,14 +87,14 @@ angular.module('tunariApp')
                     'accept': 'image/webp,image/*,*/*;q=0.8',
                     'authorization': 'Bearer ' + AuthToken.getToken()
                   }
-                }).then(() => {
+                }).then(function() {
                     $scope.mediumLoaderIsDeterminateMode = true;
                     $scope.mediumImagesIndicator += step;
 
                     if (index === products.length - 1){ 
                         $scope.isMediumButtonDisabled = false;
                     }         
-                }, () => {
+                }, function() {
                     $scope.mediumLoaderIsDeterminateMode = true;
                     $scope.mediumImagesIndicator += step;
                     $scope.noMediumImageProducts.push(product);
@@ -117,7 +117,7 @@ angular.module('tunariApp')
 
         Products.getList({properties: 'name category properties', queryLimit: 1000}).then(function(products) {
             var step = 100 /products.length;
-            _.each(products, (product, index) => {
+            _.each(products, function(product, index) {
 
                 $http.get(ProductInfo.getProductImageUrl(product, "-L"), {
                   responseType: 'arraybuffer',
@@ -125,14 +125,14 @@ angular.module('tunariApp')
                     'accept': 'image/webp,image/*,*/*;q=0.8',
                     'authorization': 'Bearer ' + AuthToken.getToken()
                   }
-                }).then(() => {
+                }).then(function() {
                     $scope.largeLoaderIsDeterminateMode = true;
                     $scope.largeImagesIndicator += step;
 
                     if (index === products.length - 1){ 
                         $scope.isLargeButtonDisabled = false;
                     }         
-                }, () => {
+                }, function() {
                     $scope.largeLoaderIsDeterminateMode = true;
                     $scope.largeImagesIndicator += step;
                     $scope.noLargeImageProducts.push(product);

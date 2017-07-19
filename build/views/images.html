@@ -1,0 +1,58 @@
+<div flex layout="row" class="background">  
+<md-content flex layout-padding class="background">
+    <h2 class="md-title">
+        Imagenes Pequeñas
+        <md-button ng-disabled="noSmallImageProducts.length <= 0" class="md-accent" ng-click="showSmallResults()">Resultados</md-button>
+    </h2>
+
+    <p>
+        Verifica todas las imagenes pequeñas que existen actualmente en el sistema!
+        <b>Productos Encontrados: {{noSmallImageProducts.length}}</b>
+    </p>
+    <div flex layout=row>
+        <md-button ng-disabled="isSmallButtonDisabled" class="md-raised md-primary" ng-click="testSmallImages()">Comenzar!</md-button>
+        <md-progress-linear ng-show="!smallLoaderIsDeterminateMode" style="margin-top:20px;" flex md-mode="indeterminate"></md-progress-linear>
+        <md-progress-linear ng-show="smallLoaderIsDeterminateMode" style="margin-top:20px;" flex md-mode="determinate" value="{{smallImagesIndicator}}"></md-progress-linear>
+    </div>    
+
+    <h2 class="md-title">
+        Imagenes Medianas
+        <md-button ng-disabled="noMediumImageProducts.length <= 0" class="md-accent" ng-click="showMediumResults()">Resultados</md-button>
+    </h2>
+
+    <p>
+        Verifica todas las imagenes medianas que existen actualmente en el sistema!
+        <b>Productos Encontrados: {{noMediumImageProducts.length}}</b>
+    </p>
+    <div flex layout=row>
+        <md-button ng-disabled="isMediumButtonDisabled" class="md-raised md-primary" ng-click="testMediumImages()">Comenzar!</md-button>
+        <md-progress-linear ng-show="!mediumLoaderIsDeterminateMode" style="margin-top:20px;" flex md-mode="indeterminate"></md-progress-linear>
+        <md-progress-linear ng-show="mediumLoaderIsDeterminateMode" style="margin-top:20px;" flex md-mode="determinate" value="{{mediumImagesIndicator}}"></md-progress-linear>
+    </div>    
+
+    <h2 class="md-title">
+        Imagenes Grandes
+        <md-button ng-disabled="noLargeImageProducts.length <= 0" class="md-accent" ng-click="showLargeResults()">Resultados</md-button>
+    </h2>
+
+    <p>
+        Verifica todas las imagenes grandes que existen actualmente en el sistema!
+        <b>Productos Encontrados: {{noLargeImageProducts.length}}</b>
+    </p>
+    <div flex layout=row>
+        <md-button ng-disabled="isLargeButtonDisabled" class="md-raised md-primary" ng-click="testLargeImages()">Comenzar!</md-button>
+        <md-progress-linear ng-show="!largeLoaderIsDeterminateMode" style="margin-top:20px;" flex md-mode="indeterminate"></md-progress-linear>
+        <md-progress-linear ng-show="largeLoaderIsDeterminateMode" style="margin-top:20px;" flex md-mode="determinate" value="{{largeImagesIndicator}}"></md-progress-linear>
+    </div>
+
+    <h2 class="md-title">
+        Ver Productos sin ninguna imagen
+        <md-button 
+            ng-disabled="noSmallImageProducts.length <= 0 || noMediumImageProducts.length <= 0 || noLargeImageProducts.length <= 0 " 
+            class="md-accent" ng-click="showProductsWithouthAnyImage()">Resultados</md-button>
+    </h2>
+    <p>
+        Recuerda que para ver estos resultados debes correr todos los tests anteriores.
+    </p>
+</md-content>
+</div>
