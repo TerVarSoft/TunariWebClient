@@ -11,7 +11,7 @@ angular.module('tunariApp')
   .controller('ImagesCtrl', ['$scope', '$http', '$mdDialog', 'AuthToken', 'Products', 'ProductInfo', 
     function ($scope, $http, $mdDialog, AuthToken, Products, ProductInfo) {
     
-    $scope.layout.title = 'Administrar Imagenes'; 
+    $scope.layout.title = 'Monitor de Imagenes'; 
     $scope.layout.hideHeader = false;
 
     $scope.smallImagesIndicator = 0;
