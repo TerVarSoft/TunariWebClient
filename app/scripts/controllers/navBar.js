@@ -27,24 +27,12 @@ angular.module('tunariApp')
         redirectTo: '/products',
         propName: 'products',
         text: 'Productos'
-      },
-      images: {
-        icon: 'photo_library',
-        redirectTo: '/images',
-        propName: 'images',
-        text: 'Imagenes'
-      },
+      },      
       statistics: {
         icon: 'insert_chart',
         redirectTo: '/statistics',
         propName: 'statistics',
         text: 'Estadisticas'  			
-      },
-      settings: {
-        icon: 'settings',
-        redirectTo: '/settings',
-        propName: 'settings',
-        text: 'Configuraciones'
       },
       users: {
         icon: 'group',
@@ -52,19 +40,24 @@ angular.module('tunariApp')
         propName: 'users',
         text: 'Usuarios'
       },
+      images: {
+        icon: 'photo_library',
+        redirectTo: '/images',
+        propName: 'images',
+        text: 'Monitor de Imagenes'
+      },
+      settings: {
+        icon: 'settings',
+        redirectTo: '/settings',
+        propName: 'settings',
+        text: 'Configuraciones'
+      },
       logout: {
         icon: 'logout',
         redirectTo: '/logout',
         propName: 'logout',
         text: 'Salir'
-      }      
-      /*clients: {
-        icon: 'people',
-        redirectTo: '/clientSearch',  	
-        subMenuView: 'views/clientsSubMenu.html',
-        propName: 'clients',
-        text: 'Clientes'		
-      },*/      
+      }
     }
 
     $scope.changeView = function(menuItem){

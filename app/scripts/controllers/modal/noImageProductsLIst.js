@@ -8,14 +8,10 @@
  * Controller of the tunariApp
  */
 angular.module('tunariApp')
-  .controller('NoImageProductsListCtrl', ['$scope', '$mdDialog',
-    function ($scope, ) {
+  .controller('NoImageProductsListCtrl', ['$scope', '$mdDialog', 'products', 'title',
+    function ($scope, $mdDialog, products, title) {
 
-      $scope.title = "Productos sin imagen";
-      $scope.products = []; 
-
-      $scope.cancel = function() {
-          $mdDialog.cancel();
-      }
+      $scope.title = title;
+      $scope.products = products; 
 
     }]);

@@ -151,15 +151,65 @@ angular.module('tunariApp')
             controller: 'NoImageProductsListCtrl',
             templateUrl: '../../views/modal/noImageProductsList.html',
             parent: angular.element(document.body),
+            locals: {
+                products: $scope.noSmallImageProducts,
+                title: "Productos sin imagenes pequeñas"
+            },
             targetEvent: event,
-            clickOutsideToClose:true            
+            clickOutsideToClose: true
         }).then(function() {
-            //$scope.searchTags=[selectedTag];
-            //$scope.search();
         }, function() {});  
     }
-    
-    
 
+    $scope.showMediumResults = function() {
+      $mdDialog.show({
+            controller: 'NoImageProductsListCtrl',
+            templateUrl: '../../views/modal/noImageProductsList.html',
+            parent: angular.element(document.body),
+            locals: {
+                products: $scope.noMediumImageProducts,
+                title: "Productos sin imagene medianas"
+            },
+            targetEvent: event,
+            clickOutsideToClose: true
+        }).then(function() {
+        }, function() {});
+    }
+    
+    $scope.showLargeResults = function() {
+      $mdDialog.show({
+            controller: 'NoImageProductsListCtrl',
+            templateUrl: '../../views/modal/noImageProductsList.html',
+            parent: angular.element(document.body),
+            locals: {
+                products: $scope.noLargeImageProducts,
+                title: "Productos sin imagenes grandes"
+            },
+            targetEvent: event,
+            clickOutsideToClose: true
+        }).then(function() {
+        }, function() {});
+    }
 
+    $scope.showProductsWithouthAnyImage = function() {
+
+        var productsWithouthAnyImage = 
+            _.intersectionBy($scope.noSmallImageProducts, $scope.noMediumImageProducts, 'name');
+
+        var productsWithouthAnyImage = 
+            _.intersectionBy(productsWithouthAnyImage, $scope.noLargeImageProducts, 'name');
+
+        $mdDialog.show({
+                controller: 'NoImageProductsListCtrl',
+                templateUrl: '../../views/modal/noImageProductsList.html',
+                parent: angular.element(document.body),
+                locals: {
+                    products: productsWithouthAnyImage,
+                    title: "Productos sin ninguna imagen"
+                },
+                targetEvent: event,
+                clickOutsideToClose: true
+            }).then(function() {
+            }, function() {});
+    }
   }]);
