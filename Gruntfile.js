@@ -58,7 +58,8 @@ module.exports = function (grunt) {
           },
           constants: {
               Config: {
-                  tunariApi: process.env.TUNARI_API                  
+                  tunariApi: process.env.TUNARI_API,
+                  tunariChartsUrl: process.env.TUNARI_CHARTS_URL || ""
               }
           }
       }

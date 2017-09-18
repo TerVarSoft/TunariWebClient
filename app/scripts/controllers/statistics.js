@@ -8,16 +8,25 @@
  * Controller of the clientApp
  */
 angular.module('tunariApp')
-  .controller('StatisticsCtrl', ['$scope', '$mdMedia', 'Products', 'Settings' ,'ProductInfo', 
-    function ($scope, $mdMedia, Products, Settings, ProductInfo) {
+  .controller('StatisticsCtrl', ['$scope', '$sce', '$mdMedia', 'Products', 'Settings' ,'ProductInfo', 'AuthRestangular', 'Config',
+    function ($scope, $sce, $mdMedia, Products, Settings, ProductInfo, AuthRestangular, Config) {
 
     $scope.layout.title = 'Estadisticas';
     $scope.layout.hideHeader = false;
     
+    AuthRestangular.all('products').customGET('log', {});
+
+    $scope.chartUrls = [$sce.trustAsResourceUrl(Config.tunariChartsUrl)];
     $scope.products = [];
     $scope.productsToGraph = [];
     $scope.searchTags = [];    
     var excludeListForStatistics = [];
+    
+    $scope.refreshChart = function() {
+        console.log('refreshing');
+        AuthRestangular.all('products').customGET('log', {});
+        $scope.chartUrls = [$sce.trustAsResourceUrl(Config.tunariChartsUrl)];
+    }
 
     $scope.search = function() {
         var query = _.isEmpty($scope.searchTags) ? {} : {tags: $scope.searchTags.join(' ')};        

@@ -1,4 +1,4 @@
-<md-content flex class="background">
+<!--<md-content flex class="background">
 		<h1 ng-click="search()" class="center primary-color"><strong>Invitaciones en el Depósito</strong></h1>		
 		<div flex=70 flex-offset="15" class="md-padding">
 				<md-chips 
@@ -38,7 +38,16 @@
 						</product-quantity-chart>
 				</md-card>
 		</div>		
-</md-content>	
+	</md-content>-->
+
+<md-content flex>
+    <iframe ng-repeat="chartsUrl in chartUrls" style="width:100%;height:100%" ng-src="{{chartsUrl}}"></iframe>
+
+    <md-button ng-click="refreshChart()" class="md-fab md-fab-bottom-right" aria-label="refreshChart">
+        <ng-md-icon style="fill: #fff" icon="refresh" class="fab-button-icon" size="40">
+        </ng-md-icon>
+    </md-button>
+
+</md-content>
 <!--<div ng-include="'../../views/invitationsQuantityCharts.html'">
 </div>-->
-
