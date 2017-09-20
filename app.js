@@ -56,8 +56,8 @@ app.get('/scripts/config.js', function(req, res){
     res.send("angular.module('tunariApp')" +
           ".constant('Config', {" +
               "tunariApi: '"+ (process.env.TUNARI_API || "https://tunariserver.herokuapp.com/") + "'" + "," +
-              "tunariChartsUrl: '"+ (process.env.TUNARI_CHARTS_URL || "") + "'" + 
-              "kibanaUser: '"+ (process.env.KIBANA_USER || "") + "'" + 
+              "tunariChartsUrl: '"+ (process.env.TUNARI_CHARTS_URL || "") + "'" + "," +
+              "kibanaUser: '"+ (process.env.KIBANA_USER || "") + "'" + "," +
               "kibanaPassword: '"+ (process.env.KIBANA_PASSWORD || "") + "'" + 
           "});"
     );
