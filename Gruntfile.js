@@ -59,7 +59,9 @@ module.exports = function (grunt) {
           constants: {
               Config: {
                   tunariApi: process.env.TUNARI_API,
-                  tunariChartsUrl: process.env.TUNARI_CHARTS_URL || ""
+                  tunariChartsUrl: process.env.TUNARI_CHARTS_URL || "",
+                  kibanaUser: process.env.KIBANA_USER || "",
+                  kibanaPassword: process.env.KIBANA_PASSWORD || ""
               }
           }
       }
