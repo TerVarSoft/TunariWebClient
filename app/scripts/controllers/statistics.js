@@ -16,11 +16,16 @@ angular.module('tunariApp')
 
             AuthRestangular.all('products').customGET('log', {});
 
+            $scope.isKibanaLoading = true;
             $scope.chartUrls = [$sce.trustAsResourceUrl(Config.tunariChartsUrl)];
             $scope.products = [];
             $scope.productsToGraph = [];
             $scope.searchTags = [];
             var excludeListForStatistics = [];
+
+            $scope.onKibanaLoaded = function (location) {
+                $scope.isKibanaLoading = false;
+            }
 
             $scope.refreshChart = function () {
                 console.log('refreshing');

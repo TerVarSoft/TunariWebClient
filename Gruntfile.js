@@ -558,6 +558,7 @@ module.exports = function (grunt) {
                 'bower_components/jquery/dist/jquery.min.js',
              /*   'bower_components/bootstrap/dist/js/bootstrap.min.js',*/
                 'bower_components/angular/angular.min.js',
+                'bower_components/ng-onload/release/ng-onload.min.js',
                 'bower_components/angular-notify/dist/angular-notify.min.js',
                 'bower_components/angular-animate/angular-animate.min.js',
                 'bower_components/angular-route/angular-route.min.js',

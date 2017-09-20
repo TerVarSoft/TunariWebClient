@@ -17,6 +17,7 @@ angular
     'ngMaterial',
     'ngMdIcons',
     'ngMessages',
+    'ngOnload',
     'ui.materialize'
   ])
   .config(['$routeProvider', '$mdThemingProvider', '$httpProvider', 'RestangularProvider', 'Config', 

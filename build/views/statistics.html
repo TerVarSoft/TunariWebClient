@@ -41,13 +41,18 @@
 	</md-content>-->
 
 <md-content flex>
-    <iframe ng-repeat="chartsUrl in chartUrls" style="width:100%;height:100%" ng-src="{{chartsUrl}}"></iframe>
+	<iframe ng-onload="onKibanaLoaded(location)" ng-repeat="chartsUrl in chartUrls" style="width:100%;height:100%" ng-src="{{chartsUrl}}"></iframe>
 
-    <md-button ng-click="refreshChart()" class="md-fab md-fab-bottom-right" aria-label="refreshChart">
-        <ng-md-icon style="fill: #fff" icon="refresh" class="fab-button-icon" size="40">
-        </ng-md-icon>
-    </md-button>
+	<md-button ng-click="refreshChart()" class="md-fab md-fab-bottom-right" aria-label="refreshChart">
+		<ng-md-icon style="fill: #fff" icon="refresh" class="fab-button-icon" size="40">
+		</ng-md-icon>
+	</md-button>
 
 </md-content>
+
+<div flex=100 ng-show="isKibanaLoading" layout="row" layout-sm="column" layout-align="center center">
+	<md-progress-circular md-mode="indeterminate" class="md-accent md-hue-1" md-diameter="60">
+	</md-progress-circular>
+</div>
 <!--<div ng-include="'../../views/invitationsQuantityCharts.html'">
 </div>-->
