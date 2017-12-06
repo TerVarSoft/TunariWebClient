@@ -23,7 +23,7 @@ angular.module('tunariApp')
             $scope.searchTags = [];
             var excludeListForStatistics = [];
 
-            $scope.onKibanaLoaded = function (location) {
+            $scope.onKibanaLoaded = function () {
                 $scope.isKibanaLoading = false;
             }
 

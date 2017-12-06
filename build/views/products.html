@@ -25,8 +25,8 @@
                         </span>
                         <div carousel >                    
                             <a ng-repeat="product in favorites" class="carousel-item unselectable">
-                                <img check-image="{{getProductImageUrl(product, '-L')}}" ng-dblclick="searchFavorite(product.name)" 
-                                    src="/images/tunari-logo-1.png" prevent-right-click>                        
+                                <img check-image="{{product.imageUrl}}" ng-dblclick="searchFavorite(product.name)" 
+                                    src="/images/loading.gif" prevent-right-click>
                                 <p class="center" layout-align"center center"><b>{{product.name}}</b></p>
                             </a>                                                         
                         </div>
@@ -37,8 +37,8 @@
             <div flex=100  layout=row layout-wrap>                
                 <div flex-xs=100 flex-sm=50 flex=25 style="padding:10px" ng-repeat="product in products">
                     <div class="card sticky-action" md-whiteframe=4>
-                        <div class="card-image">                            
-                            <img materialboxed check-image="{{getProductImageUrl(product, '-L')}}" data-caption={{product.name}}
+                        <div class="card-image">
+                            <img materialboxed check-image="{{product.imageUrl}}" data-caption={{product.name}}
                                 class="materialboxed product-image" width="650" src="images/loading.gif" prevent-right-click>
                         </div>
                         <div md-truncate class="card-content">

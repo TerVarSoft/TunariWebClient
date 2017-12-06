@@ -57,10 +57,6 @@ angular.module('tunariApp')
             SearchInfo.setTags($scope.searchTags);
             $scope.isLoading = false;
         }, handleRequestError);
-    }     
-
-    $scope.getProductImageUrl = function(product, sufix) {
-        return  ProductInfo.getProductImageUrl(product, sufix);       
     }
 
     $scope.openCreateProductModal = function(event) {
