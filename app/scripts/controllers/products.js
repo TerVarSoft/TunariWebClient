@@ -13,7 +13,7 @@ angular.module('tunariApp')
     
     $scope.layout.title = 'Productos';
     $scope.layout.hideHeader = false;
-       
+    
     var pagination = {
         page: 0,
         itemsPerPage:30
@@ -29,7 +29,7 @@ angular.module('tunariApp')
     // Pull favorites
     Products.getList({isFavorite: true}).then(function(favorites) {
         $scope.favorites = favorites
-        $scope.showFavorites = true;  
+        $scope.showFavorites = true;
     }, handleRequestError);
 
     $scope.search = function() {
@@ -47,7 +47,12 @@ angular.module('tunariApp')
 
     $scope.searchMore = function() {
         $scope.isLoading = true;
-        var query = _.isEmpty($scope.searchTags) ? {} : {tags: $scope.searchTags.join(' ')};
+        /** If no search, sort by updatedAt. 
+         * Descending by default */
+        var query = _.isEmpty($scope.searchTags) 
+            ? {querySort: "updatedAt"} 
+            : {tags: $scope.searchTags.join(' ')};
+
         query.page = ++pagination.page;
         query.queryLimit = pagination.itemsPerPage;
 
