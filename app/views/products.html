@@ -10,8 +10,8 @@
                     <h3 class="text-border">
                         {{product.properties.type || product.category}}
                     </h3>
-                    <h4 class="text-border" ng-show="product.publicPackagePrice">
-                        {{product.publicPackagePrice}} Bs.
+                    <h4 class="text-border" ng-show="product[selectedPrice]">
+                        {{product[selectedPrice]}} Bs por {{selectedPriceText}}
                     </h4>
                 </div>
             </li>

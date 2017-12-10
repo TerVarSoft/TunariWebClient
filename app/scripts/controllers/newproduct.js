@@ -17,6 +17,7 @@ angular.module('tunariApp')
     $scope.productNames = [];
     $scope.newPrice = {};
     $scope.newLocation = {};
+    $scope.imageExtensions = ["jpg", "png"];
     $scope.product = AuthRestangular.one('products');
     $scope.isLoading = true;    
 
@@ -26,7 +27,7 @@ angular.module('tunariApp')
 
         $scope.priceTypes = _.find(settings, {'key': 'priceTypes'}).value;
         $scope.newPrice.type = _.find($scope.priceTypes, function(price) {return _.includes(price, 'Unidad')});
-        $scope.newPrice.quantity = 1;
+        $scope.newPrice.quantity = 1;        
 
         $scope.locationTypes = _.find(settings, {key: 'locationTypes'}).value;
         $scope.newLocation.type = $scope.locationTypes[0];        
@@ -154,6 +155,7 @@ angular.module('tunariApp')
         $scope.product.category = $scope.product.category ? 
                                     $scope.product.category : $scope.categories[0].name;        
         
+        $scope.product.imageExtension = $scope.product.imageExtension || $scope.imageExtensions[0];                                     
         $scope.product.locations = $scope.product.locations || [];
         $scope.product.tags = $scope.product.tags ? $scope.product.tags : [];
         $scope.product.images =  $scope.product.images || [];        

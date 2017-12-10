@@ -19,14 +19,24 @@
                         <label>Nombre</label>
                         <input ng-model="product.name" type="text" autocomplete="off"/>                                                            
                     </md-input-container>
-                    <md-input-container flex-offset="5" flex=90 style="margin-top:0px;padding-top:0px">
-                        <label>Proveedor</label>
-                        <md-select ng-model="product.provider" placeholder="Proveedor">
-                            <md-option ng-repeat="provider in productProviders" ng-value="provider">
-                                {{provider}}
-                            </md-option>
-                        </md-select>
-                    </md-input-container>
+                    <div flex-offset="5" flex=90 layout="row" layout-wrap>
+                        <md-input-container flex=50 style="margin-top:0px;padding-top:0px">
+                            <label>Proveedor</label>
+                            <md-select ng-model="product.provider" placeholder="Proveedor">
+                                <md-option ng-repeat="provider in productProviders" ng-value="provider">
+                                    {{provider}}
+                                </md-option>
+                            </md-select>
+                        </md-input-container>
+                        <md-input-container flex=50 style="margin-top:0px;padding-top:0px">
+                            <label>Extension de la imagen</label>
+                            <md-select ng-model="product.imageExtension" placeholder="Extension de la imagen">
+                                <md-option ng-repeat="imageExtension in imageExtensions" ng-value="imageExtension">
+                                    {{imageExtension}}
+                                </md-option>
+                            </md-select>
+                        </md-input-container>
+                    </div>
 
                     <div class="reveal-animation" flex-offset="5" flex=90 ng-include="specificPropertiesView"></div>
 
