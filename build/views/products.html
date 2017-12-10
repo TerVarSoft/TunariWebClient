@@ -1,110 +1,140 @@
-<md-content flex layout="column">        
-    <md-content flex class="background" layout="row">        
-        <div  layout="row" layout-wrap flex=80 flex-sm=80 flex-offset-sm="10" flex-offset="10">
+<md-content flex layout="column">
+    <div class="slider fullscreen" ng-show="showSampleBook" ng-click="toogleSampleBook()">
+        <ul class="slides black-background">
+            <li ng-repeat="product in favorites" class="samplebook-item">
+                <img class="samplebook-image" ng-src="{{product.imageUrl}}">
+                <div class="caption left-align">
+                    <h1 style="text-shadow: -1.5px 0 black, 0 1.5px black, 1.5px 0 black, 0 -1.5px black;">
+                        {{product.name}}
+                    </h1>
+                    <h3 style="text-shadow: -1.5px 0 black, 0 1.5px black, 1.5px 0 black, 0 -1.5px black;" ng-show="product.publicPackagePrice">
+                        {{product.publicPackagePrice}} Bs.
+                    </h3>
+                </div>
+            </li>
+        </ul>
+    </div>
+    <md-content flex class="background" layout="row" ng-if="!showSampleBook">
+        <div layout="row" layout-wrap flex=80 flex-sm=80 flex-offset-sm="10" flex-offset="10">
+
             <h1 flex="100" class="center primary-color"><strong>Productos Tunari</strong></h1>
-		    </br>                                            
+            </br>
             <div flex=100 class="md-padding" ng-show="!isLoading">
-                <md-chips 
-                    ng-model="searchTags"
-                    md-on-add="search()"
-                    md-on-remove="search()"
-                    readonly="readonly"
-                    md-removable="removable"
-                    placeholder="Busquemos un producto!"
-                    delete-button-label="Remove Tag"
-                    delete-hint="Press delete to remove tag"
+                <md-chips ng-model="searchTags" md-on-add="search()" md-on-remove="search()" readonly="readonly" md-removable="removable"
+                    placeholder="Busquemos un producto!" delete-button-label="Remove Tag" delete-hint="Press delete to remove tag"
                     secondary-placeholder="Escribe algo mas!">
-                </md-chips>                            
-            </div>        
+                </md-chips>
+            </div>
             <div flex="100" ng-if="showFavorites && favorites.length > 0 && !isLoading" class="md-padding">
-                <div class="card" md-whiteframe=4>                    
+                <div class="card" md-whiteframe=4>
                     <div class="card-image">
                         <span style="color:#607d8b;top:0px;right:0px" class="card-title favorites-title">
-                            Favoritos
-                            <i style="top:3px" class="material-icons left waves-effect" class="primary-color">star</i>
-                        </span>
-                        <div carousel >                    
+                                Favoritos
+                                <i style="top:3px" class="material-icons left waves-effect" class="primary-color">star</i>
+                            </span>
+                        <div carousel>
                             <a ng-repeat="product in favorites" class="carousel-item unselectable">
-                                <img check-image="{{product.imageUrl}}" ng-dblclick="searchFavorite(product.name)" 
-                                    src="/images/loading.gif" prevent-right-click>
-                                <p class="center" layout-align"center center"><b>{{product.name}}</b></p>
-                            </a>                                                         
+                                    <img check-image="{{product.imageUrl}}" ng-dblclick="searchFavorite(product.name)" 
+                                        src="/images/loading.gif" prevent-right-click>
+                                    <p class="center" layout-align"center center"><b>{{product.name}}</b></p>
+                                </a>
                         </div>
-                        
-                    </div>                    
-                </div>             
-            </div>    
-            <div flex=100  layout=row layout-wrap>                
+
+                    </div>
+                </div>
+            </div>
+            <div flex=100 layout=row layout-wrap>
                 <div flex-xs=100 flex-sm=50 flex=25 style="padding:10px" ng-repeat="product in products">
                     <div class="card sticky-action" md-whiteframe=4>
                         <div class="card-image">
-                            <img materialboxed check-image="{{product.imageUrl}}" data-caption={{product.name}}
-                                class="materialboxed product-image" width="650" src="images/loading.gif" prevent-right-click>
+                            <img materialboxed check-image="{{product.imageUrl}}" data-caption={{product.name}} class="materialboxed product-image" width="650"
+                                src="images/loading.gif" prevent-right-click>
                         </div>
                         <div md-truncate class="card-content">
-                            <span  class="card-title activator grey-text text-darken-4">{{product.name}}</span>
+                            <span class="card-title activator grey-text text-darken-4">{{product.name}}</span>
                         </div>
-                        
+
                         <div class="card-action">
                             <p ng-show="product[selectedPrice]">
                                 {{product[selectedPrice]}} Bs por {{selectedPriceText}}
-                            </p>                                                       
+                            </p>
                             <p ng-hide="product[selectedPrice]" ng-click="openAddPriceWhenNoPriceModal($event, product)" style="color:#a9b9c1">No hay precio para mostrar</p>
                         </div>
 
                         <div class="card-reveal">
                             <div flex layout="row">
-                                <div flex class="grey-text text-darken-4">                                                                
+                                <div flex class="grey-text text-darken-4">
                                     <i class="material-icons right waves-effect" style="color:#607d8b" ng-click="openEditProductModal($event, product)">mode_edit</i>
                                     <i class="material-icons right waves-effect" style="color:#607d8b" ng-click="deleteProduct($event, product)">delete</i>
-                                    <i class="material-icons right waves-effect" ng-class="product.isFavorite ? 'accent-color' : 'primary-color'"
-                                         ng-click="toggleFavorite(product)">star</i>  
-                                    <i class="material-icons right waves-effect" style="color:#607d8b" ng-click="openReduceQuantity($event, product)">shopping_basket</i>                                                                   
+                                    <i class="material-icons right waves-effect" ng-class="product.isFavorite ? 'accent-color' : 'primary-color'" ng-click="toggleFavorite(product)">star</i>
+                                    <i class="material-icons right waves-effect" style="color:#607d8b" ng-click="openReduceQuantity($event, product)">shopping_basket</i>
                                 </div>
                             </div>
                             <div flex>
-                                <div  flex class="card-title grey-text text-darken-4">
-                                    {{product.name}}                                                                            
+                                <div flex class="card-title grey-text text-darken-4">
+                                    {{product.name}}
                                 </div>
                                 <p>{{product.properties.type || product.category}}</p>
-                                </br>                                                                                                              
-                                <div ng-show="product.quantity"><b>Cantidad:</b> {{product.quantity}} Unidades en deposito</br></div>  
-                                <div ng-show="product.properties.size"><b>Tamaño:</b> {{product.properties.size}}</br></div>
+                                </br>
+                                <div ng-show="product.quantity"><b>Cantidad:</b> {{product.quantity}} Unidades en deposito</br>
+                                </div>
+                                <div ng-show="product.properties.size"><b>Tamaño:</b> {{product.properties.size}}</br>
+                                </div>
                                 <div ng-repeat="location in product.locations">
                                     <b>{{location.type}}:</b> {{location.value}}</br>
                                 </div>
                             </div>
-                        </div> 
-                    </div>                                       
+                        </div>
+                    </div>
                 </div>
                 <div flex=100 ng-show="isLoading" layout="row" layout-sm="column" layout-align="center center">
-                    <md-progress-circular md-mode="indeterminate" class="md-accent md-hue-1" md-diameter="60">                        
+                    <md-progress-circular md-mode="indeterminate" class="md-accent md-hue-1" md-diameter="60">
                     </md-progress-circular>
                 </div>
                 <div flex=100 layout=row layout-align="center center">
                     <md-button ng-click="searchMore()">Mas Productos!</md-button>
-                </div>                                                                
-            </div>          
-        </div>   
-        
+                </div>
+            </div>
+        </div>
+
     </md-content>
 
-    <md-button class="md-fab md-fab-bottom-right" style="bottom: 230px" aria-label="openCloudinary">
-        <a ng-href="https://cloudinary.com/console/media_library" target="_blank">
-            <ng-md-icon style="fill: #fff" icon="photo" class="fab-button-icon" size="40">
-            </ng-md-icon>
-        </a>
-    </md-button>
-    <md-button ng-click="openQuickSearchsModal($event)" class="md-fab md-fab-bottom-right" style="bottom: 90px" aria-label="productsSettings">          
-        <ng-md-icon style="fill: #fff" icon="zoom_in" class="fab-button-icon" size="40">
-        </ng-md-icon>  
-    </md-button>
-    <md-button ng-click="openCreateProductModal($event)" class="md-fab md-fab-bottom-right" aria-label="createProduct">          
-        <ng-md-icon style="fill: #fff" icon="add_circle_outline" class="fab-button-icon" size="40">
-        </ng-md-icon>  
-    </md-button>
-    <md-button ng-click="openSelectPriceModal($event)" class="md-fab md-fab-bottom-right" style="bottom: 160px" aria-label="productSettings">          
-        <ng-md-icon style="fill: #fff" icon="attach_money" class="fab-button-icon" size="40">
-        </ng-md-icon>  
-    </md-button>
+    <md-fab-speed-dial md-direction="down" md-open="demo.isOpen" class="md-scale md-fab-top-right" ng-hide="showSampleBook">
+        <md-fab-trigger>
+            <md-button aria-label="menu" class="md-fab">
+                <ng-md-icon style="fill: #fff" icon="menu" class="fab-button-icon" size="40">
+                </ng-md-icon>
+            </md-button>
+        </md-fab-trigger>
+
+        <md-fab-actions>
+            <md-button ng-click="openCreateProductModal($event)" class="md-fab md-raised md-mini" aria-label="createProduct">
+                <md-tooltip md-direction="left" md-autohide="false">Nuevo Producto</md-tooltip>
+                <ng-md-icon style="fill: #ff4081" icon="add_circle" class="fab-button-icon" size="30">
+                </ng-md-icon>
+            </md-button>
+            <md-button ng-click="openQuickSearchsModal($event)" class="md-fab md-raised md-mini" aria-label="productsSettings">
+                <md-tooltip md-direction="left" md-autohide="false">Busquedas Rapidas</md-tooltip>
+                <ng-md-icon style="fill: #ff4081" icon="search" class="fab-button-icon" size="30">
+                </ng-md-icon>
+            </md-button>
+            <md-button ng-click="openSelectPriceModal($event)" class="md-fab md-raised md-mini" aria-label="productSettings">
+                <md-tooltip md-direction="left" md-autohide="false">Precios Visibles</md-tooltip>
+                <ng-md-icon style="fill: #ff4081" icon="monetization_on" class="fab-button-icon" size="30">
+                </ng-md-icon>
+            </md-button>
+            <md-button class="md-fab md-raised md-mini" aria-label="openCloudinary">
+                <md-tooltip md-direction="left" md-autohide="false"> Administrador de Imagenes</md-tooltip>
+                <a ng-href="https://cloudinary.com/console/media_library" target="_blank">
+                    <ng-md-icon style="fill: #ff4081" icon="add_a_photo" class="fab-button-icon" size="30">
+                    </ng-md-icon>
+                </a>
+            </md-button>
+            <md-button class="md-fab md-raised md-mini" ng-click="toogleSampleBook()" aria-label="displaySampleBook">
+                <md-tooltip md-direction="left" md-autohide="false"> Mostrario</md-tooltip>
+                <ng-md-icon style="fill: #ff4081" icon="ondemand_video" class="fab-button-icon" size="30">
+                </ng-md-icon>
+            </md-button>
+        </md-fab-actions>
+    </md-fab-speed-dial>
 </md-content>

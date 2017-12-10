@@ -15,7 +15,8 @@ angular.module('tunariApp')
     $scope.layout.hideHeader = false;
 
     Settings.getList().then(function(settings){
-        $scope.imgServer = _.find(settings, {'key': 'imgServer'});    
+        $scope.imgServer = _.find(settings, {'key': 'imgServer'});
+        $scope.sampleBookInterval = _.find(settings, {'key': 'sampleBookInterval'});
         $scope.quickSearchs = _.find(settings, {'key': 'quickSearchs'});
         $scope.excludeListForStatistics = _.find(settings, {'key': 'excludeListForStatistics'});   
         $scope.invitationTypes = _.find(settings, {'key': 'invitationTypes'});
@@ -23,6 +24,12 @@ angular.module('tunariApp')
         if(!$scope.imgServer) {
             Settings.post({key:"imgServer", value:""}).then(function(newSetting){
               $scope.imgServer = newSetting;
+            });
+        }
+
+        if(!$scope.sampleBookInterval) {
+            Settings.post({key:"sampleBookInterval", value:5000}).then(function(newSetting){
+              $scope.sampleBookInterval = newSetting;
             });
         }
 
@@ -52,6 +59,9 @@ angular.module('tunariApp')
     $scope.saveSettings = function() {
         $scope.imgServer.save().then(function() {
             ProductInfo.setImageServer($scope.imgServer.value);
+        });
+        $scope.sampleBookInterval.save().then(function() {
+            ProductInfo.setSampleBookInterval($scope.sampleBookInterval.value);
         });
         $scope.quickSearchs.save().then(function() {
             ProductInfo.setProductQuickSearchs($scope.quickSearchs.value);

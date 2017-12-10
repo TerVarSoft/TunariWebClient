@@ -11,6 +11,7 @@ angular.module('tunariApp')
   .service('ProductInfo', ["Settings", "Config", function (Settings, Config) {
 
     var imgServer = "",
+        sampleBookInterval = 5000,
         selectedPrice = "clientPackagePrice",
         quickSearchs = [],
         excludeListForStatistics = [];
@@ -19,6 +20,8 @@ angular.module('tunariApp')
     initPriceTypesTexts();
 
     Settings.getList().then(function(settings){
+        imgServer = _.find(settings, {'key': 'imgServer'}).value;
+        sampleBookInterval = _.find(settings, {'key': 'sampleBookInterval'}).value;
         imgServer = _.find(settings, {'key': 'imgServer'}).value;
         quickSearchs = _.find(settings, {'key': 'quickSearchs'}).value;        
         excludeListForStatistics = _.find(settings, {'key': 'excludeListForStatistics'}).value;
@@ -56,17 +59,28 @@ angular.module('tunariApp')
         imgServer = newImageServer;
     }
 
+    this.setSampleBookInterval = function(newSampleBookInterval) {
+        sampleBookInterval = newSampleBookInterval;
+    }
+
     this.setProductQuickSearchs = function(newQuickSearchs) {
         quickSearchs = newQuickSearchs;
     }
 
-    this.getProductQuickSearchs = function() {
-        return quickSearchs;
-    }
-
-
     this.setSelectedPrice = function(newSelectedPrice) {
         selectedPrice = newSelectedPrice;
+    }
+
+    this.setExcludeListForStatistics = function() {
+        return excludeListForStatistics;
+    }
+    
+    this.getSampleBookInterval = function() {
+        return sampleBookInterval;
+    }
+
+    this.getProductQuickSearchs = function() {
+        return quickSearchs;
     }
 
     this.getSelectedPrice = function () {
@@ -79,11 +93,7 @@ angular.module('tunariApp')
 
     this.getPriceTypeTexts = function () {
         return priceTypesTexts;
-    }
-
-    this.setExcludeListForStatistics = function() {
-        return excludeListForStatistics;
-    }
+    }    
 
     this.getExcludeListForStatistics = function() {
         return excludeListForStatistics;

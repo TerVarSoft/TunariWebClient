@@ -39,12 +39,6 @@ angular.module('tunariApp')
                     redirectTo: '/images',
                     propName: 'images',
                     text: 'Monitor de Imagenes'
-                },
-                settings: {
-                    icon: 'settings',
-                    redirectTo: '/settings',
-                    propName: 'settings',
-                    text: 'Configuraciones'
                 }
             }
 
@@ -55,6 +49,13 @@ angular.module('tunariApp')
                     propName: 'statistics',
                     text: 'Estadisticas'
                 }
+            }
+
+            $scope.menus.settings = {
+                icon: 'settings',
+                redirectTo: '/settings',
+                propName: 'settings',
+                text: 'Configuraciones'
             }
 
             $scope.menus.logout = {

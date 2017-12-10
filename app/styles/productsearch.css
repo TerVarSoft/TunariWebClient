@@ -40,3 +40,17 @@ ng-md-icon.fab-button-icon-search {
     position: relative;
     top: 5px; 
 }
+
+.slider .slides.black-background {
+    background-color:#111111;
+}
+
+.slider .slides li.samplebook-item {
+    padding:30px;
+}
+
+.slider .slides li img.samplebook-image {
+    object-fit:contain;
+    background-size:contain;
+    background-repeat:no-repeat;
+}
