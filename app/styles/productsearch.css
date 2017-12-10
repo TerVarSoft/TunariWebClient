@@ -54,3 +54,6 @@ ng-md-icon.fab-button-icon-search {
     background-size:contain;
     background-repeat:no-repeat;
 }
+.slider .slides .text-border {
+    text-shadow: -1.5px 0 black, 0 1.5px black, 1.5px 0 black, 0 -1.5px black;
+}

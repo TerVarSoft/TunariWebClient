@@ -1,15 +1,18 @@
 <md-content flex layout="column">
-    <div class="slider fullscreen" ng-show="showSampleBook" ng-click="toogleSampleBook()">
+    <div class="slider fullscreen" ng-if="showSampleBook" ng-click="toogleSampleBook()">
         <ul class="slides black-background">
             <li ng-repeat="product in favorites" class="samplebook-item">
                 <img class="samplebook-image" ng-src="{{product.imageUrl}}">
                 <div class="caption left-align">
-                    <h1 style="text-shadow: -1.5px 0 black, 0 1.5px black, 1.5px 0 black, 0 -1.5px black;">
+                    <h1 class="text-border">
                         {{product.name}}
                     </h1>
-                    <h3 style="text-shadow: -1.5px 0 black, 0 1.5px black, 1.5px 0 black, 0 -1.5px black;" ng-show="product.publicPackagePrice">
-                        {{product.publicPackagePrice}} Bs.
+                    <h3 class="text-border">
+                        {{product.properties.type || product.category}}
                     </h3>
+                    <h4 class="text-border" ng-show="product.publicPackagePrice">
+                        {{product.publicPackagePrice}} Bs.
+                    </h4>
                 </div>
             </li>
         </ul>

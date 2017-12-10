@@ -31,14 +31,6 @@ angular.module('tunariApp')
     Products.getList({isFavorite: true}).then(function(favorites) {
         $scope.favorites = favorites
         $scope.showFavorites = true;
-
-        /**Timeout is needed due to 
-         * refershing issues with materialized slider */
-        $timeout(function() {
-            $('.slider').removeClass('initialized');
-            $('.slider').slider({interval: ProductInfo.getSampleBookInterval(), indicators:false});
-        }, 200);
-        
     }, handleRequestError);
 
     $scope.search = function() {
@@ -75,6 +67,11 @@ angular.module('tunariApp')
 
     $scope.toogleSampleBook = function() {
         $scope.showSampleBook = !$scope.showSampleBook;
+        /**Timeout is needed due to 
+         * refershing issues with materialized slider */
+        $timeout(function() {
+            $('.slider').slider({interval: ProductInfo.getSampleBookInterval(), indicators:false});
+        }, 200);
     }
 
     $scope.openCreateProductModal = function(event) {
