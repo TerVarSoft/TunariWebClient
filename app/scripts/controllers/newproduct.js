@@ -17,7 +17,7 @@ angular.module('tunariApp')
     $scope.productNames = [];
     $scope.newPrice = {};
     $scope.newLocation = {};
-    $scope.imageExtensions = ["jpg", "png"];
+    $scope.imageExtensions = ["png", "jpg"];
     $scope.product = AuthRestangular.one('products');
     $scope.isLoading = true;    
 

@@ -41,7 +41,7 @@
 	</md-content>-->
 
 <md-content flex layout="row">
-	<iframe flex ng-onload="onKibanaLoaded()" ng-repeat="chartsUrl in chartUrls" style="width:100%;height:100%" ng-src="{{chartsUrl}}"></iframe>
+	<iframe flex ng-onload="onKibanaLoaded()" ng-repeat="chartsUrl in chartUrls" style="width:100%" ng-src="{{chartsUrl}}"></iframe>
 </md-content>
 <md-button ng-click="refreshChart()" class="md-fab md-fab-bottom-right" aria-label="refreshChart">
 	<ng-md-icon style="fill: #fff" icon="refresh" class="fab-button-icon" size="40">
