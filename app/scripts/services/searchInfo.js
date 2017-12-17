@@ -10,7 +10,7 @@
 angular.module('tunariApp')
   .service('SearchInfo', function () {
     
-    this.tags = "";
+    this.tags = [];
 
     this.getTags = function(){
     	return this.tags;

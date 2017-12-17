@@ -18,8 +18,8 @@ angular.module('tunariApp')
         page: 0,
         itemsPerPage:30
     };  
-    var useFullScreenForModals = ($mdMedia('xs'));     
-    $scope.searchTags =[];
+    var useFullScreenForModals = ($mdMedia('xs'));
+    $scope.searchTags = SearchInfo.getTags() || [];
     $scope.products = [];
     $scope.favorites = [];
     $scope.showFavorites = false;
@@ -29,8 +29,7 @@ angular.module('tunariApp')
     
     // Pull favorites
     Products.getList({isFavorite: true}).then(function(favorites) {
-        $scope.favorites = favorites
-        $scope.showFavorites = true;
+        $scope.favorites = favorites;
     }, handleRequestError);
 
     $scope.search = function() {
