@@ -30,7 +30,7 @@ angular.module('tunariApp')
             var step = 100 /products.length;
             _.each(products, function(product, index) {
 
-                $http.get(product.imageUrl, {
+                $http.get(product.thumbnailUrl, {
                   responseType: 'arraybuffer',
                   headers: {
                     'accept': 'image/webp,image/*,*/*;q=0.8',
