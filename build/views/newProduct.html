@@ -67,36 +67,17 @@
             <md-content flex layout-padding layout="row" layout-wrap>
                 <div flex="100" flex-gt-sm="50">
                     <md-card layout-padding>
-                        <h5 class="primary-color center">Precios de Cliente</h5>
-                        <md-input-container class="md-block" flex-gt-xs>
-                            <label>Precio Unitario (Bs.)</label>
-                            <input ng-model="product.clientUnitPrice" type="number">
-                        </md-input-container>
-                        <md-input-container class="md-block" flex-gt-xs>
-                            <label ng-hide="product.quantityPerPackage">Precio Paquete (Bs.)</label>
-                            <label ng-show="product.quantityPerPackage">
-                                Precio Paquete (Bs.) / {{product.quantityPerPackage}} Unidades
-                            </label>
-                            <input ng-model="product.clientPackagePrice" type="number">
-                        </md-input-container>
+                        <h5 class="primary-color center">Precios de Venta</h5>
+                        <div ng-repeat="priceType in priceTypes">
+                            <md-input-container class="md-block" flex-gt-xs>
+                                <label>Precio {{priceType.name}} (Bs.)</label>
+                                <input ng-model="product.prices[priceType.id].value" 
+                                    ng-init="product.prices[priceType.id].type = priceType.id"
+                                    type="number">
+                            </md-input-container>
+                        </div>
                     </md-card>
                 </div>
-                <div flex="100" flex-gt-sm="50">
-                    <md-card layout-padding>
-                        <h5 class="primary-color center">Precios Publicos</h5>
-                        <md-input-container class="md-block" flex-gt-xs>
-                            <label>Precio Unitario (Bs.)</label>
-                            <input ng-model="product.publicUnitPrice" type="number">
-                        </md-input-container>
-                        <md-input-container class="md-block" flex-gt-xs>
-                            <label ng-hide="product.quantityPerPackage">Precio Paquete (Bs.)</label>
-                            <label ng-show="product.quantityPerPackage">
-                                Precio Paquete (Bs.) / {{product.quantityPerPackage}} Unidades
-                            </label>
-                            <input ng-model="product.publicPackagePrice" type="number">
-                        </md-input-container>
-                    </md-card>
-                </div>                
                 <div flex="100" flex-gt-sm="50">
                     <md-card layout-padding>
                         <h5 class="primary-color center">Precios de Compra/Fabricacion</h5>
