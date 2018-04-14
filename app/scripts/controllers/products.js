@@ -130,8 +130,7 @@ angular.module('tunariApp')
           clickOutsideToClose: true
         }).then(function (selectedPrice) {
           ProductInfo.setSelectedPrice(selectedPrice);
-          $scope.selectedPrice = selectedPrice;
-          // $scope.selectedPriceText = ProductInfo.getPriceText(selectedPrice);
+          $scope.selectedPrice = selectedPrice;          
         }, function () { });
       }
 

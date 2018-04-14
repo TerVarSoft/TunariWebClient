@@ -85,7 +85,7 @@ angular.module('tunariApp')
 
             function initProductPrices() {
                 _.each($scope.productCategories.value,
-                    category => {
+                    function(category) {
                         category.priceTypes = category.priceTypes ?
                             category.priceTypes
                             : [];
@@ -94,9 +94,9 @@ angular.module('tunariApp')
             }
 
             function saveProductCategories() {
-                _.each($scope.productCategories.value, category => {
+                _.each($scope.productCategories.value, function(category) {
                     category.priceTypes =
-                        _.map(category.priceNames, (priceName, index) => {
+                        _.map(category.priceNames, function(priceName, index) {
                             return { id: index, name: priceName }
                         });
                     delete category.priceNames

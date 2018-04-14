@@ -6,32 +6,7 @@
     <meta name="description" content="">
     <meta name="viewport" content="width=device-width">
     <!-- Place favicon.ico and apple-touch-icon.png in the root directory -->
-	<!-- build:css styles/app.min.css -->
-      
-    <!-- bower:css -->
-    <link rel="stylesheet" href="bower_components/angular-notify/dist/angular-notify.css" />
-    <link rel="stylesheet" href="bower_components/angular-material/angular-material.css" />
-    <link rel="stylesheet" href="bower_components/angular-material-icons/angular-material-icons.css" />
-    <!-- endbower -->
-    
-    <link rel="stylesheet" href="custom_dependencies/angular-materialize/angular-materialize-0.97.8.css">    
-    <link href="custom_dependencies/angular-materialize/material-icons.css" rel="stylesheet">
-    <link rel="stylesheet" href="styles/sandstone.css">
-    <!-- <link rel="stylesheet" href="bower_components/bootstrap/dist/css/bootstrap.css"> -->
-    <link rel="stylesheet" href="styles/scrollable-table.css" />
-
-    <link rel="stylesheet" href="styles/main.css">
-    <link rel="stylesheet" href="styles/productsearch.css">
-    <link rel="stylesheet" href="styles/products.css">
-    <link rel="stylesheet" href="styles/shoppingcart.css">
-    <link rel="stylesheet" href="styles/typeahead.css">      
-    <link rel="stylesheet" href="styles/clientsearch.css">
-    <link rel="stylesheet" href="styles/clientsamples.css">
-    <link rel="stylesheet" href="styles/newclient.css">
-    <link rel="stylesheet" href="styles/statistics.css">
-    <link rel="stylesheet" href="styles/sellingsCharts.css">
-    <link rel="stylesheet" href="styles/sellingOptions.css">
-    <!-- /build -->
+	<link rel="stylesheet" href="styles/app.min.css"/>
   </head>
   <body ng-app="tunariApp" layout="row" ng-cloak>
     
@@ -161,107 +136,11 @@
        ga('send', 'pageview');
     </script>
 
-    <!-- build:js lib/dependencies.js -->
-    <!-- bower:js -->
-    <script src="bower_components/jquery/dist/jquery.js"></script>
-    <script src="bower_components/angular/angular.js"></script>
-    <script src="bower_components/bootstrap/dist/js/bootstrap.js"></script>
-    <script src="bower_components/angular-animate/angular-animate.js"></script>
-    <script src="bower_components/angular-route/angular-route.js"></script>
-    <script src="bower_components/lodash/lodash.js"></script>
-    <script src="bower_components/restangular/dist/restangular.js"></script>
-    <script src="bower_components/angular-notify/dist/angular-notify.js"></script>
-    <script src="bower_components/d3/d3.js"></script>
-    <script src="bower_components/d3-tip/index.js"></script>
-    <script src="bower_components/moment/moment.js"></script>
-    <script src="bower_components/angular-aria/angular-aria.js"></script>
-    <script src="bower_components/angular-messages/angular-messages.js"></script>
-    <script src="bower_components/angular-material/angular-material.js"></script>
-    <script src="bower_components/svg-morpheus/compile/minified/svg-morpheus.js"></script>
-    <script src="bower_components/angular-material-icons/angular-material-icons.min.js"></script>
-    <script src="bower_components/ng-onload/release/ng-onload.min.js"></script>
-    <!-- endbower -->
-    <!--customDependencies-->
-    <!--<script src="custom_dependencies/angular-bootstrap/ui-bootstrap-custom-tpls-0.14.3.js"></script>-->
-    <script src="custom_dependencies/angular-scrollable-table/angular-scrollable-table.js"></script>
-    <script src="custom_dependencies/angular-scrollable-table/angular-locale_es-419.js"></script>    
-    <script src="custom_dependencies/angular-materialize/materialize-0.97.7.min.js"></script>
-    <script src="custom_dependencies/angular-materialize/angular-materialize-0.2.1.min.js"></script>    
-    <!--customDependencies-->
-    <!-- /build -->
+    <script src="lib/dependencies.js"></script>
 
     
-    <!-- build:js scripts/app.min.js -->
-    <script src="scripts/app.js"></script>
-    <script src="scripts/config.js"></script>
-    <script src="scripts/controllers/images.js"></script>
-    <script src="scripts/controllers/products.js"></script>
-    <script src="scripts/controllers/addquantity.js"></script>
-    <script src="scripts/controllers/main.js"></script>
-    <script src="scripts/controllers/login.js"></script>
-    <script src="scripts/controllers/logout.js"></script>
-    <script src="scripts/controllers/navBar.js"></script>
-    <script src="scripts/controllers/about.js"></script>
-    <script src="scripts/services/products.js"></script>
-    <script src="scripts/controllers/content.js"></script>
-    <script src="scripts/controllers/shopCtrl.js"></script>
-    <script src="scripts/services/serverdata.js"></script>
-    <script src="scripts/controllers/editProduct.js"></script>
-    <script src="scripts/controllers/newProduct.js"></script>
-    <script src="scripts/controllers/invitationDetails.js"></script>
-    <script src="scripts/controllers/addingProduct.js"></script>
-    <script src="scripts/controllers/samplebook.js"></script>
-    <script src="scripts/controllers/sellingItem.js"></script>
-    <script src="scripts/controllers/statistics.js"></script>
-    <script src="scripts/controllers/invitationsQuantityCharts.js"></script>
-    <script src="scripts/controllers/statisticsOptions.js"></script>
-    <script src="scripts/controllers/sellingsCharts.js"></script>
-    <script src="scripts/controllers/settings.js"></script>
-    <script src="scripts/controllers/modal/image.js"></script>
-    <script src="scripts/controllers/modal/summaryCart.js"></script>
-    <script src="scripts/controllers/modal/productQuickSearch.js"></script>
-    <script src="scripts/controllers/modal/productsViewSettings.js"></script>
-    <script src="scripts/controllers/modal/addProductPrice.js"></script>
-    <script src="scripts/controllers/modal/noImageProductsList.js"></script>
-    <script src="scripts/controllers/bottomSheet/sellingOptions.js"></script>
-    <script src="scripts/controllers/register.js"></script>
-    <script src="scripts/controllers/users.js"></script>
-    <script src="scripts/services/authToken.js"></script>
-    <script src="scripts/services/authInterceptor.js"></script>
-    <script src="scripts/services/authRestangular.js"></script>
-    <script src="scripts/services/users.js"></script>
-    <script src="scripts/services/login.js"></script>
-    <script src="scripts/services/sellings.js"></script>
-    <script src="scripts/services/clients.js"></script>     
-    <script src="scripts/controllers/questionModal.js"></script>   
-    <script src="scripts/services/messages.js"></script>
-    <script src="scripts/services/notifier.js"></script>
-    <script src="scripts/services/searchInfo.js"></script>
-    <script src="scripts/services/sellingItemInfo.js"></script>
-    <script src="scripts/services/settings.js"></script>
-    <script src="scripts/services/productInfo.js"></script>
-    <script src="scripts/services/speechRecognition.js"></script>
-    <script src="scripts/directives/sellingquantity.js"></script>
-    <script src="scripts/directives/tagsproduct.js"></script>
-    <script src="scripts/directives/shoppingcart.js"></script>
-    <script src="scripts/directives/typeahead.js"></script>
-    <script src="scripts/directives/prodQuantityChart.js"></script>
-    <script src="scripts/directives/sellingsDatepicker.js"></script>
-    <script src="scripts/directives/sellingsbarchart.js"></script>
-    <script src="scripts/directives/checkimage.js"></script>
-    <script src="scripts/directives/validateEquals.js"></script>
-    <script src="scripts/directives/validateNotEmpty.js"></script>
-    <script src="scripts/directives/preventRightClick.js"></script>    
-    <script src="scripts/controllers/clientSearch.js"></script>
-    <script src="scripts/controllers/clientSamples.js"></script>
-    <script src="scripts/controllers/newclient.js"></script>
-    <script src="scripts/controllers/editclient.js"></script>
-    <script src="scripts/directives/productlocation.js"></script>
-    <script src="scripts/directives/uppercase.js"></script>
-    <script src="scripts/filters/checkedproduct.js"></script>
-    <!-- /build -->
+    <script src="scripts/app.min.js"></script>
 
-    <!-- build:js scripts/config.js -->
-    <!-- /build -->
+    <script src="scripts/config.js"></script>
 </body>
 </html>
