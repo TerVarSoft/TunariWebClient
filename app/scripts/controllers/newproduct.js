@@ -25,16 +25,16 @@ angular.module('tunariApp')
         $scope.categories = _.find(settings, {'key': 'productCategories'}).value;
         $scope.productProviders = _.find(settings, {'key': 'productProviders'}).value;
 
-        $scope.priceTypes = _.find(settings, {'key': 'priceTypes'}).value;
-        $scope.newPrice.type = _.find($scope.priceTypes, function(price) {return _.includes(price, 'Unidad')});
-        $scope.newPrice.quantity = 1;        
+        $scope.newPrice.type = "";
+        $scope.newPrice.value = 1;        
 
         $scope.locationTypes = _.find(settings, {key: 'locationTypes'}).value;
         $scope.newLocation.type = $scope.locationTypes[0];        
 
         if($routeParams.productId) {             
             Products.one($routeParams.productId).get().then(function(product) {
-                $scope.product = product;                      
+                $scope.product = product;
+                $scope.priceTypes = _.find($scope.categories, {name:$scope.product.category}).priceTypes;
                 $scope.originalName = $scope.product.name;
                 $scope.layout.title = "Editar Producto " + $scope.product.name;
 

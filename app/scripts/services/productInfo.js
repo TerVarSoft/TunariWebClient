@@ -10,9 +10,10 @@
 angular.module('tunariApp')
   .service('ProductInfo', ["Settings", "Config", function (Settings, Config) {
 
-    var imgServer = "",
+    var productCategories = [],
+        imgServer = "",
         sampleBookInterval = 5000,
-        selectedPrice = "clientPackagePrice",
+        selectedPrice = 0,
         quickSearchs = [],
         excludeListForStatistics = [];
 
@@ -20,6 +21,7 @@ angular.module('tunariApp')
     initPriceTypesTexts();
 
     Settings.getList().then(function(settings){
+        productCategories = _.find(settings, {'key': 'productCategories'}).value;
         imgServer = _.find(settings, {'key': 'imgServer'}).value;
         sampleBookInterval = _.find(settings, {'key': 'sampleBookInterval'}).value;
         imgServer = _.find(settings, {'key': 'imgServer'}).value;
@@ -49,6 +51,10 @@ angular.module('tunariApp')
         }
 
         return imgUrl;
+    }
+
+    this.setProductCategories = function(newProductCategories) {
+        productCategories -= newProductCategories;
     }
 
     this.getExtraImageUrl = function(image) {
@@ -97,6 +103,10 @@ angular.module('tunariApp')
 
     this.getExcludeListForStatistics = function() {
         return excludeListForStatistics;
+    }
+
+    this.getProductCategories = function() {
+        return productCategories;
     }
 
     function initPriceTypesTexts() {

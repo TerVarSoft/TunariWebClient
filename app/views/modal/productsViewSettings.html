@@ -5,9 +5,9 @@
             <br/>
             <md-list-item>
                 <md-radio-group ng-model="selectedPrice">
-                    <md-radio-button ng-repeat="(key, priceType) in priceTypes" 
-                        value="{{key}}" class="md-primary" aria-label="price">
-                        {{priceType}}
+                    <md-radio-button ng-repeat="priceType in priceTypes" 
+                        value="{{priceType.id}}" class="md-primary" aria-label="price">
+                        {{priceType.name}}
                     </md-radio-button>
                 </md-radio-group>
             </md-list-item>

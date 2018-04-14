@@ -1,8 +1,11 @@
 <md-content flex layout="row" layout-align="center" class="background">
     <form flex="80" flex-gt-sm="50" flex ng-submit="saveSettings()">
-        <h1 class="center primary-color"><strong>Configuraciones</strong></h1>
+        <h1 class="center primary-color">
+            <strong>Configuraciones</strong>
+        </h1>
         </br>
         <md-list flex ng-cloack>
+            <md-subheader class="md-no-sticky md-accent">CONFIGURACIONES GENERALES</md-subheader>
             <md-subheader class="md-no-sticky">Tipos de Invitaciones</md-subheader>
             <md-list-item>
                 <md-chips flex ng-model="invitationTypes.value" placeholder="Agrega un tipo!" secondary-placeholder="Etiquetas+">
@@ -21,7 +24,16 @@
                 </md-chips>
             </md-list-item>
             <br/>
-            <md-subheader class="md-no-sticky">Configuraciones Avanzadas</md-subheader>
+            <md-subheader class="md-no-sticky md-accent">CONFIGURACIONES POR CATEGORIA</md-subheader>
+            <div ng-repeat="category in productCategories.value">
+                <md-subheader class="md-no-sticky">{{category.name}}: Tipos de precios</md-subheader>
+                <md-list-item>
+                    <md-chips flex ng-model="category.priceNames" placeholder="Tipos de precios" secondary-placeholder="Precio+">
+                    </md-chips>
+                </md-list-item>
+                <br/>
+            </div>
+            <md-subheader class="md-no-sticky md-accent">CONFIGURACIONES AVANZADAS</md-subheader>
             <br/>
             <md-list-item>
                 <md-input-container class="md-block" flex>

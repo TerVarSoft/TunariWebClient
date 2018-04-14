@@ -20,27 +20,37 @@
     <md-content flex class="background" layout="row" ng-if="!showSampleBook">
         <div layout="row" layout-wrap flex=80 flex-sm=80 flex-offset-sm="10" flex-offset="10">
 
-            <h1 flex="100" class="center primary-color"><strong>Productos Tunari</strong></h1>
+            <h1 flex="100" class="center primary-color">
+                <strong>Productos Tunari</strong>
+            </h1>
             </br>
-            <div flex=100 class="md-padding" ng-show="!isLoading">
+            <div flex=70 class="md-padding" ng-show="!isLoading">
                 <md-chips ng-model="searchTags" md-on-add="search()" md-on-remove="search()" readonly="readonly" md-removable="removable"
                     placeholder="Busquemos un producto!" delete-button-label="Remove Tag" delete-hint="Press delete to remove tag"
                     secondary-placeholder="Escribe algo mas!">
                 </md-chips>
             </div>
+            <div flex=30 class="md-padding" ng-show="!isLoading">
+                <md-select ng-model="selectedCategory" placeholder="Categoria" ng-change="changeCategory(selectedCategory)">
+                    <md-option ng-repeat="category in productCategories" ng-value="category">
+                        {{category.name}}
+                    </md-option>
+                </md-select>
+            </div>
             <div flex="100" ng-if="showFavorites && favorites.length > 0 && !isLoading" class="md-padding">
                 <div class="card" md-whiteframe=4>
                     <div class="card-image">
                         <span style="color:#607d8b;top:0px;right:0px" class="card-title favorites-title">
-                                Favoritos
-                                <i style="top:3px" class="material-icons left waves-effect" class="primary-color">star</i>
-                            </span>
+                            Favoritos
+                            <i style="top:3px" class="material-icons left waves-effect" class="primary-color">star</i>
+                        </span>
                         <div carousel>
                             <a ng-repeat="product in favorites" class="carousel-item unselectable">
-                                    <img check-image="{{product.imageUrl}}" ng-dblclick="searchFavorite(product.name)" 
-                                        src="/images/loading.gif" prevent-right-click>
-                                    <p class="center" layout-align"center center"><b>{{product.name}}</b></p>
-                                </a>
+                                <img check-image="{{product.imageUrl}}" ng-dblclick="searchFavorite(product.name)" src="/images/loading.gif" prevent-right-click>
+                                <p class="center" layout-align "center center">
+                                    <b>{{product.name}}</b>
+                                </p>
+                            </a>
                         </div>
 
                     </div>
@@ -58,10 +68,12 @@
                         </div>
 
                         <div class="card-action">
-                            <p ng-show="product[selectedPrice]">
-                                {{product[selectedPrice]}} Bs por {{selectedPriceText}}
+                            <p ng-show="product.prices[selectedPrice].value">
+                                {{product.prices[selectedPrice].value}} Bs por {{selectedCategory.priceTypes[selectedPrice].name}}
                             </p>
-                            <p ng-hide="product[selectedPrice]" ng-click="openAddPriceWhenNoPriceModal($event, product)" style="color:#a9b9c1">No hay precio para mostrar</p>
+                            <p ng-hide="product.prices[selectedPrice].value" ng-click="openAddPriceWhenNoPriceModal($event, product)" style="color:#a9b9c1">
+                                No hay precio para mostrar
+                            </p>
                         </div>
 
                         <div class="card-reveal">
@@ -79,9 +91,11 @@
                                 </div>
                                 <p>{{product.properties.type || product.category}}</p>
                                 </br>
-                                <div ng-show="product.quantity"><b>Cantidad:</b> {{product.quantity}} Unidades en deposito</br>
+                                <div ng-show="product.quantity">
+                                    <b>Cantidad:</b> {{product.quantity}} Unidades en deposito</br>
                                 </div>
-                                <div ng-show="product.properties.size"><b>Tamaño:</b> {{product.properties.size}}</br>
+                                <div ng-show="product.properties.size">
+                                    <b>Tamaño:</b> {{product.properties.size}}</br>
                                 </div>
                                 <div ng-repeat="location in product.locations">
                                     <b>{{location.type}}:</b> {{location.value}}</br>

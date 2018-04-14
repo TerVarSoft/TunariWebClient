@@ -13,9 +13,6 @@ angular.module('tunariApp')
 
       $scope.newPrice = {};
       $scope.newPrice.quantity = 1;
-
-      $scope.priceTypes = ProductInfo.getPriceTypes();
-
       $scope.addPrice = function() {
           $mdDialog.hide($scope.newPrice);
       }
