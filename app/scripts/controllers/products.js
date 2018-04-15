@@ -199,7 +199,10 @@ angular.module('tunariApp')
           .cancel('Cancelar');
 
         $mdDialog.show(addPriceModal).then(function (newPrice) {
-          product.prices[$scope.selectedPrice].value = newPrice;
+          product.prices[$scope.selectedPrice] = {
+            type: $scope.selectedPrice,
+            value: newPrice
+          }
 
           product.put().then(function (product) {
             $scope.showToast("Agregaste un nuevo precio al producto ", product.name);

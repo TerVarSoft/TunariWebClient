@@ -2,9 +2,9 @@
     <md-tabs flex=90 md-border-bottom>
         <md-tab label="Detalles">
             <md-content flex layout-padding>
-                <md-card flex-offset="10" flex="80" layout-padding>                    
+                <md-card flex-offset="10" flex="80" layout-padding>
                     <h5 ng-hide="product.name" class="primary-color center">Nuevo Producto</h5>
-                    <h5 ng-show="product.name" class="primary-color center">{{product.name}}</h5>                    
+                    <h5 ng-show="product.name" class="primary-color center">{{product.name}}</h5>
                     <br/>
 
                     <md-input-container flex-offset="5" flex=90>
@@ -15,10 +15,17 @@
                             </md-option>
                         </md-select>
                     </md-input-container>
-                    <md-input-container flex-offset="5" flex=90>
-                        <label>Nombre</label>
-                        <input ng-model="product.name" type="text" autocomplete="off"/>                                                            
-                    </md-input-container>
+                    <div flex-offset="5" flex=90 layout="row" layout-wrap>
+                        <md-input-container style="margin-top:0px;padding-top:0px" flex=50>
+                            <label>Nombre</label>
+                            <input ng-model="product.name" type="text" autocomplete="off" />
+                        </md-input-container>
+                        <md-input-container style="margin-top:0px;padding-top:0px" flex=50>
+                            <label>Description</label>
+                            <input ng-model="product.description" type="text" autocomplete="off" />
+                        </md-input-container>
+                    </div>
+
                     <div flex-offset="5" flex=90 layout="row" layout-wrap>
                         <md-input-container flex=50 style="margin-top:0px;padding-top:0px">
                             <label>Proveedor</label>
@@ -43,23 +50,20 @@
                     <div flex-offset="5" flex=90 layout="row" layout-wrap>
                         <md-input-container flex="100" flex-gt-xs=50>
                             <label>Cantidad en deposito</label>
-                            <input ng-model="product.quantity" type="number" autocomplete="off"/>
-                        </md-input-container>  
+                            <input ng-model="product.quantity" type="number" autocomplete="off" />
+                        </md-input-container>
                         <md-input-container flex="100" flex-gt-xs=50>
                             <label>Cantidad por paquete</label>
-                            <input ng-model="product.quantityPerPackage" type="number" autocomplete="off"/> 
+                            <input ng-model="product.quantityPerPackage" type="number" autocomplete="off" />
                         </md-input-container>
-                    </div>  
-
-                    <div flex-offset=5 flex=90 layout="row">
-                        <md-chips flex=100
-                            ng-model="product.tags"
-                            placeholder="Agrega etiquetas!"                            
-                            secondary-placeholder="Etiquetas +">
-                        </md-chips>                
                     </div>
 
-                    <br/>                                        
+                    <div flex-offset=5 flex=90 layout="row">
+                        <md-chips flex=100 ng-model="product.tags" placeholder="Agrega etiquetas!" secondary-placeholder="Etiquetas +">
+                        </md-chips>
+                    </div>
+
+                    <br/>
                 </md-card>
             </md-content>
         </md-tab>
@@ -71,9 +75,7 @@
                         <div ng-repeat="priceType in priceTypes">
                             <md-input-container class="md-block" flex-gt-xs>
                                 <label>Precio {{priceType.name}} (Bs.)</label>
-                                <input ng-model="product.prices[priceType.id].value" 
-                                    ng-init="product.prices[priceType.id].type = priceType.id"
-                                    type="number">
+                                <input ng-model="product.prices[priceType.id].value" ng-init="product.prices[priceType.id].type = priceType.id" type="number">
                             </md-input-container>
                         </div>
                     </md-card>
@@ -95,33 +97,31 @@
                     </md-card>
                 </div>
                 <div flex="100" flex-gt-sm="50">
-                    <md-card  layout-padding>
-                        <md-list> 
-                            <md-subheader  class="md-no-sticky" >
+                    <md-card layout-padding>
+                        <md-list>
+                            <md-subheader class="md-no-sticky">
                                 <div layout="row" layout-align="space-between center">
                                     <div>Otros precios</div>
                                     <div>
-                                    <md-button class="md-accent" ng-click="addOtherPrice($event)">AGREGAR</md-button>                        
+                                        <md-button class="md-accent" ng-click="addOtherPrice($event)">AGREGAR</md-button>
                                     </div>
-                                </div>                                
+                                </div>
                             </md-subheader>
                             <md-list-item class="md-2-line" ng-repeat="price in product.otherPrices | orderBy:'value'" ng-click=null>
-                                  <ng-md-icon class="md-avatar primary-color" 
-                                      icon="{{price.quantity == 1 ? 'filter_1' : 'filter_none'}}" 
-                                      size="35">
-                                  </ng-md-icon>
-                                  <div class="md-list-item-text" layout="column">
-                                      <h3>{{price.value}} Bs.</h3>
-                                      <p>
-                                          {{price.type}} ({{price.quantity}} Unidades)
-                                      </p>
-                                  </div>
-                                  <ng-md-icon class="md-secondary primary-color" icon="close" ng-click="removeOtherPrice(price)" aria-label="removeClientPrice">                                    
-                                  </ng-md-icon>
-                            </md-list-item>                                            
-                        </md-list>                    
-                    </md-card> 
-                </div>               
+                                <ng-md-icon class="md-avatar primary-color" icon="{{price.quantity == 1 ? 'filter_1' : 'filter_none'}}" size="35">
+                                </ng-md-icon>
+                                <div class="md-list-item-text" layout="column">
+                                    <h3>{{price.value}} Bs.</h3>
+                                    <p>
+                                        {{price.type}} ({{price.quantity}} Unidades)
+                                    </p>
+                                </div>
+                                <ng-md-icon class="md-secondary primary-color" icon="close" ng-click="removeOtherPrice(price)" aria-label="removeClientPrice">
+                                </ng-md-icon>
+                            </md-list-item>
+                        </md-list>
+                    </md-card>
+                </div>
             </md-content>
         </md-tab>
         <md-tab label="Ubicaciones">
@@ -131,36 +131,33 @@
                     <md-button class="md-accent" ng-click="addLocationStore($event)">+ Ubicacion Tienda</md-button>
                 </md-card>
                 <md-card flex-offset="10" flex="80" layout-padding>
-                    <md-list> 
+                    <md-list>
                         <md-subheader class="md-no-sticky">Lista de ubicaciones</md-subheader>
                         <md-list-item ng-repeat="location in product.locations | orderBy:'type'" ng-click=null>
-                              <ng-md-icon class="md-avatar primary-color" 
-                                icon="{{location.type == 'Tienda' ? 'store' : 'home'}}" size="35" aria-label="removeLocation">                                    
-                              </ng-md-icon>
-                              <p>{{location.value}}</p>                              
-                              <ng-md-icon class="md-secondary" style="fill:#607d8b" icon="close" ng-click="removeLocation(location)" aria-label="removeLocation">                                    
-                              </ng-md-icon>
-                        </md-list-item>                                               
-                    </md-list>                    
-                </md-card>                
-            </md-content>            
+                            <ng-md-icon class="md-avatar primary-color" icon="{{location.type == 'Tienda' ? 'store' : 'home'}}" size="35" aria-label="removeLocation">
+                            </ng-md-icon>
+                            <p>{{location.value}}</p>
+                            <ng-md-icon class="md-secondary" style="fill:#607d8b" icon="close" ng-click="removeLocation(location)" aria-label="removeLocation">
+                            </ng-md-icon>
+                        </md-list-item>
+                    </md-list>
+                </md-card>
+            </md-content>
         </md-tab>
         <md-tab label="Imagenes">
             <md-content flex layout-padding>
                 <md-card flex-offset="10" flex="80" layout-padding>
-                    <h5 class="primary-color center">Administrador de imagenes</h5>                    
+                    <h5 class="primary-color center">Administrador de imagenes</h5>
 
                     <div>
                         <div layout="row" layout-align="center center" layout-wrap>
-                            <img flex=50 check-image="{{getProductImageUrl(product, '-L')}}" class="product-extra-image" 
-                                        src="/images/tunari-logo-1.png">
-                            <img ng-repeat="image in product.images" flex=50 check-image="{{getExtraImageUrl(image)}}" 
-                                class="product-extra-image" src="/images/tunari-logo-1.png">                   
+                            <img flex=50 check-image="{{getProductImageUrl(product, '-L')}}" class="product-extra-image" src="/images/tunari-logo-1.png">
+                            <img ng-repeat="image in product.images" flex=50 check-image="{{getExtraImageUrl(image)}}" class="product-extra-image" src="/images/tunari-logo-1.png">
                         </div>
                         <div class="md-padding">
                             <md-chips placeholder="Agrega imagenes!" ng-model="product.images">
                             </md-chips>
-                        </div> 
+                        </div>
                     </div>
                 </md-card>
             </md-content>
@@ -168,7 +165,7 @@
     </md-tabs>
     <div layout="row" layout-align="end center" flex=10>
         <md-button class="md-primary md-raised" ng-click="cancel()">Cancelar</md-button>
-        <md-button type="button" class="md-primary md-raised" ng-click="saveAndNew()">Guardar y Nuevo</md-button>                        
+        <md-button type="button" class="md-primary md-raised" ng-click="saveAndNew()">Guardar y Nuevo</md-button>
         <md-button type="button" class="md-primary md-raised" ng-click="save()">Guardar</md-button>
     </div>
 </md-content>

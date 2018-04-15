@@ -65,11 +65,12 @@
                         </div>
                         <div md-truncate class="card-content">
                             <span class="card-title activator grey-text text-darken-4">{{product.name}}</span>
+                            <p>{{product.description || product.properties.type || product.category}}</p>
                         </div>
 
                         <div class="card-action">
                             <p ng-show="product.prices[selectedPrice].value">
-                                {{product.prices[selectedPrice].value}} Bs por {{selectedCategory.priceTypes[selectedPrice].name}}
+                                Precio {{selectedCategory.priceTypes[selectedPrice].name}}: {{product.prices[selectedPrice].value}} Bs 
                             </p>
                             <p ng-hide="product.prices[selectedPrice].value" ng-click="openAddPriceWhenNoPriceModal($event, product)" style="color:#a9b9c1">
                                 No hay precio para mostrar
