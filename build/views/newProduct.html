@@ -154,6 +154,12 @@
                             <img flex=50 check-image="{{getProductImageUrl(product, '-L')}}" class="product-extra-image" src="/images/tunari-logo-1.png">
                             <img ng-repeat="image in product.images" flex=50 check-image="{{getExtraImageUrl(image)}}" class="product-extra-image" src="/images/tunari-logo-1.png">
                         </div>
+                        <div>
+                            <md-input-container class="md-block" flex-gt-xs>
+                                <label>Version de la imagen principal</label>
+                                <input ng-model="product.imageVersion" type="text">
+                            </md-input-container>
+                        </div>
                         <div class="md-padding">
                             <md-chips placeholder="Agrega imagenes!" ng-model="product.images">
                             </md-chips>
