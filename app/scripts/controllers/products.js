@@ -201,7 +201,7 @@ angular.module('tunariApp')
         $mdDialog.show(addPriceModal).then(function (newPrice) {
           product.prices[$scope.selectedPrice] = {
             type: $scope.selectedPrice,
-            value: newPrice
+            value: Number(newPrice)
           }
 
           product.put().then(function (product) {
