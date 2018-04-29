@@ -19,18 +19,17 @@
     </div>
     <md-content flex class="background" layout="row" ng-if="!showSampleBook">
         <div layout="row" layout-wrap flex=80 flex-sm=80 flex-offset-sm="10" flex-offset="10">
-
             <h1 flex="100" class="center primary-color">
                 <strong>Productos Tunari</strong>
             </h1>
             </br>
-            <div flex=70 class="md-padding" ng-show="!isLoading">
+            <div flex=70 class="md-padding">
                 <md-chips ng-model="searchTags" md-on-add="search()" md-on-remove="search()" readonly="readonly" md-removable="removable"
                     placeholder="Busquemos un producto!" delete-button-label="Remove Tag" delete-hint="Press delete to remove tag"
                     secondary-placeholder="Escribe algo mas!">
                 </md-chips>
             </div>
-            <div flex=30 class="md-padding" ng-show="!isLoading">
+            <div flex=30 class="md-padding">
                 <md-select ng-model="selectedCategory" placeholder="Categoria" ng-change="changeCategory(selectedCategory)">
                     <md-option ng-repeat="category in productCategories" ng-value="category">
                         {{category.name}}
